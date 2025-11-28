@@ -13,6 +13,7 @@ on:
       - '!infrastructure/terraform/.gitignore'
       - '!infrastructure/terraform/audit-*.ps1'
       - '!infrastructure/terraform/scripts/**'
+      - '.github/workflows/deploy-infrastructure.yml'
   workflow_dispatch:
     inputs:
       environment:

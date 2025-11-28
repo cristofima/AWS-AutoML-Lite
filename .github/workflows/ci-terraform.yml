@@ -8,6 +8,7 @@ on:
     branches: [dev, main]
     paths:
       - 'infrastructure/terraform/**'
+      - '.github/workflows/ci-terraform.yml'
   push:
     branches: [dev, main]
     paths:
@@ -15,6 +16,7 @@ on:
       - '!infrastructure/terraform/**/*.md'
       - '!infrastructure/terraform/**/*.txt'
       - '!infrastructure/terraform/scripts/**'
+      - '.github/workflows/ci-terraform.yml'
 
 permissions:
   contents: read
