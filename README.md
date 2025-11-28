@@ -32,7 +32,7 @@ User → CloudFront → S3 (Frontend - Static Next.js)
 
 - AWS Account
 - AWS CLI v2 configured
-- SAM CLI installed
+- Terraform >= 1.5
 - Docker installed
 - Node.js 18+ (for frontend)
 - Python 3.11+
@@ -68,13 +68,14 @@ cd ../../infrastructure/terraform
 terraform output api_gateway_url
 ```
 
-📖 **Full instructions:** See [QUICKSTART.md](./QUICKSTART.md)
+📖 **Full instructions:** See [QUICKSTART.md](./docs/QUICKSTART.md)
 
 ## 📖 Documentation
 
-- [Project Reference](./PROJECT_REFERENCE.md) - Complete technical documentation
-- [Architecture Diagram](./docs/architecture.png)
-- [API Documentation](./docs/api-spec.yaml)
+- [QUICKSTART.md](./docs/QUICKSTART.md) - Complete deployment guide
+- [PROJECT_REFERENCE.md](./docs/PROJECT_REFERENCE.md) - Technical documentation
+- [SETUP_CICD.md](./.github/SETUP_CICD.md) - CI/CD with GitHub Actions
+- [ARCHITECTURE_DECISIONS.md](./infrastructure/terraform/ARCHITECTURE_DECISIONS.md) - Container usage rationale
 
 ## 💰 Cost Estimation
 
@@ -103,8 +104,8 @@ uvicorn api.main:app --reload
 ### Frontend
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ## 📝 Usage
@@ -136,4 +137,4 @@ MIT License - see LICENSE file for details
 
 ---
 
-**Status**: 🚧 In Development (MVP Phase)
+**Status**: 🚧 MVP In Progress (Backend Complete ✅ | Frontend ~60% 🚧)
