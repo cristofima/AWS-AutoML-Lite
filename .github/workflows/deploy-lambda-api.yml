@@ -69,6 +69,11 @@ jobs:
           aws lambda wait function-updated-v2 --function-name $FUNCTION_NAME
           echo "✅ Lambda update complete"
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
       - name: Get API URL
         id: api
         run: |
