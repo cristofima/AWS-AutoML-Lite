@@ -60,13 +60,16 @@ jobs:
           terraform init
           terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
           
-          # Check if infrastructure exists
-          if terraform state list 2>/dev/null | grep -q "aws_ecr_repository.training"; then
-            ECR_URL=$(terraform output -raw ecr_repository_url)
+          # Check if infrastructure exists by trying to get output
+          ECR_URL=$(terraform output -raw ecr_repository_url 2>&1)
+          
+          if [ $? -eq 0 ] && [ -n "$ECR_URL" ]; then
             echo "ecr_url=$ECR_URL" >> $GITHUB_OUTPUT
             echo "**ECR Repository:** $ECR_URL" >> $GITHUB_STEP_SUMMARY
+            echo "✅ ECR repository found"
           else
             echo "❌ Infrastructure not deployed yet. Run deploy-infrastructure workflow first." >> $GITHUB_STEP_SUMMARY
+            echo "Error: $ECR_URL"
             exit 1
           fi
 

@@ -82,11 +82,13 @@ jobs:
           terraform init
           terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
           
-          # Check if infrastructure exists
-          if terraform state list 2>/dev/null | grep -q "aws_api_gateway_stage.main"; then
-            API_URL=$(terraform output -raw api_gateway_url 2>/dev/null || echo "")
+          # Check if infrastructure exists by trying to get output
+          API_URL=$(terraform output -raw api_gateway_url 2>&1)
+          
+          if [ $? -eq 0 ] && [ -n "$API_URL" ] && [[ ! "$API_URL" =~ "Warning" ]]; then
             echo "api_url=$API_URL" >> $GITHUB_OUTPUT
             echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
+            echo "✅ API Gateway found"
           else
             echo "⚠️ Infrastructure not deployed yet. Run deploy-infrastructure workflow first." >> $GITHUB_STEP_SUMMARY
             echo "api_url=" >> $GITHUB_OUTPUT
