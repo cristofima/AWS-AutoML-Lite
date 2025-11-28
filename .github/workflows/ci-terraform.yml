@@ -39,6 +39,13 @@ jobs:
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
+      - name: Create Dummy Lambda Package
+        run: |
+          # Create empty zip for validation (actual zip is built in deploy workflow)
+          touch dummy.txt
+          zip lambda_function.zip dummy.txt
+          rm dummy.txt
+
       - name: Terraform Init
         run: terraform init -backend=false
 
