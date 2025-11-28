@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
+
+# Node / Frontend
+node_modules/
+.next/
+out/
+.env*.local
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data & Models
+datasets/
+models/
+reports/
+*.pkl
+*.csv
+*.h5
+
+# Secrets
+.env
+*.pem
+*.key
+credentials.json
