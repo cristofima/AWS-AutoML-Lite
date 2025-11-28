@@ -79,6 +79,15 @@ jobs:
         id: api
         run: |
           cd infrastructure/terraform
+          
+          # lambda_function.zip is already created by Build Lambda Package step
+          # Verify it exists for Terraform
+          if [ ! -f lambda_function.zip ]; then
+            echo "❌ lambda_function.zip not found" >> $GITHUB_STEP_SUMMARY
+            echo "api_url=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
           terraform init
           
           # Try to select workspace (don't create automatically)
@@ -89,15 +98,20 @@ jobs:
           fi
           
           # Check if infrastructure exists by trying to get output
+          # Store exit code properly before $() loses it
+          set +e
           API_URL=$(terraform output -raw api_gateway_url 2>&1)
+          OUTPUT_EXIT_CODE=$?
+          set -e
           
           # Check if output is valid
-          if [ $? -eq 0 ] && [ -n "$API_URL" ] && [[ ! "$API_URL" =~ "Warning" ]] && [[ ! "$API_URL" =~ "Error" ]] && [[ ! "$API_URL" =~ "No outputs" ]]; then
+          if [ $OUTPUT_EXIT_CODE -eq 0 ] && [ -n "$API_URL" ] && [[ ! "$API_URL" =~ "Warning" ]] && [[ ! "$API_URL" =~ "Error" ]] && [[ ! "$API_URL" =~ "No outputs" ]]; then
             echo "api_url=$API_URL" >> $GITHUB_OUTPUT
             echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
             echo "✅ API Gateway found: $API_URL"
           else
-            echo "⚠️ Infrastructure not deployed yet. Run deploy-infrastructure workflow first." >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Infrastructure not deployed yet or output failed. Run deploy-infrastructure workflow first." >> $GITHUB_STEP_SUMMARY
+            echo "Terraform output result: $API_URL"
             echo "api_url=" >> $GITHUB_OUTPUT
           fi
 
