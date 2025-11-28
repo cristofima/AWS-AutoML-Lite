@@ -24,7 +24,6 @@ out/
 *.log
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
