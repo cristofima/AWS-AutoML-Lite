@@ -64,6 +64,14 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
 
+      - name: Build Lambda Package
+        run: |
+          docker build -f scripts/Dockerfile.lambda -t lambda-builder:latest ../..
+          CONTAINER_ID=$(docker create lambda-builder:latest)
+          docker cp $CONTAINER_ID:/lambda_function.zip ./lambda_function.zip
+          docker rm $CONTAINER_ID
+          ls -lh lambda_function.zip
+
       - name: Terraform Init
         run: terraform init
 
@@ -77,11 +85,13 @@ jobs:
             -out=tfplan-${{ env.ENVIRONMENT }} \
             -no-color | tee plan.txt
 
-      - name: Upload Plan
+      - name: Upload Plan and Lambda Package
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-${{ env.ENVIRONMENT }}
-          path: tfplan-${{ env.ENVIRONMENT }}
+          path: |
+            infrastructure/terraform/tfplan-${{ env.ENVIRONMENT }}
+            infrastructure/terraform/lambda_function.zip
           retention-days: 7
 
       - name: Plan Summary
@@ -124,21 +134,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: tfplan-${{ env.ENVIRONMENT }}
-          path: .
+          path: infrastructure/terraform/
 
       - name: Terraform Init
         run: terraform init
 
       - name: Select Workspace
         run: terraform workspace select ${{ env.ENVIRONMENT }}
-
-      - name: Build Lambda Package
-        run: |
-          docker build -f scripts/Dockerfile.lambda -t lambda-builder:latest ../..
-          CONTAINER_ID=$(docker create lambda-builder:latest)
-          docker cp $CONTAINER_ID:/lambda_function.zip ./lambda_function.zip
-          docker rm $CONTAINER_ID
-          ls -lh lambda_function.zip
 
       - name: Terraform Apply
         run: terraform apply tfplan-${{ env.ENVIRONMENT }}
@@ -181,7 +183,7 @@ jobs:
 
   post-deploy:
     name: Deploy Components
-    needs: deploy
+    needs: [plan, deploy]
     runs-on: ubuntu-latest
     
     env:
@@ -198,6 +200,12 @@ jobs:
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
 
       - name: Get ECR URL
         id: ecr

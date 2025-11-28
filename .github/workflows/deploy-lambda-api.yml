@@ -80,13 +80,19 @@ jobs:
         run: |
           cd infrastructure/terraform
           terraform init
-          terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
+          
+          # Try to select workspace (don't create automatically)
+          if ! terraform workspace select ${{ env.ENVIRONMENT }} 2>/dev/null; then
+            echo "⚠️ Workspace '${{ env.ENVIRONMENT }}' does not exist." >> $GITHUB_STEP_SUMMARY
+            echo "api_url=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           
           # Check if infrastructure exists by trying to get output
           API_URL=$(terraform output -raw api_gateway_url 2>&1)
           
-          # Check if output is valid (not empty, no warnings/errors, no formatting characters)
-          if [ $? -eq 0 ] && [ -n "$API_URL" ] && [[ ! "$API_URL" =~ "Warning" ]] && [[ ! "$API_URL" =~ "Error" ]] && [[ ! "$API_URL" =~ "│" ]]; then
+          # Check if output is valid
+          if [ $? -eq 0 ] && [ -n "$API_URL" ] && [[ ! "$API_URL" =~ "Warning" ]] && [[ ! "$API_URL" =~ "Error" ]] && [[ ! "$API_URL" =~ "No outputs" ]]; then
             echo "api_url=$API_URL" >> $GITHUB_OUTPUT
             echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
             echo "✅ API Gateway found: $API_URL"
