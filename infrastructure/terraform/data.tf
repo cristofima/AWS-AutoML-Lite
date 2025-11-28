@@ -24,6 +24,6 @@ locals {
   vpc_id             = var.vpc_id != "" ? var.vpc_id : data.aws_vpc.default[0].id
   subnet_ids         = length(var.subnet_ids) > 0 ? var.subnet_ids : data.aws_subnets.default[0].ids
   security_group_ids = length(var.security_group_ids) > 0 ? var.security_group_ids : [aws_security_group.batch[0].id]
-  
+
   name_prefix = "${var.project_name}-${var.environment}"
 }

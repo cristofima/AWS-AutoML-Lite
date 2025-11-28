@@ -16,6 +16,7 @@ output "lambda_function_name" {
 output "lambda_function_arn" {
   description = "Lambda function ARN"
   value       = aws_lambda_function.api.arn
+  sensitive   = true
 }
 
 output "datasets_bucket_name" {
@@ -51,6 +52,7 @@ output "batch_job_queue" {
 output "batch_job_definition" {
   description = "Batch job definition ARN"
   value       = aws_batch_job_definition.training.arn
+  sensitive   = true
 }
 
 output "ecr_repository_url" {

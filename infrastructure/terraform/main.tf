@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.5"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -20,7 +20,7 @@ terraform {
     region         = "us-east-1"
     encrypt        = true
     dynamodb_table = "automl-lite-terraform-locks"
-    
+
     # Prevent concurrent state operations
     # DynamoDB table provides state locking and consistency checking
   }

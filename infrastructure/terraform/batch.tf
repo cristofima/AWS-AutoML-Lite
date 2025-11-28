@@ -29,7 +29,7 @@ resource "aws_batch_compute_environment" "training" {
     type      = "FARGATE_SPOT"
     max_vcpus = var.batch_max_vcpus
 
-    subnets         = local.subnet_ids
+    subnets            = local.subnet_ids
     security_group_ids = local.security_group_ids
   }
 }
@@ -67,7 +67,7 @@ resource "aws_batch_job_definition" "training" {
       }
     ]
 
-    jobRoleArn      = aws_iam_role.batch_job.arn
+    jobRoleArn       = aws_iam_role.batch_job.arn
     executionRoleArn = aws_iam_role.batch_execution.arn
 
     logConfiguration = {

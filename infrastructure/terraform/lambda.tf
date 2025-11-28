@@ -37,15 +37,15 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      ENVIRONMENT               = var.environment
-      REGION                    = local.region
-      S3_BUCKET_DATASETS        = aws_s3_bucket.datasets.id
-      S3_BUCKET_MODELS          = aws_s3_bucket.models.id
-      S3_BUCKET_REPORTS         = aws_s3_bucket.reports.id
-      DYNAMODB_DATASETS_TABLE   = aws_dynamodb_table.datasets.name
-      DYNAMODB_JOBS_TABLE       = aws_dynamodb_table.training_jobs.name
-      BATCH_JOB_QUEUE           = aws_batch_job_queue.training.name
-      BATCH_JOB_DEFINITION      = aws_batch_job_definition.training.arn
+      ENVIRONMENT             = var.environment
+      REGION                  = local.region
+      S3_BUCKET_DATASETS      = aws_s3_bucket.datasets.id
+      S3_BUCKET_MODELS        = aws_s3_bucket.models.id
+      S3_BUCKET_REPORTS       = aws_s3_bucket.reports.id
+      DYNAMODB_DATASETS_TABLE = aws_dynamodb_table.datasets.name
+      DYNAMODB_JOBS_TABLE     = aws_dynamodb_table.training_jobs.name
+      BATCH_JOB_QUEUE         = aws_batch_job_queue.training.name
+      BATCH_JOB_DEFINITION    = aws_batch_job_definition.training.arn
     }
   }
 

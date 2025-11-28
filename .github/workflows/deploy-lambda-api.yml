@@ -79,7 +79,7 @@ jobs:
         run: |
           cd infrastructure/terraform
           terraform init
-          terraform workspace select ${{ env.ENVIRONMENT }}
+          terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
           API_URL=$(terraform output -raw api_gateway_url 2>/dev/null || echo "")
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
           echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY

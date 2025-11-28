@@ -2,12 +2,22 @@ variable "environment" {
   description = "Environment name (dev, prod)"
   type        = string
   default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "prod"], var.environment)
+    error_message = "Environment must be either 'dev' or 'prod'."
+  }
 }
 
 variable "aws_region" {
   description = "AWS region"
   type        = string
   default     = "us-east-1"
+
+  validation {
+    condition     = can(regex("^[a-z]{2}-[a-z]+-[0-9]{1}$", var.aws_region))
+    error_message = "AWS region must be in valid format (e.g., us-east-1, eu-west-2)."
+  }
 }
 
 variable "project_name" {
@@ -20,12 +30,22 @@ variable "lambda_memory_size" {
   description = "Lambda function memory size in MB"
   type        = number
   default     = 1024
+
+  validation {
+    condition     = var.lambda_memory_size >= 128 && var.lambda_memory_size <= 10240
+    error_message = "Lambda memory must be between 128 MB and 10240 MB (AWS limits)."
+  }
 }
 
 variable "lambda_timeout" {
   description = "Lambda function timeout in seconds"
   type        = number
   default     = 60
+
+  validation {
+    condition     = var.lambda_timeout >= 1 && var.lambda_timeout <= 900
+    error_message = "Lambda timeout must be between 1 and 900 seconds (AWS limits)."
+  }
 }
 
 variable "batch_vcpu" {

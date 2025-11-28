@@ -57,7 +57,7 @@ jobs:
         run: |
           cd infrastructure/terraform
           terraform init
-          terraform workspace select ${{ env.ENVIRONMENT }}
+          terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
           ECR_URL=$(terraform output -raw ecr_repository_url)
           echo "ecr_url=$ECR_URL" >> $GITHUB_OUTPUT
           echo "**ECR Repository:** $ECR_URL" >> $GITHUB_STEP_SUMMARY
