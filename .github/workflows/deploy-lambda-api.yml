@@ -9,10 +9,9 @@ on:
     paths:
       - 'backend/api/**'
       - 'backend/requirements.txt'
+      - '!backend/api/**/*.md'
+      - '!backend/**/*.txt'
       - '.github/workflows/deploy-lambda-api.yml'
-    paths-ignore:
-      - 'backend/api/**/*.md'
-      - 'backend/**/*.txt'
   workflow_dispatch:
     inputs:
       environment:

@@ -12,10 +12,9 @@ on:
     branches: [dev, main]
     paths:
       - 'infrastructure/terraform/**'
-    paths-ignore:
-      - 'infrastructure/**/*.md'
-      - 'infrastructure/**/*.txt'
-      - 'infrastructure/terraform/scripts/**'
+      - '!infrastructure/terraform/**/*.md'
+      - '!infrastructure/terraform/**/*.txt'
+      - '!infrastructure/terraform/scripts/**'
 
 permissions:
   contents: read

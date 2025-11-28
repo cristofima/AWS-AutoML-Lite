@@ -8,12 +8,11 @@ on:
     branches: [dev, main]
     paths:
       - 'infrastructure/terraform/**'
+      - '!infrastructure/terraform/**/*.md'
+      - '!infrastructure/terraform/**/*.txt'
+      - '!infrastructure/terraform/.gitignore'
+      - '!infrastructure/terraform/audit-*.ps1'
       - '!infrastructure/terraform/scripts/**'
-    paths-ignore:
-      - 'infrastructure/**/*.md'
-      - 'infrastructure/**/*.txt'
-      - 'infrastructure/terraform/.gitignore'
-      - 'infrastructure/terraform/audit-*.ps1'
   workflow_dispatch:
     inputs:
       environment:

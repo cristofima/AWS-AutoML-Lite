@@ -8,10 +8,9 @@ on:
     branches: [dev, main]
     paths:
       - 'backend/training/**'
+      - '!backend/training/**/*.md'
+      - '!backend/training/**/*.txt'
       - '.github/workflows/deploy-training-container.yml'
-    paths-ignore:
-      - 'backend/training/**/*.md'
-      - 'backend/training/**/*.txt'
   workflow_dispatch:
     inputs:
       environment:
