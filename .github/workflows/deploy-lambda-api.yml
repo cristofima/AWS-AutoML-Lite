@@ -73,6 +73,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.0
+          terraform_wrapper: false
 
       - name: Get API URL
         id: api
@@ -80,9 +81,16 @@ jobs:
           cd infrastructure/terraform
           terraform init
           terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
-          API_URL=$(terraform output -raw api_gateway_url 2>/dev/null || echo "")
-          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
-          echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if infrastructure exists
+          if terraform state list 2>/dev/null | grep -q "aws_api_gateway_stage.main"; then
+            API_URL=$(terraform output -raw api_gateway_url 2>/dev/null || echo "")
+            echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+            echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Infrastructure not deployed yet. Run deploy-infrastructure workflow first." >> $GITHUB_STEP_SUMMARY
+            echo "api_url=" >> $GITHUB_OUTPUT
+          fi
 
       - name: Test API Health
         if: steps.api.outputs.api_url != ''
