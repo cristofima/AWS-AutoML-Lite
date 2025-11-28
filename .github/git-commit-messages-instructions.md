@@ -16,7 +16,7 @@ Generate [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) 
 
 **Header rules:** Max 50 chars, imperative tense ("add" not "added"), lowercase type, capitalize description
 **Body rules:** Past tense, wrap at 72 chars, explain WHY not what
-**Footer rules:** Breaking changes (`BREAKING CHANGE:`), issue refs (`Closes #123`)
+**Footer rules:** Breaking changes (`BREAKING CHANGE:`)
 
 ---
 
@@ -267,8 +267,6 @@ Migration:
 - Update JobResult component to display new fields
 
 All jobs created after this commit include new fields.
-
-Closes #42
 ```
 
 **What IS breaking:**
@@ -368,8 +366,6 @@ Features:
 - Problem type detection (regression/classification)
 - Direct S3 upload via presigned URL (no backend bottleneck)
 - DynamoDB metadata indexing
-
-Closes #12
 ```
 
 ### Bug Fix (Training Container)
@@ -442,8 +438,6 @@ Configuration:
 - Spot pricing: ~$0.05/job vs $0.17/job on-demand
 
 Cost estimate: $3/month for 20 training jobs
-
-Closes #23
 ```
 
 ---
@@ -500,7 +494,6 @@ Closes #23
 - [ ] AWS resource changes documented
 - [ ] Files listed (2-8) or grouped (>8)
 - [ ] Explained WHY, not just WHAT
-- [ ] Issues referenced (`Closes #123`)
 - [ ] No sensitive data (keys, URLs)
 - [ ] Terraform state not committed
 
