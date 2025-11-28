@@ -1,6 +1,6 @@
 # ECR Repository for Training Container
 resource "aws_ecr_repository" "training" {
-  name                 = "${var.project_name}-training"
+  name                 = "${local.name_prefix}-training"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -8,7 +8,7 @@ resource "aws_ecr_repository" "training" {
   }
 
   tags = {
-    Name = "${var.project_name}-training"
+    Name = "${local.name_prefix}-training"
   }
 }
 

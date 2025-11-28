@@ -10,27 +10,15 @@ resource "aws_cloudwatch_log_group" "batch" {
   retention_in_days = var.cloudwatch_retention_days
 }
 
-# Package Lambda function
-data "archive_file" "lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/../../backend"
-  output_path = "${path.module}/lambda_function.zip"
-  excludes = [
-    "training",
-    "__pycache__",
-    "*.pyc",
-    ".pytest_cache",
-    "tests"
-  ]
-}
-
 # Lambda Function
+# Note: lambda_function.zip is built by Docker in CI/CD pipeline
+# See: infrastructure/terraform/scripts/Dockerfile.lambda
 resource "aws_lambda_function" "api" {
-  filename         = data.archive_file.lambda.output_path
+  filename         = "${path.module}/lambda_function.zip"
   function_name    = "${local.name_prefix}-api"
   role             = aws_iam_role.lambda_exec.arn
   handler          = "api.main.handler"
-  source_code_hash = data.archive_file.lambda.output_base64sha256
+  source_code_hash = filebase64sha256("${path.module}/lambda_function.zip")
   runtime          = "python3.11"
   memory_size      = var.lambda_memory_size
   timeout          = var.lambda_timeout
@@ -57,6 +45,11 @@ resource "aws_lambda_function" "api" {
     aws_cloudwatch_log_group.lambda,
     aws_iam_role_policy_attachment.lambda_basic
   ]
+
+  lifecycle {
+    # Ignore changes to source_code_hash when updated via deploy-lambda-api workflow
+    ignore_changes = [source_code_hash]
+  }
 }
 
 # Lambda Permission for API Gateway
