@@ -1,0 +1,88 @@
+# Deploy Lambda API (Backend API only)
+# Triggers on changes to backend/api/ or manual dispatch
+
+name: Deploy Lambda API
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'backend/api/**'
+      - 'backend/requirements.txt'
+      - '.github/workflows/deploy-lambda-api.yml'
+    paths-ignore:
+      - 'backend/api/**/*.md'
+      - 'backend/**/*.txt'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.ref == 'refs/heads/main' && 'prod' || github.event.inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || '' }}
+    
+    env:
+      ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'prod' || github.event.inputs.environment || 'dev' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build Lambda Package
+        run: |
+          cd infrastructure/terraform
+          docker build -f scripts/Dockerfile.lambda -t lambda-builder:latest ../..
+          CONTAINER_ID=$(docker create lambda-builder:latest)
+          docker cp $CONTAINER_ID:/lambda_function.zip ./lambda_function.zip
+          docker rm $CONTAINER_ID
+          ls -lh lambda_function.zip
+
+      - name: Update Lambda Function
+        run: |
+          FUNCTION_NAME="automl-lite-${{ env.ENVIRONMENT }}-api"
+          aws lambda update-function-code \
+            --function-name $FUNCTION_NAME \
+            --zip-file fileb://infrastructure/terraform/lambda_function.zip \
+            --region ${{ env.AWS_REGION }}
+          echo "✅ Lambda function $FUNCTION_NAME updated"
+
+      - name: Wait for Lambda Update
+        run: |
+          FUNCTION_NAME="automl-lite-${{ env.ENVIRONMENT }}-api"
+          aws lambda wait function-updated-v2 --function-name $FUNCTION_NAME
+          echo "✅ Lambda update complete"
+
+      - name: Get API URL
+        id: api
+        run: |
+          cd infrastructure/terraform
+          terraform init
+          terraform workspace select ${{ env.ENVIRONMENT }}
+          API_URL=$(terraform output -raw api_gateway_url 2>/dev/null || echo "")
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
+
+      - name: Test API Health
+        if: steps.api.outputs.api_url != ''
+        run: |
+          sleep 5
+          curl -f "${{ steps.api.outputs.api_url }}/health" || exit 1
+          echo "✅ API health check passed"

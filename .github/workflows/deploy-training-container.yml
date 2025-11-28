@@ -1,0 +1,71 @@
+# Deploy Training Container (Batch only)
+# Triggers on changes to backend/training/ or manual dispatch
+
+name: Deploy Training Container
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'backend/training/**'
+      - '.github/workflows/deploy-training-container.yml'
+    paths-ignore:
+      - 'backend/training/**/*.md'
+      - 'backend/training/**/*.txt'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Build & Push to ${{ github.ref == 'refs/heads/main' && 'prod' || github.event.inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || '' }}
+    
+    env:
+      ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'prod' || github.event.inputs.environment || 'dev' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get ECR Repository
+        id: ecr
+        run: |
+          cd infrastructure/terraform
+          terraform init
+          terraform workspace select ${{ env.ENVIRONMENT }}
+          ECR_URL=$(terraform output -raw ecr_repository_url)
+          echo "ecr_url=$ECR_URL" >> $GITHUB_OUTPUT
+          echo "**ECR Repository:** $ECR_URL" >> $GITHUB_STEP_SUMMARY
+
+      - name: Build and Push Container
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.ecr_url }}
+          IMAGE_TAG: ${{ env.ENVIRONMENT }}-${{ github.sha }}
+        run: |
+          cd backend/training
+          docker build -t $ECR_REGISTRY:latest -t $ECR_REGISTRY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY:latest
+          docker push $ECR_REGISTRY:$IMAGE_TAG
+          echo "✅ Container pushed: $ECR_REGISTRY:latest"
+          echo "**Image Tag:** \`$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
