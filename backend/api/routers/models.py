@@ -1,9 +1,143 @@
 from fastapi import APIRouter, HTTPException, status, Query
 from typing import Optional
-from ..models.schemas import JobListResponse
+from ..models.schemas import JobListResponse, JobResponse, JobStatus, ProblemType
 from ..services.dynamo_service import dynamodb_service
+from ..services.s3_service import s3_service
+from ..utils.helpers import get_settings
 
-router = APIRouter(prefix="/jobs", tags=["models"])
+router = APIRouter(prefix="/jobs", tags=["jobs"])
+settings = get_settings()
+
+
+@router.get("/{job_id}", response_model=JobResponse)
+async def get_job_status(job_id: str):
+    """
+    Get the status and results of a training job
+    """
+    try:
+        job = dynamodb_service.get_job(job_id)
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job not found"
+            )
+        
+        response = JobResponse(
+            job_id=job['job_id'],
+            dataset_id=job['dataset_id'],
+            status=JobStatus(job['status']),
+            target_column=job['target_column'],
+            dataset_name=job.get('dataset_name'),
+            problem_type=ProblemType(job['problem_type']) if job.get('problem_type') else None,
+            created_at=job.get('created_at'),
+            updated_at=job.get('updated_at'),
+            started_at=job.get('started_at'),
+            completed_at=job.get('completed_at'),
+            metrics=job.get('metrics'),
+            error_message=job.get('error_message')
+        )
+        
+        # Generate download URLs if job is completed
+        if job['status'] == JobStatus.COMPLETED.value:
+            if job.get('model_path'):
+                # Extract bucket and key from s3:// path
+                model_path = job['model_path'].replace('s3://', '')
+                bucket, key = model_path.split('/', 1)
+                response.model_download_url = s3_service.generate_presigned_download_url(
+                    bucket=bucket,
+                    key=key
+                )
+            
+            if job.get('report_path'):
+                report_path = job['report_path'].replace('s3://', '')
+                bucket, key = report_path.split('/', 1)
+                response.report_download_url = s3_service.generate_presigned_download_url(
+                    bucket=bucket,
+                    key=key
+                )
+        
+        return response
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting job status: {str(e)}"
+        )
+
+
+@router.delete("/{job_id}")
+async def delete_job(job_id: str, delete_data: bool = True):
+    """
+    Delete a training job and optionally all associated data (model, report, dataset)
+    """
+    try:
+        # Get job details first
+        job = dynamodb_service.get_job(job_id)
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job not found"
+            )
+        
+        deleted_resources = []
+        
+        if delete_data:
+            # Delete model from S3
+            if job.get('model_path'):
+                try:
+                    model_path = job['model_path'].replace('s3://', '')
+                    bucket, key = model_path.split('/', 1)
+                    s3_service.delete_object(bucket, key)
+                    deleted_resources.append(f"model: {key}")
+                except Exception:
+                    pass  # Model might not exist
+            
+            # Delete report from S3
+            if job.get('report_path'):
+                try:
+                    report_path = job['report_path'].replace('s3://', '')
+                    bucket, key = report_path.split('/', 1)
+                    s3_service.delete_object(bucket, key)
+                    deleted_resources.append(f"report: {key}")
+                except Exception:
+                    pass  # Report might not exist
+            
+            # Delete dataset from S3 and DynamoDB
+            dataset_id = job.get('dataset_id')
+            if dataset_id:
+                try:
+                    # Delete dataset files from S3
+                    deleted_count = s3_service.delete_folder(
+                        bucket=settings.s3_bucket_datasets,
+                        prefix=f"datasets/{dataset_id}/"
+                    )
+                    if deleted_count > 0:
+                        deleted_resources.append(f"dataset files: {deleted_count}")
+                    
+                    # Delete dataset metadata from DynamoDB
+                    dynamodb_service.delete_dataset(dataset_id)
+                    deleted_resources.append(f"dataset metadata: {dataset_id}")
+                except Exception:
+                    pass  # Dataset might not exist
+        
+        # Delete job record from DynamoDB
+        dynamodb_service.delete_job(job_id)
+        
+        return {
+            "message": "Job deleted successfully",
+            "job_id": job_id,
+            "deleted_resources": deleted_resources
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting job: {str(e)}"
+        )
 
 
 @router.get("", response_model=JobListResponse)

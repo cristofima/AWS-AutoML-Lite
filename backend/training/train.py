@@ -134,12 +134,23 @@ def main():
 
 def update_job_status(table, job_id, status, error_message=None):
     """Update job status in DynamoDB"""
+    now = datetime.utcnow().isoformat()
     update_expr = "SET #status = :status, updated_at = :updated_at"
     expr_attr_names = {'#status': 'status'}
     expr_attr_values = {
         ':status': status,
-        ':updated_at': datetime.utcnow().isoformat()
+        ':updated_at': now
     }
+    
+    # Add started_at when job starts running
+    if status == 'running':
+        update_expr += ", started_at = :started_at"
+        expr_attr_values[':started_at'] = now
+    
+    # Add completed_at when job finishes
+    if status in ('completed', 'failed'):
+        update_expr += ", completed_at = :completed_at"
+        expr_attr_values[':completed_at'] = now
     
     if error_message:
         update_expr += ", error_message = :error_message"

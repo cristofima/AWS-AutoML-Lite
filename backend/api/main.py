@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from .routers import upload, training, models
+from .routers import upload, training, models, datasets
 from .utils.helpers import get_settings
 
 settings = get_settings()
@@ -27,6 +27,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(upload.router)
+app.include_router(datasets.router)
 app.include_router(training.router)
 app.include_router(models.router)
 

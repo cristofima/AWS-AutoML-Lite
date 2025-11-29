@@ -75,6 +75,34 @@ class S3Service:
             return True
         except ClientError as e:
             raise Exception(f"Error deleting object: {str(e)}")
+    
+    def list_objects(self, bucket: str, prefix: str) -> List[str]:
+        """List objects in S3 with a given prefix"""
+        try:
+            response = self.s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+            return [obj['Key'] for obj in response.get('Contents', [])]
+        except ClientError as e:
+            raise Exception(f"Error listing objects: {str(e)}")
+    
+    def download_file_content(self, bucket: str, key: str) -> bytes:
+        """Download file content from S3"""
+        try:
+            response = self.s3_client.get_object(Bucket=bucket, Key=key)
+            return response['Body'].read()
+        except ClientError as e:
+            raise Exception(f"Error downloading file: {str(e)}")
+    
+    def delete_folder(self, bucket: str, prefix: str) -> int:
+        """Delete all objects with a given prefix (folder) from S3"""
+        try:
+            objects = self.list_objects(bucket, prefix)
+            deleted_count = 0
+            for key in objects:
+                self.delete_object(bucket, key)
+                deleted_count += 1
+            return deleted_count
+        except ClientError as e:
+            raise Exception(f"Error deleting folder: {str(e)}")
 
 
 # Singleton instance

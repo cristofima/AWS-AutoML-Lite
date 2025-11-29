@@ -137,6 +137,38 @@ class DynamoDBService:
             return items, next_key
         except ClientError as e:
             raise Exception(f"Error listing jobs: {str(e)}")
+    
+    def save_dataset_metadata(self, metadata: Dict) -> bool:
+        """Save dataset metadata to DynamoDB"""
+        try:
+            self.datasets_table.put_item(Item=metadata)
+            return True
+        except ClientError as e:
+            raise Exception(f"Error saving dataset metadata: {str(e)}")
+    
+    def get_dataset_metadata(self, dataset_id: str) -> Optional[Dict]:
+        """Get dataset metadata by ID"""
+        try:
+            response = self.datasets_table.get_item(Key={'dataset_id': dataset_id})
+            return self._convert_decimals(response.get('Item'))
+        except ClientError as e:
+            raise Exception(f"Error getting dataset metadata: {str(e)}")
+    
+    def delete_job(self, job_id: str) -> bool:
+        """Delete a training job record"""
+        try:
+            self.jobs_table.delete_item(Key={'job_id': job_id})
+            return True
+        except ClientError as e:
+            raise Exception(f"Error deleting job: {str(e)}")
+    
+    def delete_dataset(self, dataset_id: str) -> bool:
+        """Delete a dataset record"""
+        try:
+            self.datasets_table.delete_item(Key={'dataset_id': dataset_id})
+            return True
+        except ClientError as e:
+            raise Exception(f"Error deleting dataset: {str(e)}")
 
 
 # Singleton instance

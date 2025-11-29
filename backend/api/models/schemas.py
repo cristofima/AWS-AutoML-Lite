@@ -34,7 +34,22 @@ class UploadResponse(BaseModel):
     expires_in: int = 3600
 
 
+# Dataset metadata for confirm endpoint (matches frontend)
 class DatasetMetadata(BaseModel):
+    dataset_id: str
+    filename: str
+    file_size: int
+    uploaded_at: str
+    columns: List[str]
+    row_count: int
+    column_types: Dict[str, str]
+    problem_type: Optional[ProblemType] = None
+    
+    model_config = {"protected_namespaces": ()}
+
+
+# Extended dataset metadata for internal use
+class DatasetMetadataExtended(BaseModel):
     dataset_id: str
     user_id: str = "default"
     uploaded_at: datetime
@@ -89,16 +104,27 @@ class JobDetails(BaseModel):
     metrics: Optional[TrainingMetrics] = None
     feature_importance: Optional[Dict[str, float]] = None
     error_message: Optional[str] = None
+    
+    model_config = {"protected_namespaces": ()}
 
 
 class JobResponse(BaseModel):
     job_id: str
+    dataset_id: str
     status: JobStatus
+    target_column: str
+    dataset_name: Optional[str] = None
     problem_type: Optional[ProblemType] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
     metrics: Optional[TrainingMetrics] = None
     model_download_url: Optional[str] = None
     report_download_url: Optional[str] = None
     error_message: Optional[str] = None
+    
+    model_config = {"protected_namespaces": ()}
 
 
 class JobListResponse(BaseModel):

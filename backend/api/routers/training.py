@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 import uuid
 from ..models.schemas import (
-    TrainRequest, TrainResponse, JobResponse, 
+    TrainRequest, TrainResponse,
     JobStatus, ProblemType, JobDetails
 )
 from ..services.dynamo_service import dynamodb_service
@@ -21,22 +21,27 @@ async def start_training(request: TrainRequest):
     Start a training job for a dataset
     """
     try:
-        # Verify dataset exists
-        dataset = dynamodb_service.get_dataset(request.dataset_id)
+        # Verify dataset exists (use get_dataset_metadata)
+        dataset = dynamodb_service.get_dataset_metadata(request.dataset_id)
         if not dataset:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Dataset not found"
             )
         
-        # Verify target column exists
+        # Verify target column exists (columns is now a list of strings)
         if dataset.get('columns'):
-            column_names = [col['name'] for col in dataset['columns']]
-            if request.target_column not in column_names:
+            if request.target_column not in dataset['columns']:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Target column '{request.target_column}' not found in dataset"
                 )
+        
+        # Determine problem type based on column type
+        problem_type = None
+        if dataset.get('column_types'):
+            col_type = dataset['column_types'].get(request.target_column, 'categorical')
+            problem_type = ProblemType.REGRESSION if col_type == 'numeric' else ProblemType.CLASSIFICATION
         
         # Create job record
         job_id = str(uuid.uuid4())
@@ -48,7 +53,8 @@ async def start_training(request: TrainRequest):
             updated_at=datetime.utcnow(),
             status=JobStatus.PENDING,
             dataset_name=dataset['filename'],
-            target_column=request.target_column
+            target_column=request.target_column,
+            problem_type=problem_type
         )
         
         dynamodb_service.create_job(job)
@@ -81,55 +87,4 @@ async def start_training(request: TrainRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error starting training: {str(e)}"
-        )
-
-
-@router.get("/{job_id}", response_model=JobResponse)
-async def get_job_status(job_id: str):
-    """
-    Get the status and results of a training job
-    """
-    try:
-        job = dynamodb_service.get_job(job_id)
-        if not job:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Job not found"
-            )
-        
-        response = JobResponse(
-            job_id=job['job_id'],
-            status=JobStatus(job['status']),
-            problem_type=ProblemType(job['problem_type']) if job.get('problem_type') else None,
-            metrics=job.get('metrics'),
-            error_message=job.get('error_message')
-        )
-        
-        # Generate download URLs if job is completed
-        if job['status'] == JobStatus.COMPLETED.value:
-            if job.get('model_path'):
-                # Extract bucket and key from s3:// path
-                model_path = job['model_path'].replace('s3://', '')
-                bucket, key = model_path.split('/', 1)
-                response.model_download_url = s3_service.generate_presigned_download_url(
-                    bucket=bucket,
-                    key=key
-                )
-            
-            if job.get('report_path'):
-                report_path = job['report_path'].replace('s3://', '')
-                bucket, key = report_path.split('/', 1)
-                response.report_download_url = s3_service.generate_presigned_download_url(
-                    bucket=bucket,
-                    key=key
-                )
-        
-        return response
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting job status: {str(e)}"
         )
