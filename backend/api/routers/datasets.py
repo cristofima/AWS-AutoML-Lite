@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 import io
 from ..models.schemas import DatasetMetadata
@@ -65,7 +65,7 @@ async def confirm_upload(dataset_id: str):
             dataset_id=dataset_id,
             filename=filename,
             file_size=file_size,
-            uploaded_at=datetime.utcnow().isoformat(),
+            uploaded_at=datetime.now(timezone.utc).isoformat(),
             columns=columns,
             row_count=row_count,
             column_types=column_types

@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Query
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
 import uuid
 from ..models.schemas import (
     TrainRequest, TrainResponse,
@@ -65,8 +64,8 @@ async def start_training(request: TrainRequest):
             job_id=job_id,
             dataset_id=request.dataset_id,
             user_id="default",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
             status=JobStatus.PENDING,
             dataset_name=dataset['filename'],
             target_column=request.target_column,

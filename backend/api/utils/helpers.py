@@ -1,11 +1,14 @@
-import os
 from functools import lru_cache
 from pydantic_settings import BaseSettings
+from typing import Optional
 
 
 class Settings(BaseSettings):
     # AWS Settings
     aws_region: str = "us-east-1"
+    aws_endpoint_url: Optional[str] = None  # For LocalStack: http://localstack:4566
+    
+    # S3 Buckets
     s3_bucket_datasets: str = "automl-lite-dev-datasets-835503570883"
     s3_bucket_models: str = "automl-lite-dev-models-835503570883"
     s3_bucket_reports: str = "automl-lite-dev-reports-835503570883"
@@ -17,6 +20,9 @@ class Settings(BaseSettings):
     # Batch Configuration
     batch_job_queue: str = "automl-lite-dev-training-queue"
     batch_job_definition: str = "automl-lite-dev-training-job"
+    
+    # Local development
+    local_training: bool = False  # If True, run training locally instead of AWS Batch
     
     # API Configuration
     cors_origins: list = ["*"]
