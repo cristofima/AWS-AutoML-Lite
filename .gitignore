@@ -24,7 +24,6 @@ out/
 *.log
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
@@ -33,10 +32,10 @@ out/
 .DS_Store
 Thumbs.db
 
-# Data & Models
-datasets/
-models/
-reports/
+# Data & Models (root level only, not backend/api/models/)
+/datasets/
+/models/
+/reports/
 *.pkl
 *.csv
 *.h5

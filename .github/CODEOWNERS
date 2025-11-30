@@ -1,0 +1,10 @@
+# Code Owners - Require review from specific users
+
+# Infrastructure changes require review
+/infrastructure/terraform/ @cristofima
+
+# Production deployments require owner approval
+/.github/workflows/terraform-deploy-prod.yml @cristofima
+
+# CI/CD changes require review
+/.github/workflows/ @cristofima

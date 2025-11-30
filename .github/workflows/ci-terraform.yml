@@ -1,0 +1,55 @@
+# CI - Terraform Validation
+# Validates Terraform syntax and formatting
+
+name: CI Terraform
+
+on:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - 'infrastructure/terraform/**'
+      - '.github/workflows/ci-terraform.yml'
+  push:
+    branches: [dev, main]
+    paths:
+      - 'infrastructure/terraform/**'
+      - '!infrastructure/terraform/**/*.md'
+      - '!infrastructure/terraform/**/*.txt'
+      - '!infrastructure/terraform/scripts/**'
+      - '.github/workflows/ci-terraform.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Create Dummy Lambda Package
+        run: |
+          # Create empty zip for validation (actual zip is built in deploy workflow)
+          touch dummy.txt
+          zip lambda_function.zip dummy.txt
+          rm dummy.txt
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        run: terraform validate

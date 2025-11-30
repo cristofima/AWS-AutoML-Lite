@@ -1,0 +1,123 @@
+# Deploy Lambda API (Backend API only)
+# Triggers on changes to backend/api/ or manual dispatch
+
+name: Deploy Lambda API
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'backend/api/**'
+      - 'backend/requirements.txt'
+      - '!backend/api/**/*.md'
+      - '!backend/**/*.txt'
+      - '.github/workflows/deploy-lambda-api.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.ref == 'refs/heads/main' && 'prod' || github.event.inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || '' }}
+    
+    env:
+      ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'prod' || github.event.inputs.environment || 'dev' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build Lambda Package
+        run: |
+          cd infrastructure/terraform
+          docker build -f scripts/Dockerfile.lambda -t lambda-builder:latest ../..
+          CONTAINER_ID=$(docker create lambda-builder:latest)
+          docker cp $CONTAINER_ID:/lambda_function.zip ./lambda_function.zip
+          docker rm $CONTAINER_ID
+          ls -lh lambda_function.zip
+
+      - name: Update Lambda Function
+        run: |
+          FUNCTION_NAME="automl-lite-${{ env.ENVIRONMENT }}-api"
+          aws lambda update-function-code \
+            --function-name $FUNCTION_NAME \
+            --zip-file fileb://infrastructure/terraform/lambda_function.zip \
+            --region ${{ env.AWS_REGION }}
+          echo "✅ Lambda function $FUNCTION_NAME updated"
+
+      - name: Wait for Lambda Update
+        run: |
+          FUNCTION_NAME="automl-lite-${{ env.ENVIRONMENT }}-api"
+          aws lambda wait function-updated-v2 --function-name $FUNCTION_NAME
+          echo "✅ Lambda update complete"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+
+      - name: Get API URL
+        id: api
+        run: |
+          cd infrastructure/terraform
+          
+          # lambda_function.zip is already created by Build Lambda Package step
+          # Verify it exists for Terraform
+          if [ ! -f lambda_function.zip ]; then
+            echo "❌ lambda_function.zip not found" >> $GITHUB_STEP_SUMMARY
+            echo "api_url=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          terraform init
+          
+          # Try to select workspace (don't create automatically)
+          if ! terraform workspace select ${{ env.ENVIRONMENT }} 2>/dev/null; then
+            echo "⚠️ Workspace '${{ env.ENVIRONMENT }}' does not exist." >> $GITHUB_STEP_SUMMARY
+            echo "api_url=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Check if infrastructure exists by trying to get output
+          # Store exit code properly before $() loses it
+          set +e
+          API_URL=$(terraform output -raw api_gateway_url 2>&1)
+          OUTPUT_EXIT_CODE=$?
+          set -e
+          
+          # Check if output is valid
+          if [ $OUTPUT_EXIT_CODE -eq 0 ] && [ -n "$API_URL" ] && [[ ! "$API_URL" =~ "Warning" ]] && [[ ! "$API_URL" =~ "Error" ]] && [[ ! "$API_URL" =~ "No outputs" ]]; then
+            echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+            echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
+            echo "✅ API Gateway found: $API_URL"
+          else
+            echo "⚠️ Infrastructure not deployed yet or output failed. Run deploy-infrastructure workflow first." >> $GITHUB_STEP_SUMMARY
+            echo "Terraform output result: $API_URL"
+            echo "api_url=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Test API Health
+        if: steps.api.outputs.api_url != ''
+        run: |
+          sleep 5
+          curl -f "${{ steps.api.outputs.api_url }}/health" || exit 1
+          echo "✅ API health check passed"

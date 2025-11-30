@@ -1,0 +1,100 @@
+# Deploy Training Container (Batch only)
+# Triggers on changes to backend/training/ or manual dispatch
+
+name: Deploy Training Container
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'backend/training/**'
+      - '!backend/training/**/*.md'
+      - '!backend/training/**/*.txt'
+      - '.github/workflows/deploy-training-container.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Build & Push to ${{ github.ref == 'refs/heads/main' && 'prod' || github.event.inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || '' }}
+    
+    env:
+      ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'prod' || github.event.inputs.environment || 'dev' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+
+      - name: Get ECR Repository
+        id: ecr
+        run: |
+          cd infrastructure/terraform
+          terraform init
+          
+          # Try to select workspace (will fail if doesn't exist)
+          if ! terraform workspace select ${{ env.ENVIRONMENT }} 2>/dev/null; then
+            echo "❌ Workspace '${{ env.ENVIRONMENT }}' does not exist." >> $GITHUB_STEP_SUMMARY
+            echo "Please run the 'Deploy Infrastructure' workflow first." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          # Check if state has resources (infrastructure deployed)
+          RESOURCE_COUNT=$(terraform state list 2>/dev/null | wc -l)
+          if [ "$RESOURCE_COUNT" -eq "0" ]; then
+            echo "❌ No resources found in workspace '${{ env.ENVIRONMENT }}'." >> $GITHUB_STEP_SUMMARY
+            echo "Infrastructure not deployed. Run 'Deploy Infrastructure' workflow first." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          # Get ECR URL
+          ECR_URL=$(terraform output -raw ecr_repository_url 2>&1)
+          
+          if [ $? -eq 0 ] && [ -n "$ECR_URL" ] && [[ ! "$ECR_URL" =~ "Warning" ]] && [[ ! "$ECR_URL" =~ "Error" ]] && [[ ! "$ECR_URL" =~ "No outputs" ]]; then
+            echo "ecr_url=$ECR_URL" >> $GITHUB_OUTPUT
+            echo "**ECR Repository:** $ECR_URL" >> $GITHUB_STEP_SUMMARY
+            echo "✅ ECR repository found: $ECR_URL"
+          else
+            echo "❌ Could not retrieve ECR repository URL." >> $GITHUB_STEP_SUMMARY
+            echo "Error output: $ECR_URL" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Build and Push Container
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.ecr_url }}
+          IMAGE_TAG: ${{ env.ENVIRONMENT }}-${{ github.sha }}
+        run: |
+          cd backend/training
+          docker build -t $ECR_REGISTRY:latest -t $ECR_REGISTRY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY:latest
+          docker push $ECR_REGISTRY:$IMAGE_TAG
+          echo "✅ Container pushed: $ECR_REGISTRY:latest"
+          echo "**Image Tag:** \`$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY

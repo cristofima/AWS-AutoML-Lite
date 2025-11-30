@@ -1,0 +1,229 @@
+# Deploy Infrastructure (Terraform full deployment)
+# Triggers on infrastructure changes or manual dispatch
+
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'infrastructure/terraform/**'
+      - '!infrastructure/terraform/**/*.md'
+      - '!infrastructure/terraform/**/*.txt'
+      - '!infrastructure/terraform/.gitignore'
+      - '!infrastructure/terraform/audit-*.ps1'
+      - '!infrastructure/terraform/scripts/**'
+      - '.github/workflows/deploy-infrastructure.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: 1.9.8
+
+jobs:
+  plan:
+    name: Plan ${{ github.ref == 'refs/heads/main' && 'PROD' || github.event.inputs.environment || 'DEV' }}
+    runs-on: ubuntu-latest
+    
+    env:
+      ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'prod' || github.event.inputs.environment || 'dev' }}
+    
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+    
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Environment
+        id: env
+        run: echo "environment=${{ env.ENVIRONMENT }}" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Build Lambda Package
+        run: |
+          docker build -f scripts/Dockerfile.lambda -t lambda-builder:latest ../..
+          CONTAINER_ID=$(docker create lambda-builder:latest)
+          docker cp $CONTAINER_ID:/lambda_function.zip ./lambda_function.zip
+          docker rm $CONTAINER_ID
+          ls -lh lambda_function.zip
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Select Workspace
+        run: terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var-file="${{ env.ENVIRONMENT }}.tfvars" \
+            -out=tfplan-${{ env.ENVIRONMENT }} \
+            -no-color | tee plan.txt
+
+      - name: Upload Plan and Lambda Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ env.ENVIRONMENT }}
+          path: |
+            infrastructure/terraform/tfplan-${{ env.ENVIRONMENT }}
+            infrastructure/terraform/lambda_function.zip
+          retention-days: 7
+
+      - name: Plan Summary
+        run: |
+          echo "### 📋 Terraform Plan - ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```terraform' >> $GITHUB_STEP_SUMMARY
+          cat plan.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    name: Deploy to ${{ needs.plan.outputs.environment }}
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: ${{ needs.plan.outputs.environment == 'prod' && 'prod' || '' }}
+    
+    env:
+      ENVIRONMENT: ${{ needs.plan.outputs.environment }}
+    
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ env.ENVIRONMENT }}
+          path: infrastructure/terraform/
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Select Workspace
+        run: terraform workspace select ${{ env.ENVIRONMENT }}
+
+      - name: Terraform Apply
+        run: terraform apply tfplan-${{ env.ENVIRONMENT }}
+
+      - name: Capture Outputs
+        id: outputs
+        run: |
+          API_URL=$(terraform output -raw api_gateway_url)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "### 🚀 Deployment Complete - ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
+          echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Test API Health
+        run: |
+          API_URL=$(terraform output -raw api_gateway_url)
+          sleep 5
+          curl -f "$API_URL/health" || exit 1
+          echo "✅ API health check passed"
+
+      - name: Create Deployment Issue (PROD only)
+        if: env.ENVIRONMENT == 'prod'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚀 Infrastructure Deployment - ${new Date().toISOString().split('T')[0]}`,
+              body: `### Production Infrastructure Deployment
+              
+              **Status:** ✅ Successful
+              **API URL:** ${{ steps.outputs.outputs.api_url }}
+              **Deployed by:** @${{ github.actor }}
+              **Commit:** ${{ github.sha }}
+              
+              [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`,
+              labels: ['deployment', 'production', 'infrastructure']
+            })
+
+  post-deploy:
+    name: Deploy Components
+    needs: [plan, deploy]
+    runs-on: ubuntu-latest
+    
+    env:
+      ENVIRONMENT: ${{ needs.plan.outputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Get ECR URL
+        id: ecr
+        run: |
+          cd infrastructure/terraform
+          terraform init
+          terraform workspace select ${{ env.ENVIRONMENT }}
+          ECR_URL=$(terraform output -raw ecr_repository_url)
+          echo "ecr_url=$ECR_URL" >> $GITHUB_OUTPUT
+
+      - name: Build and Push Training Container
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.ecr_url }}
+          IMAGE_TAG: ${{ env.ENVIRONMENT }}-${{ github.sha }}
+        run: |
+          cd backend/training
+          docker build -t $ECR_REGISTRY:latest -t $ECR_REGISTRY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY:latest
+          docker push $ECR_REGISTRY:$IMAGE_TAG
+          echo "✅ Training container deployed"

@@ -1,0 +1,25 @@
+# Dockerfile for building Lambda deployment package in CI/CD
+FROM public.ecr.aws/lambda/python:3.11
+
+# Copy requirements
+COPY backend/requirements.txt .
+
+# Install dependencies to /package
+RUN pip install -r requirements.txt -t /package --no-cache-dir
+
+# Copy application code
+COPY backend/api /package/api
+
+# Clean up unnecessary files to reduce package size
+RUN find /package -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
+    find /package -type f -name "*.pyc" -delete && \
+    find /package -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \
+    rm -rf /package/*.dist-info /package/pip* /package/setuptools* /package/wheel*
+
+# Create ZIP package
+WORKDIR /package
+RUN yum install -y zip && \
+    zip -r /lambda_function.zip . -q && \
+    echo "Lambda package size: $(du -h /lambda_function.zip | cut -f1)"
+
+CMD ["echo", "Lambda package built successfully"]
