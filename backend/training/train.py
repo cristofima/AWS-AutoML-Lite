@@ -3,12 +3,12 @@ import sys
 import boto3
 import pandas as pd
 from datetime import datetime, timezone
-from io import StringIO
 import traceback
 
 from preprocessor import AutoPreprocessor
 from eda import generate_eda_report
 from model_trainer import train_automl_model
+from training_report import generate_training_report
 
 
 def main():
@@ -97,8 +97,41 @@ def main():
         print(f"Training completed!")
         print(f"Metrics: {metrics}")
         
-        # Step 5: Save model to S3
-        print("Step 5: Saving model...")
+        # Step 5: Generate Training Report
+        print("Step 5: Generating training report...")
+        training_report_path = f"/tmp/training_report_{job_id}.html"
+        generate_training_report(
+            output_path=training_report_path,
+            job_id=job_id,
+            problem_type=problem_type,
+            metrics=metrics,
+            feature_importance=feature_importance,
+            training_config={
+                'time_budget': time_budget,
+            },
+            preprocessing_info={
+                'dropped_columns': dropped_columns,
+                'feature_columns': feature_columns,
+                'dropped_count': len(dropped_columns) if dropped_columns else 0,
+                'feature_count': len(feature_columns) if feature_columns else 0,
+            },
+            dataset_info={
+                'rows': df.shape[0],
+                'columns': df.shape[1],
+                'target_column': target_column,
+                'train_size': X_train.shape[0],
+                'test_size': X_test.shape[0],
+            }
+        )
+        
+        # Upload training report to S3
+        training_report_key = f"reports/{job_id}/training_report.html"
+        s3_client.upload_file(training_report_path, s3_bucket_reports, training_report_key)
+        training_report_s3_path = f"s3://{s3_bucket_reports}/{training_report_key}"
+        print(f"Training report uploaded to: {training_report_s3_path}")
+        
+        # Step 6: Save model to S3
+        print("Step 6: Saving model...")
         import joblib
         model_local_path = f"/tmp/model_{job_id}.pkl"
         joblib.dump({
@@ -113,12 +146,15 @@ def main():
         model_s3_path = f"s3://{s3_bucket_models}/{model_key}"
         print(f"Model uploaded to: {model_s3_path}")
         
-        # Step 6: Update job status to COMPLETED
-        print("Step 6: Updating job status...")
+        # Step 7: Update job status to COMPLETED
+        print("Step 7: Updating job status...")
         update_job_completion(
             jobs_table, job_id, 
-            problem_type, model_s3_path, report_s3_path,
-            metrics, feature_importance,
+            problem_type, model_s3_path, 
+            eda_report_s3_path=report_s3_path,
+            training_report_s3_path=training_report_s3_path,
+            metrics=metrics, 
+            feature_importance=feature_importance,
             dropped_columns=dropped_columns,
             feature_columns=feature_columns
         )
@@ -170,7 +206,7 @@ def update_job_status(table, job_id, status, error_message=None):
     )
 
 
-def update_job_completion(table, job_id, problem_type, model_path, report_path, metrics, feature_importance, dropped_columns=None, feature_columns=None):
+def update_job_completion(table, job_id, problem_type, model_path, eda_report_s3_path, training_report_s3_path, metrics, feature_importance, dropped_columns=None, feature_columns=None):
     """Update job with completion details"""
     from decimal import Decimal
     
@@ -204,6 +240,8 @@ def update_job_completion(table, job_id, problem_type, model_path, report_path, 
                 problem_type = :problem_type,
                 model_path = :model_path,
                 report_path = :report_path,
+                eda_report_path = :eda_report_path,
+                training_report_path = :training_report_path,
                 #metrics = :metrics,
                 feature_importance = :feature_importance,
                 completed_at = :completed_at,
@@ -219,7 +257,9 @@ def update_job_completion(table, job_id, problem_type, model_path, report_path, 
             ':completed_at': datetime.now(timezone.utc).isoformat(),
             ':problem_type': problem_type,
             ':model_path': model_path,
-            ':report_path': report_path,
+            ':report_path': eda_report_s3_path,  # Keep for backward compatibility
+            ':eda_report_path': eda_report_s3_path,
+            ':training_report_path': training_report_s3_path,
             ':metrics': metrics_decimal,
             ':feature_importance': feature_importance_decimal,
             ':preprocessing_info': preprocessing_info if preprocessing_info else None

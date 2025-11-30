@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from datetime import datetime
 from enum import Enum
 
@@ -100,7 +100,9 @@ class JobDetails(BaseModel):
     target_column: str
     problem_type: Optional[ProblemType] = None
     model_path: Optional[str] = None
-    report_path: Optional[str] = None
+    report_path: Optional[str] = None  # Backward compatibility (EDA report)
+    eda_report_path: Optional[str] = None
+    training_report_path: Optional[str] = None
     metrics: Optional[TrainingMetrics] = None
     feature_importance: Optional[Dict[str, float]] = None
     error_message: Optional[str] = None
@@ -121,7 +123,9 @@ class JobResponse(BaseModel):
     completed_at: Optional[str] = None
     metrics: Optional[TrainingMetrics] = None
     model_download_url: Optional[str] = None
-    report_download_url: Optional[str] = None
+    report_download_url: Optional[str] = None  # Backward compatibility (EDA report)
+    eda_report_download_url: Optional[str] = None
+    training_report_download_url: Optional[str] = None
     error_message: Optional[str] = None
     
     model_config = {"protected_namespaces": ()}
