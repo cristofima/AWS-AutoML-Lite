@@ -1,0 +1,30 @@
+# Cache and bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+flaml_training.log
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+pytest_cache/
+.coverage
+
+# Local files
+.env
+.env.local
+
+# Temp files
+*.tmp
+*.pkl

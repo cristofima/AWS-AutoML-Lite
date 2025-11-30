@@ -2,7 +2,7 @@ import os
 import sys
 import boto3
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone
 from io import StringIO
 import traceback
 
@@ -78,6 +78,10 @@ def main():
         preprocessor = AutoPreprocessor(target_column)
         X_train, X_test, y_train, y_test, problem_type = preprocessor.preprocess(df)
         
+        # Capture dropped columns info for later
+        dropped_columns = preprocessor.dropped_columns
+        feature_columns = preprocessor.feature_columns
+        
         print(f"Problem type detected: {problem_type}")
         print(f"Training set: {X_train.shape}")
         print(f"Test set: {X_test.shape}")
@@ -114,7 +118,9 @@ def main():
         update_job_completion(
             jobs_table, job_id, 
             problem_type, model_s3_path, report_s3_path,
-            metrics, feature_importance
+            metrics, feature_importance,
+            dropped_columns=dropped_columns,
+            feature_columns=feature_columns
         )
         
         print(f"Training job {job_id} completed successfully!")
@@ -134,7 +140,7 @@ def main():
 
 def update_job_status(table, job_id, status, error_message=None):
     """Update job status in DynamoDB"""
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     update_expr = "SET #status = :status, updated_at = :updated_at"
     expr_attr_names = {'#status': 'status'}
     expr_attr_values = {
@@ -164,15 +170,31 @@ def update_job_status(table, job_id, status, error_message=None):
     )
 
 
-def update_job_completion(table, job_id, problem_type, model_path, report_path, metrics, feature_importance):
+def update_job_completion(table, job_id, problem_type, model_path, report_path, metrics, feature_importance, dropped_columns=None, feature_columns=None):
     """Update job with completion details"""
     from decimal import Decimal
     
-    # Convert floats to Decimal for DynamoDB
-    metrics_decimal = {k: Decimal(str(v)) if v is not None else None 
-                      for k, v in metrics.items()}
+    # Convert floats to Decimal for DynamoDB (skip non-numeric values like 'best_estimator')
+    metrics_decimal = {}
+    for k, v in metrics.items():
+        if v is None:
+            metrics_decimal[k] = None
+        elif isinstance(v, (int, float)):
+            metrics_decimal[k] = Decimal(str(v))
+        else:
+            metrics_decimal[k] = str(v)  # Keep strings as-is
+    
     feature_importance_decimal = {k: Decimal(str(v)) 
                                   for k, v in feature_importance.items()}
+    
+    # Build preprocessing info
+    preprocessing_info = {}
+    if dropped_columns:
+        preprocessing_info['dropped_columns'] = dropped_columns
+        preprocessing_info['dropped_count'] = len(dropped_columns)
+    if feature_columns:
+        preprocessing_info['feature_columns'] = feature_columns
+        preprocessing_info['feature_count'] = len(feature_columns)
     
     table.update_item(
         Key={'job_id': job_id},
@@ -182,18 +204,25 @@ def update_job_completion(table, job_id, problem_type, model_path, report_path, 
                 problem_type = :problem_type,
                 model_path = :model_path,
                 report_path = :report_path,
-                metrics = :metrics,
-                feature_importance = :feature_importance
+                #metrics = :metrics,
+                feature_importance = :feature_importance,
+                completed_at = :completed_at,
+                preprocessing_info = :preprocessing_info
         """,
-        ExpressionAttributeNames={'#status': 'status'},
+        ExpressionAttributeNames={
+            '#status': 'status',
+            '#metrics': 'metrics'
+        },
         ExpressionAttributeValues={
             ':status': 'completed',
-            ':updated_at': datetime.utcnow().isoformat(),
+            ':updated_at': datetime.now(timezone.utc).isoformat(),
+            ':completed_at': datetime.now(timezone.utc).isoformat(),
             ':problem_type': problem_type,
             ':model_path': model_path,
             ':report_path': report_path,
             ':metrics': metrics_decimal,
-            ':feature_importance': feature_importance_decimal
+            ':feature_importance': feature_importance_decimal,
+            ':preprocessing_info': preprocessing_info if preprocessing_info else None
         }
     )
 
