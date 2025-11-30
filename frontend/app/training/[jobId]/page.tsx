@@ -14,6 +14,13 @@ export default function TrainingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Redirect to results when job completes
+  useEffect(() => {
+    if (job?.status === 'completed') {
+      router.push(`/results/${jobId}`);
+    }
+  }, [job?.status, jobId, router]);
+
   useEffect(() => {
     const fetchJobStatus = async () => {
       try {
@@ -73,10 +80,16 @@ export default function TrainingPage() {
     );
   }
 
-  // Redirect to results if completed
-  if (job.status === 'completed') {
-    router.push(`/results/${jobId}`);
-    return null;
+  // Show loading while redirecting to results
+  if (job?.status === 'completed') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4">✅</div>
+          <p className="text-gray-600">Training complete! Redirecting to results...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -21,9 +21,13 @@ pnpm install
 cp .env.local.example .env.local
 ```
 
-3. Edit `.env.local` and add your API URL:
+3. Edit `.env.local` with your API URL (from `terraform output api_gateway_url`):
 ```env
-NEXT_PUBLIC_API_URL=https://your-api-id.execute-api.us-east-1.amazonaws.com/dev
+# For deployed API:
+NEXT_PUBLIC_API_URL=https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/dev
+
+# For local development with docker-compose:
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 4. Run development server:

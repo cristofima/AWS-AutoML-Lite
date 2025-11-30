@@ -59,7 +59,9 @@ export interface JobDetails {
   completed_at?: string;
   metrics?: TrainingMetrics;
   model_download_url?: string;
-  report_download_url?: string;
+  report_download_url?: string;  // Backward compatibility (EDA report)
+  eda_report_download_url?: string;
+  training_report_download_url?: string;
   error_message?: string;
 }
 
@@ -199,4 +201,27 @@ export async function deleteJob(jobId: string, deleteData: boolean = true): Prom
   }
   
   return response.json();
+}
+
+// Download file with custom filename
+export async function downloadWithFilename(url: string, filename: string): Promise<void> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Download failed');
+    
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    // Fallback: open in new tab
+    window.open(url, '_blank');
+  }
 }
