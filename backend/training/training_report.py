@@ -321,9 +321,6 @@ class TrainingReportGenerator:
             </div>
             '''
         
-        if len(self.feature_importance) > 15:
-            html += f'<p style="color: #666; font-size: 0.85em; margin-top: 15px;">... and {len(self.feature_importance) - 15} more features</p>'
-        
         html += '</div>'
         return html
     
@@ -339,10 +336,8 @@ class TrainingReportGenerator:
         feature_columns = self.preprocessing_info.get('feature_columns', [])
         if feature_columns:
             html += '<ul style="margin: 0; padding-left: 20px; color: #666;">'
-            for col in feature_columns[:10]:
+            for col in feature_columns:
                 html += f'<li><code>{col}</code></li>'
-            if len(feature_columns) > 10:
-                html += f'<li>... and {len(feature_columns) - 10} more</li>'
             html += '</ul>'
         else:
             html += '<p style="color: #666;">No information available</p>'
