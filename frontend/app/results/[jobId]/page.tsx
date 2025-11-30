@@ -113,12 +113,14 @@ export default function ResultsPage() {
             <div>
               <span className="text-gray-600">Problem Type:</span>
               <p className="font-medium text-gray-900 mt-1">
-                {getProblemTypeIcon(job.problem_type)} {job.problem_type.charAt(0).toUpperCase() + job.problem_type.slice(1)}
+                {job.problem_type ? (
+                  <>{getProblemTypeIcon(job.problem_type)} {job.problem_type.charAt(0).toUpperCase() + job.problem_type.slice(1)}</>
+                ) : 'N/A'}
               </p>
             </div>
             <div>
               <span className="text-gray-600">Target Column:</span>
-              <p className="font-medium text-gray-900 mt-1">{job.target_column}</p>
+              <p className="font-medium text-gray-900 mt-1">{job.target_column || 'N/A'}</p>
             </div>
             <div>
               <span className="text-gray-600">Completed At:</span>

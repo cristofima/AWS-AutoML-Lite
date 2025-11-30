@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { listJobs, JobDetails } from '@/lib/api';
+import { listJobs, deleteJob, JobDetails } from '@/lib/api';
 import { getStatusColor, getStatusIcon, formatDate } from '@/lib/utils';
 
 export default function HistoryPage() {
@@ -13,6 +13,8 @@ export default function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
 
   useEffect(() => {
     fetchJobs();
@@ -34,6 +36,21 @@ export default function HistoryPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load jobs');
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteJob = async (jobId: string) => {
+    setDeletingJobId(jobId);
+    setShowDeleteModal(null);
+    
+    try {
+      await deleteJob(jobId, true);
+      // Remove job from local state
+      setJobs(prev => prev.filter(j => j.job_id !== jobId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete job');
+    } finally {
+      setDeletingJobId(null);
     }
   };
 
@@ -168,12 +185,12 @@ export default function HistoryPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {job.target_column}
+                        {job.target_column || 'N/A'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {job.problem_type.charAt(0).toUpperCase() + job.problem_type.slice(1)}
+                        {job.problem_type ? job.problem_type.charAt(0).toUpperCase() + job.problem_type.slice(1) : 'N/A'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -182,37 +199,82 @@ export default function HistoryPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(job.created_at)}
+                      {job.created_at ? formatDate(job.created_at) : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {job.status === 'completed' ? (
+                      <div className="flex items-center space-x-2">
+                        {job.status === 'completed' ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/results/${job.job_id}`);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900 font-medium"
+                          >
+                            View Results
+                          </button>
+                        ) : job.status === 'running' || job.status === 'pending' ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/training/${job.job_id}`);
+                            }}
+                            className="text-blue-600 hover:text-blue-900 font-medium"
+                          >
+                            View Status
+                          </button>
+                        ) : null}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/results/${job.job_id}`);
+                            setShowDeleteModal(job.job_id);
                           }}
-                          className="text-indigo-600 hover:text-indigo-900 font-medium"
+                          disabled={deletingJobId === job.job_id}
+                          className="text-red-600 hover:text-red-900 font-medium disabled:opacity-50"
                         >
-                          View Results
+                          {deletingJobId === job.job_id ? 'Deleting...' : '🗑️'}
                         </button>
-                      ) : job.status === 'running' || job.status === 'pending' ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/training/${job.job_id}`);
-                          }}
-                          className="text-blue-600 hover:text-blue-900 font-medium"
-                        >
-                          View Status
-                        </button>
-                      ) : (
-                        <span className="text-gray-400">No actions</span>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Training Job?</h3>
+              <p className="text-gray-600 mb-4">
+                This will permanently delete the job and all associated data including:
+              </p>
+              <ul className="text-sm text-gray-600 mb-4 list-disc list-inside">
+                <li>Trained model file (.pkl)</li>
+                <li>EDA report (.html)</li>
+                <li>Original dataset (CSV)</li>
+                <li>Job metadata</li>
+              </ul>
+              <p className="text-red-600 text-sm font-medium mb-4">
+                ⚠️ This action cannot be undone.
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowDeleteModal(null)}
+                  className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteJob(showDeleteModal)}
+                  className="flex-1 py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

@@ -31,9 +31,8 @@ export interface TrainRequest {
 
 export interface TrainResponse {
   job_id: string;
-  dataset_id: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
-  created_at: string;
+  estimated_time: number;
 }
 
 export interface TrainingMetrics {
@@ -49,11 +48,13 @@ export interface TrainingMetrics {
 
 export interface JobDetails {
   job_id: string;
-  dataset_id: string;
+  dataset_id?: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
-  target_column: string;
-  problem_type: 'classification' | 'regression';
-  created_at: string;
+  target_column?: string;
+  problem_type?: 'classification' | 'regression';
+  dataset_name?: string;
+  created_at?: string;
+  updated_at?: string;
   started_at?: string;
   completed_at?: string;
   metrics?: TrainingMetrics;
@@ -172,4 +173,30 @@ export async function uploadAndConfirm(file: File): Promise<DatasetMetadata> {
   const metadata = await confirmUpload(dataset_id);
   
   return metadata;
+}
+
+// Get dataset metadata
+export async function getDatasetMetadata(datasetId: string): Promise<DatasetMetadata> {
+  const response = await fetch(`${API_URL}/datasets/${datasetId}`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to get dataset metadata');
+  }
+  
+  return response.json();
+}
+
+// Delete a job and all associated data
+export async function deleteJob(jobId: string, deleteData: boolean = true): Promise<{ message: string; job_id: string; deleted_resources: string[] }> {
+  const response = await fetch(`${API_URL}/jobs/${jobId}?delete_data=${deleteData}`, {
+    method: 'DELETE',
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to delete job');
+  }
+  
+  return response.json();
 }
