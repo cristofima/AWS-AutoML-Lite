@@ -39,13 +39,25 @@ def train_automl_model(
     # Initialize AutoML
     automl = AutoML()
     
+    # Detect if multiclass classification
+    n_classes = y_train.nunique()
+    is_multiclass = problem_type == 'classification' and n_classes > 2
+    
+    print(f"Number of classes: {n_classes}")
+    if is_multiclass:
+        print(f"Detected multiclass classification ({n_classes} classes)")
+    
     # Configure settings based on problem type
     if problem_type == 'classification':
         task = 'classification'
-        metric = 'f1'  # or 'accuracy', 'roc_auc'
+        # Use 'accuracy' for multiclass to avoid binary average issues
+        # Alternatively, 'log_loss' or 'micro_f1' work well for multiclass
+        metric = 'accuracy' if is_multiclass else 'f1'
     else:
         task = 'regression'
         metric = 'r2'
+    
+    print(f"Using metric: {metric}")
     
     # Start training
     start_time = time.time()

@@ -37,11 +37,27 @@ async def start_training(request: TrainRequest):
                     detail=f"Target column '{request.target_column}' not found in dataset"
                 )
         
-        # Determine problem type based on column type
+        # Determine problem type based on column type and unique values
         problem_type = None
         if dataset.get('column_types'):
             col_type = dataset['column_types'].get(request.target_column, 'categorical')
-            problem_type = ProblemType.REGRESSION if col_type == 'numeric' else ProblemType.CLASSIFICATION
+            
+            # For numeric columns, check if it looks like classification (few unique values)
+            # This is a heuristic - the actual detection happens in the training container
+            if col_type == 'numeric':
+                # If we have column stats, check unique values
+                column_stats = dataset.get('column_stats', {}).get(request.target_column, {})
+                unique_count = column_stats.get('unique', 0)
+                total_count = dataset.get('row_count', 1)
+                
+                # If less than 20 unique values or less than 5% unique ratio, likely classification
+                if unique_count > 0 and (unique_count < 20 or unique_count / total_count < 0.05):
+                    problem_type = ProblemType.CLASSIFICATION
+                else:
+                    problem_type = ProblemType.REGRESSION
+            else:
+                # Non-numeric is always classification
+                problem_type = ProblemType.CLASSIFICATION
         
         # Create job record
         job_id = str(uuid.uuid4())
