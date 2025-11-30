@@ -1,0 +1,26 @@
+# Virtual environments
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Training container (built separately)
+training/
+
+# Tests
+tests/
+pytest_cache/
+.coverage
+
+# Local env files
+.env
+.env.local

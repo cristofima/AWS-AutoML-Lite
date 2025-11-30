@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { getJobDetails, JobDetails } from '@/lib/api';
+import { getJobDetails, JobDetails, downloadWithFilename } from '@/lib/api';
 import { formatMetric, getProblemTypeIcon } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -226,29 +226,135 @@ export default function ResultsPage() {
         {/* Download Section */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Download Results</h3>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {job.model_download_url && (
-              <a
-                href={job.model_download_url}
+              <button
+                onClick={() => downloadWithFilename(job.model_download_url!, `model_${job.job_id.slice(0, 8)}.pkl`)}
                 className="flex items-center justify-center space-x-2 px-6 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               >
                 <span className="text-2xl">📦</span>
                 <span className="font-medium">Download Model (.pkl)</span>
-              </a>
+              </button>
             )}
-            {job.report_download_url && (
-              <a
-                href={job.report_download_url}
+            {(job.eda_report_download_url || job.report_download_url) && (
+              <button
+                onClick={() => downloadWithFilename(
+                  job.eda_report_download_url || job.report_download_url!, 
+                  `eda_report_${job.job_id.slice(0, 8)}.html`
+                )}
                 className="flex items-center justify-center space-x-2 px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
                 <span className="text-2xl">📊</span>
-                <span className="font-medium">Download EDA Report (.html)</span>
-              </a>
+                <span className="font-medium">EDA Report (.html)</span>
+              </button>
+            )}
+            {job.training_report_download_url && (
+              <button
+                onClick={() => downloadWithFilename(
+                  job.training_report_download_url!, 
+                  `training_report_${job.job_id.slice(0, 8)}.html`
+                )}
+                className="flex items-center justify-center space-x-2 px-6 py-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <span className="text-2xl">🏆</span>
+                <span className="font-medium">Training Report (.html)</span>
+              </button>
             )}
           </div>
-          <p className="text-sm text-gray-600 mt-4">
-            💡 Use the .pkl file to make predictions in your Python application with joblib or pickle
-          </p>
+        </div>
+
+        {/* How to Use Your Model Section */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">🚀 How to Use Your Model</h3>
+          
+          {/* Docker Method - Recommended */}
+          <div className="mb-6">
+            <div className="flex items-center mb-3">
+              <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded mr-2">Recommended</span>
+              <h4 className="font-medium text-gray-800">🐳 Using Docker (No setup required)</h4>
+            </div>
+            <div className="relative">
+              <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto text-sm font-mono">
+                <code>{`# Build prediction container (one time)
+docker build -f scripts/Dockerfile.predict -t automl-predict .
+
+# Show model info and required features
+docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl --info
+
+# Generate sample input JSON (auto-detects features)
+docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl -g /data/sample_input.json
+
+# Edit sample_input.json with your values, then predict
+docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl --json /data/sample_input.json
+
+# Batch predictions from CSV
+docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl -i /data/test.csv -o /data/predictions.csv`}</code>
+              </pre>
+              <button
+                onClick={() => {
+                  const code = `# Build prediction container (one time)
+docker build -f scripts/Dockerfile.predict -t automl-predict .
+
+# Show model info and required features
+docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl --info
+
+# Generate sample input JSON (auto-detects features)
+docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl -g /data/sample_input.json
+
+# Edit sample_input.json with your values, then predict
+docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl --json /data/sample_input.json
+
+# Batch predictions from CSV
+docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl -i /data/test.csv -o /data/predictions.csv`;
+                  navigator.clipboard.writeText(code);
+                }}
+                className="absolute top-2 right-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs rounded transition-colors"
+              >
+                📋 Copy
+              </button>
+            </div>
+          </div>
+
+          {/* Python Method - Alternative */}
+          <div className="border-t pt-4">
+            <div className="flex items-center mb-3">
+              <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded mr-2">Alternative</span>
+              <h4 className="font-medium text-gray-800">🐍 Using Python directly</h4>
+            </div>
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mb-3">
+              <p className="text-sm text-amber-800">
+                <strong>⚠️ Note:</strong> Requires installing ML dependencies (~500MB): <code className="bg-amber-100 px-1 rounded">pip install flaml[automl] lightgbm feature-engine scikit-learn pandas joblib</code>
+              </p>
+            </div>
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                Show Python code →
+              </summary>
+              <div className="relative mt-3">
+                <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto text-sm font-mono">
+                  <code>{`import joblib
+import pandas as pd
+
+# Load the model package
+model_package = joblib.load('model_${job.job_id.slice(0, 8)}.pkl')
+
+model = model_package['model']
+preprocessor = model_package['preprocessor']
+print(f"Features: {preprocessor.feature_columns}")
+
+# Prepare your data
+new_data = pd.DataFrame([{
+    # Add your features here
+}])
+
+# Predict
+X = new_data[preprocessor.feature_columns]
+predictions = model.predict(X)
+print(f"Predictions: {predictions}")`}</code>
+                </pre>
+              </div>
+            </details>
+          </div>
         </div>
 
         {/* Actions */}

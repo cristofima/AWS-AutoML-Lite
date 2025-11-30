@@ -1,0 +1,60 @@
+# Docker Compose for local development
+# Uses real AWS services (dev environment) for testing before deployment
+#
+# Prerequisites:
+# 1. AWS credentials configured (~/.aws/credentials or environment variables)
+# 2. Infrastructure deployed to dev environment (terraform apply)
+# 3. Copy .env.example to .env and fill in values from terraform output
+#
+# Usage:
+#   docker-compose up                               # Start API only
+#   docker-compose --profile training run training  # Run training job
+#
+# Frontend: Run natively with pnpm (see frontend/README.md)
+#   cd frontend && pnpm dev
+#
+# For training, set environment variables inline:
+#   DATASET_ID=xxx TARGET_COLUMN=price docker-compose --profile training run training
+
+services:
+  # Backend API - connects to AWS dev environment
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.api
+    container_name: automl-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+      # Map AWS_REGION to REGION for training container compatibility
+      - REGION=${AWS_REGION:-us-east-1}
+    volumes:
+      - ./backend/api:/app/api:ro
+      - ~/.aws:/root/.aws:ro  # Mount AWS credentials
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Training Container - same image used by AWS Batch
+  # Run manually: docker-compose --profile training run training
+  training:
+    build:
+      context: ./backend/training
+      dockerfile: Dockerfile
+    container_name: automl-training
+    profiles:
+      - training  # Only runs when explicitly called with --profile training
+    env_file:
+      - ./backend/.env
+    environment:
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+      # Map AWS_REGION to REGION for train.py compatibility
+      - REGION=${AWS_REGION:-us-east-1}
+      # These must be set when running (inline):
+      - DATASET_ID=${DATASET_ID:-}
+      - TARGET_COLUMN=${TARGET_COLUMN:-}
+      - JOB_ID=${JOB_ID:-local-test}
+      - TIME_BUDGET=${TIME_BUDGET:-60}
+    volumes:
+      - ~/.aws:/root/.aws:ro  # Mount AWS credentials

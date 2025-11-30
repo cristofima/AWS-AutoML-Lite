@@ -92,20 +92,34 @@ Based on moderate usage (20 training jobs/month):
 
 ## 🧪 Local Development
 
-### Backend
+### Using Docker Compose (Recommended)
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn api.main:app --reload
+# 1. Configure environment
+cp backend/.env.example backend/.env
+# Edit backend/.env with values from: terraform output
+
+# 2. Start Backend API
+docker-compose up
+
+# 3. Start Frontend (separate terminal)
+cd frontend
+cp .env.local.example .env.local
+# Edit .env.local with API URL
+pnpm install && pnpm dev
 ```
 
-### Frontend
+### Without Docker
 ```bash
+# Backend
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: .\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn api.main:app --reload
+
+# Frontend (separate terminal)
 cd frontend
-pnpm install
-pnpm dev
+pnpm install && pnpm dev
 ```
 
 ## 📝 Usage
@@ -114,6 +128,29 @@ pnpm dev
 2. Select your target column
 3. Wait for training to complete
 4. Download your model and view metrics
+
+## 🔮 Using Your Trained Model
+
+After downloading your model (.pkl file), use Docker for predictions:
+
+```bash
+# Build prediction container (one time)
+docker build -f scripts/Dockerfile.predict -t automl-predict .
+
+# Show model info and required features
+docker run --rm -v ${PWD}:/data automl-predict /data/model.pkl --info
+
+# Generate sample input JSON (auto-detects features from model)
+docker run --rm -v ${PWD}:/data automl-predict /data/model.pkl -g /data/sample_input.json
+
+# Edit sample_input.json with your values, then predict
+docker run --rm -v ${PWD}:/data automl-predict /data/model.pkl --json /data/sample_input.json
+
+# Batch predictions from CSV
+docker run --rm -v ${PWD}:/data automl-predict /data/model.pkl -i /data/test.csv -o /data/predictions.csv
+```
+
+See [scripts/README.md](./scripts/README.md) for detailed documentation.
 
 ## 🤝 Contributing
 
