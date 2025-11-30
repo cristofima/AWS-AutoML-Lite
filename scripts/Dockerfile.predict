@@ -1,0 +1,53 @@
+# AWS AutoML Lite - Prediction Container
+# Lightweight container for running predictions with trained models
+#
+# Build:
+#   docker build -f scripts/Dockerfile.predict -t automl-predict .
+#
+# Usage:
+#   # Show model info
+#   docker run --rm -v /path/to/models:/models automl-predict /models/model.pkl --info
+#
+#   # Single prediction
+#   docker run --rm -v /path/to/models:/models automl-predict /models/model.pkl '{"Age": 35}'
+#
+#   # Batch predictions
+#   docker run --rm -v /path/to/data:/data automl-predict /data/model.pkl -i /data/test.csv -o /data/predictions.csv
+
+FROM python:3.11-slim
+
+LABEL maintainer="AWS AutoML Lite"
+LABEL description="Lightweight prediction container for AutoML models"
+
+# Prevent Python from writing .pyc files and buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system dependencies for LightGBM/XGBoost
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install only required packages (minimal footprint)
+# FLAML[automl] is needed to deserialize models trained with AutoML
+# Using same versions as training container for compatibility
+RUN pip install --no-cache-dir \
+    pandas>=2.2.0 \
+    scikit-learn==1.4.0 \
+    joblib>=1.3.2 \
+    "flaml[automl]>=2.3.0" \
+    lightgbm>=4.5.0 \
+    feature-engine>=1.8.0 \
+    && rm -rf /root/.cache/pip
+
+# Copy prediction script and preprocessor module
+COPY scripts/predict.py /app/predict.py
+COPY backend/training/preprocessor.py /app/preprocessor.py
+
+# Make script executable
+RUN chmod +x /app/predict.py
+
+ENTRYPOINT ["python", "/app/predict.py"]
+CMD ["--help"]
