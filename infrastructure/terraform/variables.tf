@@ -50,14 +50,14 @@ variable "lambda_timeout" {
 
 variable "batch_vcpu" {
   description = "Batch job vCPU"
-  type        = string
-  default     = "2"
+  type        = number
+  default     = 2
 }
 
 variable "batch_memory" {
   description = "Batch job memory in MB"
-  type        = string
-  default     = "4096"
+  type        = number
+  default     = 4096
 }
 
 variable "batch_max_vcpus" {

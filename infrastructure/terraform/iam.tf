@@ -126,6 +126,17 @@ resource "aws_iam_role_policy" "batch_job_permissions" {
       {
         Effect = "Allow"
         Action = [
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.datasets.arn,
+          aws_s3_bucket.models.arn,
+          aws_s3_bucket.reports.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem"

@@ -59,16 +59,21 @@ resource "aws_batch_job_definition" "training" {
     resourceRequirements = [
       {
         type  = "VCPU"
-        value = var.batch_vcpu
+        value = tostring(var.batch_vcpu)
       },
       {
         type  = "MEMORY"
-        value = var.batch_memory
+        value = tostring(var.batch_memory)
       }
     ]
 
     jobRoleArn       = aws_iam_role.batch_job.arn
     executionRoleArn = aws_iam_role.batch_execution.arn
+
+    # Network configuration - required for Fargate to pull from ECR
+    networkConfiguration = {
+      assignPublicIp = "ENABLED"
+    }
 
     logConfiguration = {
       logDriver = "awslogs"
