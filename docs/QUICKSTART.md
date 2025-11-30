@@ -326,10 +326,21 @@ ls -lh lambda_function.zip
 
 ## 📚 Next Steps
 
-1. **Deploy Frontend** (Coming soon)
-   - Next.js application
-   - Deploy to S3 + CloudFront
-   - Configure with API URL
+1. **Run Locally**
+   ```bash
+   # Configure backend
+   cp backend/.env.example backend/.env
+   # Edit with values from: terraform output
+   
+   # Start API
+   docker-compose up
+   
+   # Configure and start frontend
+   cd frontend
+   cp .env.local.example .env.local
+   # Edit with API URL from terraform output
+   pnpm install && pnpm dev
+   ```
 
 2. **Test Complete Workflow**
    - Upload sample CSV
