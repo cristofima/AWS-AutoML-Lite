@@ -71,6 +71,18 @@ resource "aws_s3_bucket_lifecycle_configuration" "models" {
   }
 }
 
+resource "aws_s3_bucket_cors_configuration" "models" {
+  bucket = aws_s3_bucket.models.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = ["*"]
+    expose_headers  = ["Content-Disposition"]
+    max_age_seconds = 3600
+  }
+}
+
 # S3 Bucket for Reports
 resource "aws_s3_bucket" "reports" {
   bucket = "${local.name_prefix}-reports-${local.account_id}"
@@ -99,5 +111,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "reports" {
     expiration {
       days = var.s3_lifecycle_days
     }
+  }
+}
+
+resource "aws_s3_bucket_cors_configuration" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = ["*"]
+    expose_headers  = ["Content-Disposition"]
+    max_age_seconds = 3600
   }
 }
