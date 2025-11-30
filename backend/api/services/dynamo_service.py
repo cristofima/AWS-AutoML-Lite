@@ -1,5 +1,5 @@
 import boto3
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
 from botocore.exceptions import ClientError
@@ -94,7 +94,7 @@ class DynamoDBService:
         try:
             update_data = {
                 'status': status.value,
-                'updated_at': datetime.utcnow().isoformat()
+                'updated_at': datetime.now(timezone.utc).isoformat()
             }
             if updates:
                 update_data.update(updates)

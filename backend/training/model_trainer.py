@@ -68,7 +68,8 @@ def train_automl_model(
         task=task,
         metric=metric,
         time_budget=time_budget,
-        estimator_list=['lgbm', 'xgboost', 'rf', 'extra_tree'],
+        # Exclude xgboost due to best_iteration bug without early stopping
+        estimator_list=['lgbm', 'rf', 'extra_tree'],
         verbose=1,
         log_file_name='flaml_training.log'
     )
@@ -131,23 +132,54 @@ def calculate_regression_metrics(y_true, y_pred) -> Dict[str, float]:
 def get_feature_importance(model: AutoML, feature_names) -> Dict[str, float]:
     """Extract feature importance from the model"""
     try:
-        if hasattr(model.model, 'feature_importances_'):
-            importances = model.model.feature_importances_
-            feature_importance = dict(zip(feature_names, importances.tolist()))
-            
-            # Sort by importance
-            feature_importance = dict(
-                sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)
-            )
-            
-            print("\nTop 10 Feature Importances:")
-            for i, (feature, importance) in enumerate(list(feature_importance.items())[:10]):
-                print(f"  {i+1}. {feature}: {importance:.4f}")
-            
-            return feature_importance
-        else:
-            print("Model does not provide feature importances")
-            return {}
+        # Try to get feature importances from the underlying model
+        best_model = model.model
+        
+        # For tree-based models, try to get feature_importances_
+        if hasattr(best_model, 'feature_importances_'):
+            try:
+                importances = best_model.feature_importances_
+                feature_importance = dict(zip(feature_names, importances.tolist()))
+                
+                # Sort by importance
+                feature_importance = dict(
+                    sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)
+                )
+                
+                print("\nTop 10 Feature Importances:")
+                for i, (feature, importance) in enumerate(list(feature_importance.items())[:10]):
+                    print(f"  {i+1}. {feature}: {importance:.4f}")
+                
+                return feature_importance
+            except AttributeError as e:
+                # Handle 'best_iteration' error from LightGBM without early stopping
+                print(f"Could not extract feature importances directly: {str(e)}")
+        
+        # Fallback: Try to get feature importance from FLAML's feature_importances_ method
+        if hasattr(model, 'feature_importances_'):
+            try:
+                importances = model.feature_importances_
+                if importances is not None:
+                    feature_importance = dict(zip(feature_names, importances.tolist()))
+                    feature_importance = dict(
+                        sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)
+                    )
+                    
+                    print("\nTop 10 Feature Importances (from FLAML):")
+                    for i, (feature, importance) in enumerate(list(feature_importance.items())[:10]):
+                        print(f"  {i+1}. {feature}: {importance:.4f}")
+                    
+                    return feature_importance
+            except Exception:
+                pass
+        
+        # Fallback: Create equal importance for all features
+        print("\nCould not extract feature importances, using equal weights")
+        equal_importance = 1.0 / len(feature_names)
+        return {name: equal_importance for name in feature_names}
+        
     except Exception as e:
         print(f"Error extracting feature importance: {str(e)}")
-        return {}
+        # Return equal importance as fallback
+        equal_importance = 1.0 / len(feature_names) if len(feature_names) > 0 else 0
+        return {name: equal_importance for name in feature_names}

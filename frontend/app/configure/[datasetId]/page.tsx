@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { DatasetMetadata, startTraining } from '@/lib/api';
+import { DatasetMetadata, startTraining, getDatasetMetadata } from '@/lib/api';
 import { getProblemTypeIcon, getProblemTypeDescription } from '@/lib/utils';
 
 export default function ConfigurePage() {
@@ -17,16 +17,21 @@ export default function ConfigurePage() {
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Detect problem type based on column type
+  const detectProblemType = (columnName: string): 'classification' | 'regression' => {
+    if (!metadata) return 'regression';
+    const columnType = metadata.column_types[columnName];
+    return columnType === 'categorical' ? 'classification' : 'regression';
+  };
+
   useEffect(() => {
-    // In a real scenario, you'd fetch metadata from the API
-    // For now, we'll simulate it since we need the confirm endpoint to be called first
     const fetchMetadata = async () => {
       try {
-        // This would be: const data = await getDatasetMetadata(datasetId);
-        // Simulating for now - in production, get from API
+        const data = await getDatasetMetadata(datasetId);
+        setMetadata(data);
         setIsLoading(false);
       } catch (err) {
-        setError('Failed to load dataset metadata');
+        setError(err instanceof Error ? err.message : 'Failed to load dataset metadata');
         setIsLoading(false);
       }
     };
@@ -71,6 +76,28 @@ export default function ConfigurePage() {
     );
   }
 
+  if (error && !metadata) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-4xl mb-4">❌</div>
+          <p className="text-gray-900 font-medium mb-2">Failed to load dataset</p>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const columns = metadata?.columns || [];
+  const columnTypes = metadata?.column_types || {};
+  const detectedProblemType = selectedTarget ? detectProblemType(selectedTarget) : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -91,6 +118,22 @@ export default function ConfigurePage() {
                 <span className="text-gray-600">Dataset ID:</span>
                 <span className="font-mono text-gray-900">{datasetId}</span>
               </div>
+              {metadata && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Filename:</span>
+                    <span className="text-gray-900">{metadata.filename}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Rows:</span>
+                    <span className="text-gray-900">{metadata.row_count.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Columns:</span>
+                    <span className="text-gray-900">{columns.length}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
                 <span className="text-green-600">✓ Uploaded and analyzed</span>
@@ -105,21 +148,39 @@ export default function ConfigurePage() {
               Choose the column you want to predict. We'll automatically detect if it's a classification or regression problem.
             </p>
 
-            <div className="space-y-3">
-              {/* In production, map over metadata.columns */}
-              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="radio"
-                  name="target"
-                  value="example_column"
-                  onChange={(e) => setSelectedTarget(e.target.value)}
-                  className="w-4 h-4 text-indigo-600"
-                />
-                <div className="ml-3 flex-1">
-                  <div className="font-medium text-gray-900">Example Column</div>
-                  <div className="text-sm text-gray-500">Type: numeric</div>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {columns.map((column) => (
+                <label
+                  key={column}
+                  className={`flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
+                    selectedTarget === column ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="target"
+                    value={column}
+                    checked={selectedTarget === column}
+                    onChange={(e) => setSelectedTarget(e.target.value)}
+                    className="w-4 h-4 text-indigo-600"
+                  />
+                  <div className="ml-3 flex-1">
+                    <div className="font-medium text-gray-900">{column}</div>
+                    <div className="text-sm text-gray-500">
+                      Type: {columnTypes[column] || 'unknown'}
+                    </div>
+                  </div>
+                  <div className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700">
+                    {columnTypes[column] === 'categorical' ? 'Classification' : 'Regression'}
+                  </div>
+                </label>
+              ))}
+
+              {columns.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No columns found in dataset
                 </div>
-              </label>
+              )}
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
@@ -131,16 +192,16 @@ export default function ConfigurePage() {
           </div>
 
           {/* Problem Type Detection */}
-          {selectedTarget && (
+          {selectedTarget && detectedProblemType && (
             <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6">
               <div className="flex items-start">
-                <div className="text-4xl mr-4">{getProblemTypeIcon('regression')}</div>
+                <div className="text-4xl mr-4">{getProblemTypeIcon(detectedProblemType)}</div>
                 <div>
                   <h3 className="text-lg font-semibold text-indigo-900 mb-2">
-                    Detected Problem Type: Regression
+                    Detected Problem Type: {detectedProblemType === 'classification' ? 'Classification' : 'Regression'}
                   </h3>
                   <p className="text-indigo-700 text-sm">
-                    {getProblemTypeDescription('regression')}
+                    {getProblemTypeDescription(detectedProblemType)}
                   </p>
                 </div>
               </div>

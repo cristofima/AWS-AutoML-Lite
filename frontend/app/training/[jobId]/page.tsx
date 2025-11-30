@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getJobDetails, JobDetails } from '@/lib/api';
-import { getStatusColor, getStatusIcon, formatDuration } from '@/lib/utils';
+import { getStatusColor, getStatusIcon, formatDuration, formatDateTime } from '@/lib/utils';
 
 export default function TrainingPage() {
   const router = useRouter();
@@ -124,29 +124,29 @@ export default function TrainingPage() {
                 <p className="font-mono text-gray-900 text-xs mt-1">{job.job_id}</p>
               </div>
               <div>
-                <span className="text-gray-600">Dataset ID:</span>
-                <p className="font-mono text-gray-900 text-xs mt-1">{job.dataset_id}</p>
+                <span className="text-gray-600">Dataset:</span>
+                <p className="font-mono text-gray-900 text-xs mt-1">{job.dataset_name || job.dataset_id || 'Loading...'}</p>
               </div>
               <div>
                 <span className="text-gray-600">Target Column:</span>
-                <p className="font-medium text-gray-900 mt-1">{job.target_column}</p>
+                <p className="font-medium text-gray-900 mt-1">{job.target_column || 'Loading...'}</p>
               </div>
               <div>
                 <span className="text-gray-600">Problem Type:</span>
                 <p className="font-medium text-gray-900 mt-1">
-                  {job.problem_type.charAt(0).toUpperCase() + job.problem_type.slice(1)}
+                  {job.problem_type ? job.problem_type.charAt(0).toUpperCase() + job.problem_type.slice(1) : 'Detecting...'}
                 </p>
               </div>
               <div>
                 <span className="text-gray-600">Started At:</span>
                 <p className="text-gray-900 mt-1">
-                  {job.started_at ? new Date(job.started_at).toLocaleTimeString() : 'Not started'}
+                  {job.started_at ? formatDateTime(job.started_at) : 'Not started'}
                 </p>
               </div>
               <div>
                 <span className="text-gray-600">Elapsed Time:</span>
                 <p className="text-gray-900 mt-1">
-                  {job.started_at ? formatDuration(job.started_at, new Date().toISOString()) : 'N/A'}
+                  {job.started_at ? formatDuration(job.started_at) : 'N/A'}
                 </p>
               </div>
             </div>

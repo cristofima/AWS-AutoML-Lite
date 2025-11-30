@@ -19,10 +19,42 @@ export function formatDate(dateString: string): string {
   }).format(date);
 }
 
-export function formatDuration(startDate: string, endDate: string): string {
-  const start = new Date(startDate).getTime();
-  const end = new Date(endDate).getTime();
+export function formatDateTime(dateString: string): string {
+  // Ensure the date is interpreted as UTC if no timezone specified
+  let date: Date;
+  if (dateString.endsWith('Z') || dateString.includes('+') || dateString.includes('-', 10)) {
+    date = new Date(dateString);
+  } else {
+    // Assume UTC if no timezone indicator
+    date = new Date(dateString + 'Z');
+  }
+  
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).format(date);
+}
+
+export function formatDuration(startDate: string, endDate?: string): string {
+  // Ensure dates are interpreted as UTC if no timezone specified
+  const parseDate = (dateStr: string): number => {
+    if (dateStr.endsWith('Z') || dateStr.includes('+') || dateStr.includes('-', 10)) {
+      return new Date(dateStr).getTime();
+    }
+    return new Date(dateStr + 'Z').getTime();
+  };
+  
+  const start = parseDate(startDate);
+  const end = endDate ? parseDate(endDate) : Date.now();
   const duration = Math.floor((end - start) / 1000); // seconds
+  
+  // Handle negative duration (clock sync issues)
+  if (duration < 0) return 'Calculating...';
   
   if (duration < 60) return `${duration}s`;
   if (duration < 3600) return `${Math.floor(duration / 60)}m ${duration % 60}s`;
@@ -78,11 +110,13 @@ export function formatMetric(value: number, decimals = 4): string {
   return value.toFixed(decimals);
 }
 
-export function getProblemTypeIcon(problemType: string): string {
+export function getProblemTypeIcon(problemType?: string): string {
+  if (!problemType) return '❓';
   return problemType === 'classification' ? '📊' : '📈';
 }
 
-export function getProblemTypeDescription(problemType: string): string {
+export function getProblemTypeDescription(problemType?: string): string {
+  if (!problemType) return 'Problem type not determined yet';
   return problemType === 'classification' 
     ? 'Predicting categories or classes'
     : 'Predicting continuous numerical values';

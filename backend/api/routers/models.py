@@ -48,10 +48,20 @@ async def get_job_status(job_id: str):
                     key=key
                 )
             
-            if job.get('report_path'):
-                report_path = job['report_path'].replace('s3://', '')
+            # EDA Report (also keep backward compatibility with report_path)
+            eda_path = job.get('eda_report_path') or job.get('report_path')
+            if eda_path:
+                report_path = eda_path.replace('s3://', '')
                 bucket, key = report_path.split('/', 1)
-                response.report_download_url = s3_service.generate_presigned_download_url(
+                url = s3_service.generate_presigned_download_url(bucket=bucket, key=key)
+                response.report_download_url = url  # Backward compatibility
+                response.eda_report_download_url = url
+            
+            # Training Report
+            if job.get('training_report_path'):
+                training_path = job['training_report_path'].replace('s3://', '')
+                bucket, key = training_path.split('/', 1)
+                response.training_report_download_url = s3_service.generate_presigned_download_url(
                     bucket=bucket,
                     key=key
                 )
@@ -94,13 +104,24 @@ async def delete_job(job_id: str, delete_data: bool = True):
                 except Exception:
                     pass  # Model might not exist
             
-            # Delete report from S3
-            if job.get('report_path'):
+            # Delete EDA report from S3
+            eda_path = job.get('eda_report_path') or job.get('report_path')
+            if eda_path:
                 try:
-                    report_path = job['report_path'].replace('s3://', '')
+                    report_path = eda_path.replace('s3://', '')
                     bucket, key = report_path.split('/', 1)
                     s3_service.delete_object(bucket, key)
-                    deleted_resources.append(f"report: {key}")
+                    deleted_resources.append(f"eda_report: {key}")
+                except Exception:
+                    pass  # Report might not exist
+            
+            # Delete training report from S3
+            if job.get('training_report_path'):
+                try:
+                    training_path = job['training_report_path'].replace('s3://', '')
+                    bucket, key = training_path.split('/', 1)
+                    s3_service.delete_object(bucket, key)
+                    deleted_resources.append(f"training_report: {key}")
                 except Exception:
                     pass  # Report might not exist
             
