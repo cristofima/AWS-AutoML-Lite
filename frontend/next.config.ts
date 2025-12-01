@@ -1,11 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',  // Enable static HTML export for S3 deployment
-  trailingSlash: true,  // Better compatibility with S3 website hosting
+  // Enable standalone output for Docker deployment
+  output: 'standalone',
+  
+  // Optimize images for production
   images: {
-    unoptimized: true  // Disable next/image optimization (not available in static export)
-  }
+    formats: ['image/avif', 'image/webp'],
+  },
 };
 
 export default nextConfig;

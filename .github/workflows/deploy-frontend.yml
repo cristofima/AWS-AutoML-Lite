@@ -1,4 +1,4 @@
-# Deploy Frontend (Next.js Static to S3 + CloudFront)
+# Deploy Frontend (Next.js on AWS App Runner)
 # Triggers on frontend changes or manual dispatch
 # Automatically gets API URL from Terraform outputs
 
@@ -100,109 +100,97 @@ jobs:
           terraform workspace select ${{ env.ENVIRONMENT }}
           
           API_URL=$(terraform output -raw api_gateway_url)
-          BUCKET=$(terraform output -raw frontend_bucket_name 2>/dev/null || echo "")
-          DISTRIBUTION_ID=$(terraform output -raw cloudfront_distribution_id 2>/dev/null || echo "")
+          ECR_REPO=$(terraform output -raw frontend_ecr_repository_url 2>/dev/null || echo "")
+          APPRUNNER_ARN=$(terraform output -raw apprunner_service_arn 2>/dev/null || echo "")
           
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
-          echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
-          echo "distribution_id=$DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "ecr_repo=$ECR_REPO" >> $GITHUB_OUTPUT
+          echo "apprunner_arn=$APPRUNNER_ARN" >> $GITHUB_OUTPUT
           
           echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
+          echo "**ECR Repository:** $ECR_REPO" >> $GITHUB_STEP_SUMMARY
 
       - name: Check Frontend Resources
         id: check_frontend
         run: |
-          if [ -z "${{ steps.infra.outputs.bucket }}" ]; then
+          if [ -z "${{ steps.infra.outputs.ecr_repo }}" ]; then
             echo "frontend_exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Frontend resources (S3/CloudFront) not deployed yet" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Frontend resources (ECR/App Runner) not deployed yet" >> $GITHUB_STEP_SUMMARY
           else
             echo "frontend_exists=true" >> $GITHUB_OUTPUT
             echo "✅ Frontend resources exist" >> $GITHUB_STEP_SUMMARY
           fi
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - name: Login to Amazon ECR
+        if: steps.check_frontend.outputs.frontend_exists == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install Dependencies
-        working-directory: frontend
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Frontend
-        working-directory: frontend
-        env:
-          NEXT_PUBLIC_API_URL: ${{ steps.infra.outputs.api_url }}
-        run: |
-          echo "Building with API URL: $NEXT_PUBLIC_API_URL"
-          pnpm build
-          
-          # Verify build output
-          if [ ! -d "out" ]; then
-            echo "❌ Build failed - 'out' directory not created"
-            exit 1
-          fi
-          
-          echo "✅ Build successful"
-          ls -la out/
-          du -sh out/
-
-      - name: Deploy to S3
+      - name: Build and Push Docker Image
         if: steps.check_frontend.outputs.frontend_exists == 'true'
         working-directory: frontend
+        env:
+          ECR_REPO: ${{ steps.infra.outputs.ecr_repo }}
+          API_URL: ${{ steps.infra.outputs.api_url }}
+          IMAGE_TAG: ${{ env.ENVIRONMENT }}-${{ github.sha }}
         run: |
-          BUCKET="${{ steps.infra.outputs.bucket }}"
+          echo "Building Docker image with API URL: $API_URL"
           
-          echo "Deploying to S3 bucket: $BUCKET"
+          # Build with API URL baked in
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=$API_URL \
+            -t $ECR_REPO:$IMAGE_TAG \
+            -t $ECR_REPO:${{ env.ENVIRONMENT }}-latest \
+            .
           
-          # Upload all files except HTML with long cache
-          aws s3 sync out/ s3://$BUCKET \
-            --delete \
-            --cache-control "public,max-age=31536000,immutable" \
-            --exclude "*.html" \
-            --region ${{ env.AWS_REGION }}
+          # Push both tags
+          docker push $ECR_REPO:$IMAGE_TAG
+          docker push $ECR_REPO:${{ env.ENVIRONMENT }}-latest
           
-          # Upload HTML files with short cache (for client-side routing)
-          aws s3 sync out/ s3://$BUCKET \
-            --exclude "*" \
-            --include "*.html" \
-            --cache-control "public,max-age=0,must-revalidate" \
-            --region ${{ env.AWS_REGION }}
+          echo "✅ Image pushed: $ECR_REPO:$IMAGE_TAG"
+          echo "✅ Image pushed: $ECR_REPO:${{ env.ENVIRONMENT }}-latest"
           
-          echo "✅ Files uploaded to S3"
+          echo "**Docker Image:** $ECR_REPO:$IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
 
-      - name: Invalidate CloudFront Cache
-        if: steps.check_frontend.outputs.frontend_exists == 'true' && steps.infra.outputs.distribution_id != ''
+      - name: Deploy to App Runner
+        if: steps.check_frontend.outputs.frontend_exists == 'true'
         run: |
-          DISTRIBUTION_ID="${{ steps.infra.outputs.distribution_id }}"
+          APPRUNNER_ARN="${{ steps.infra.outputs.apprunner_arn }}"
           
-          echo "Invalidating CloudFront distribution: $DISTRIBUTION_ID"
+          echo "Checking App Runner service status..."
           
-          aws cloudfront create-invalidation \
-            --distribution-id $DISTRIBUTION_ID \
-            --paths "/*" \
-            --region ${{ env.AWS_REGION }}
+          # Check if service is ready
+          SERVICE_STATUS=$(aws apprunner describe-service \
+            --service-arn $APPRUNNER_ARN \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Service.Status' \
+            --output text)
           
-          echo "✅ CloudFront cache invalidated"
+          echo "Current status: $SERVICE_STATUS"
+          
+          # Only trigger deployment if service is operational
+          # (First deployment happens automatically when service is created by Terraform)
+          if [ "$SERVICE_STATUS" = "RUNNING" ] || [ "$SERVICE_STATUS" = "OPERATION_IN_PROGRESS" ]; then
+            echo "Triggering App Runner deployment: $APPRUNNER_ARN"
+            
+            aws apprunner start-deployment \
+              --service-arn $APPRUNNER_ARN \
+              --region ${{ env.AWS_REGION }} || true
+            
+            echo "✅ App Runner deployment triggered"
+            
+            # Wait for deployment to complete
+            echo "Waiting for deployment to complete (this may take 5-10 minutes)..."
+            aws apprunner wait service-updated \
+              --service-arn $APPRUNNER_ARN \
+              --region ${{ env.AWS_REGION }} \
+              --cli-read-timeout 900 \
+              --cli-connect-timeout 60 || echo "⚠️ Timeout waiting for service, check AWS console"
+            
+            echo "✅ Deployment completed"
+          else
+            echo "⚠️ Service is in '$SERVICE_STATUS' state, skipping deployment trigger"
+            echo "First deployment will happen automatically when Terraform creates the service"
+          fi
 
       - name: Get Frontend URL
         if: steps.check_frontend.outputs.frontend_exists == 'true'
@@ -223,15 +211,12 @@ jobs:
             echo "**Status:** ✅ Deployed" >> $GITHUB_STEP_SUMMARY
             echo "**Frontend URL:** ${{ steps.frontend_url.outputs.frontend_url }}" >> $GITHUB_STEP_SUMMARY
             echo "**API URL:** ${{ steps.infra.outputs.api_url }}" >> $GITHUB_STEP_SUMMARY
-            echo "**S3 Bucket:** ${{ steps.infra.outputs.bucket }}" >> $GITHUB_STEP_SUMMARY
-            
-            if [ -n "${{ steps.infra.outputs.distribution_id }}" ]; then
-              echo "**CloudFront:** ${{ steps.infra.outputs.distribution_id }}" >> $GITHUB_STEP_SUMMARY
-            fi
+            echo "**Platform:** AWS App Runner" >> $GITHUB_STEP_SUMMARY
+            echo "**Container:** ${{ steps.infra.outputs.ecr_repo }}:${{ env.ENVIRONMENT }}-latest" >> $GITHUB_STEP_SUMMARY
           else
             echo "**Status:** ⚠️ Built but not deployed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Frontend resources (S3/CloudFront) not found in infrastructure." >> $GITHUB_STEP_SUMMARY
+            echo "Frontend resources (ECR/App Runner) not found in infrastructure." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
             echo "1. Add frontend Terraform resources to infrastructure" >> $GITHUB_STEP_SUMMARY
@@ -250,8 +235,8 @@ jobs:
           
           echo "Testing frontend at: $FRONTEND_URL"
           
-          # Wait for CloudFront propagation
-          sleep 10
+          # Wait for App Runner to be fully ready
+          sleep 30
           
           # Test homepage
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $FRONTEND_URL)
@@ -259,5 +244,5 @@ jobs:
           if [ "$HTTP_CODE" == "200" ]; then
             echo "✅ Frontend is accessible (HTTP $HTTP_CODE)"
           else
-            echo "⚠️ Frontend returned HTTP $HTTP_CODE (may need time for CloudFront propagation)"
+            echo "⚠️ Frontend returned HTTP $HTTP_CODE (may need time for App Runner propagation)"
           fi
