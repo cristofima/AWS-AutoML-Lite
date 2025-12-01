@@ -1,0 +1,97 @@
+# Fix App Runner CREATE_FAILED
+# One-time manual workflow to fix failed App Runner service
+
+name: Fix App Runner Service
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: 1.9.8
+
+jobs:
+  fix:
+    name: Fix CREATE_FAILED App Runner Service
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Select Workspace
+        run: terraform workspace select dev
+
+      - name: Remove Failed Service from State
+        run: |
+          echo "🔧 Removing failed App Runner service from Terraform state..."
+          terraform state rm aws_apprunner_service.frontend || echo "Already removed"
+
+      - name: Delete Failed Service from AWS
+        run: |
+          SERVICE_ARN="arn:aws:apprunner:us-east-1:835503570883:service/automl-lite-dev-frontend/7f34e0946b48413d8ac2a5ffe0f9d690"
+          
+          echo "🗑️  Deleting failed service from AWS..."
+          aws apprunner delete-service \
+            --service-arn $SERVICE_ARN \
+            --region ${{ env.AWS_REGION }} || echo "Service may already be deleted"
+          
+          echo "⏳ Waiting 60s for deletion to complete..."
+          sleep 60
+
+      - name: Recreate App Runner Service
+        run: |
+          echo "🔨 Recreating App Runner service with Terraform..."
+          terraform apply \
+            -target=aws_apprunner_service.frontend \
+            -target=aws_apprunner_auto_scaling_configuration_version.frontend \
+            -var-file="dev.tfvars" \
+            -auto-approve
+
+      - name: Verify Service Status
+        run: |
+          echo "✅ Checking new service status..."
+          
+          SERVICE_ARN=$(aws apprunner list-services --region ${{ env.AWS_REGION }} \
+            --query "ServiceSummaryList[?ServiceName=='automl-lite-dev-frontend'].ServiceArn" \
+            --output text)
+          
+          if [ -n "$SERVICE_ARN" ]; then
+            STATUS=$(aws apprunner describe-service \
+              --service-arn $SERVICE_ARN \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Service.Status' \
+              --output text)
+            
+            echo "### ✅ Service Recreated" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Status:** $STATUS" >> $GITHUB_STEP_SUMMARY
+            echo "**Service ARN:** $SERVICE_ARN" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Next Step:** Run 'Deploy Frontend' workflow to push Next.js image" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Service not found after recreation"
+            exit 1
+          fi
