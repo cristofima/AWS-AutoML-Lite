@@ -64,3 +64,18 @@ output "ecr_repository_name" {
   description = "ECR repository name"
   value       = aws_ecr_repository.training.name
 }
+
+output "frontend_url" {
+  description = "CloudFront distribution URL for frontend"
+  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+output "frontend_bucket_name" {
+  description = "S3 bucket name for frontend"
+  value       = aws_s3_bucket.frontend.id
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for cache invalidation"
+  value       = aws_cloudfront_distribution.frontend.id
+}
