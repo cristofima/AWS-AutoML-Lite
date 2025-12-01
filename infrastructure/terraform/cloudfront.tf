@@ -1,8 +1,6 @@
 # S3 Bucket for Frontend (Static Website Hosting)
 resource "aws_s3_bucket" "frontend" {
   bucket = "${local.name_prefix}-frontend-${local.account_id}"
-
-  tags = local.tags
 }
 
 resource "aws_s3_bucket_website_configuration" "frontend" {
@@ -13,7 +11,7 @@ resource "aws_s3_bucket_website_configuration" "frontend" {
   }
 
   error_document {
-    key = "index.html"  # Fallback for client-side routing
+    key = "index.html" # Fallback for client-side routing
   }
 }
 
@@ -60,7 +58,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   is_ipv6_enabled     = true
   comment             = "${var.project_name} ${var.environment} frontend"
   default_root_object = "index.html"
-  price_class         = "PriceClass_100"  # North America + Europe only (most cost-effective)
+  price_class         = "PriceClass_100" # North America + Europe only (most cost-effective)
 
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
@@ -83,8 +81,8 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
 
     min_ttl     = 0
-    default_ttl = 86400      # 1 day for static assets
-    max_ttl     = 31536000   # 1 year max
+    default_ttl = 86400    # 1 day for static assets
+    max_ttl     = 31536000 # 1 year max
   }
 
   # Cache behavior for HTML files (shorter cache for client-side routing)
@@ -134,8 +132,6 @@ resource "aws_cloudfront_distribution" "frontend" {
     # acm_certificate_arn = aws_acm_certificate.frontend.arn
     # ssl_support_method  = "sni-only"
   }
-
-  tags = local.tags
 }
 
 # Update S3 bucket policy to allow CloudFront OAC
