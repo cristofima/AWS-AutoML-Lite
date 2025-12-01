@@ -172,7 +172,7 @@ resource "aws_apprunner_service" "frontend" {
 
 # Auto-scaling configuration for App Runner
 resource "aws_apprunner_auto_scaling_configuration_version" "frontend" {
-  auto_scaling_configuration_name = "${local.name_prefix}-frontend-autoscaling"
+  auto_scaling_configuration_name = "${local.name_prefix}-fe-autoscale"
 
   max_concurrency = 100 # Max concurrent requests per instance
   min_size        = 1   # Minimum instances (always 1 running)
