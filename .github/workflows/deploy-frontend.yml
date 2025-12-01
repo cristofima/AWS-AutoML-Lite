@@ -236,13 +236,30 @@ jobs:
           echo "Testing frontend at: $FRONTEND_URL"
           
           # Wait for App Runner to be fully ready
+          echo "Waiting for App Runner to propagate deployment..."
           sleep 30
           
-          # Test homepage
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $FRONTEND_URL)
+          # Test homepage with retry logic
+          MAX_RETRIES=5
+          RETRY_DELAY=10
           
-          if [ "$HTTP_CODE" == "200" ]; then
-            echo "✅ Frontend is accessible (HTTP $HTTP_CODE)"
-          else
-            echo "⚠️ Frontend returned HTTP $HTTP_CODE (may need time for App Runner propagation)"
-          fi
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i/$MAX_RETRIES..."
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $FRONTEND_URL || echo "000")
+            
+            if [ "$HTTP_CODE" == "200" ]; then
+              echo "✅ Frontend is accessible (HTTP $HTTP_CODE)"
+              exit 0
+            else
+              echo "⚠️ Frontend returned HTTP $HTTP_CODE"
+              if [ $i -lt $MAX_RETRIES ]; then
+                echo "Retrying in ${RETRY_DELAY}s..."
+                sleep $RETRY_DELAY
+              fi
+            fi
+          done
+          
+          echo "⚠️ Frontend not yet accessible after $MAX_RETRIES attempts"
+          echo "This is normal for App Runner deployments - service may take 5-10 minutes to be fully ready"
+          echo "Check URL manually: $FRONTEND_URL"
+          exit 0  # Don't fail the workflow
