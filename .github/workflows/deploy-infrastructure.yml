@@ -79,6 +79,24 @@ jobs:
       - name: Select Workspace
         run: terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
 
+      - name: Import App Runner Service if exists (before planning)
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services --region ${{ env.AWS_REGION }} \
+            --query "ServiceSummaryList[?ServiceName=='automl-lite-${{ env.ENVIRONMENT }}-frontend'].ServiceArn" \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -n "$SERVICE_ARN" ]; then
+            echo "✓ App Runner service found: $SERVICE_ARN"
+            if ! terraform state show aws_apprunner_service.frontend >/dev/null 2>&1; then
+              echo "→ Importing into Terraform state..."
+              terraform import aws_apprunner_service.frontend "$SERVICE_ARN" || true
+            else
+              echo "✓ Already in Terraform state"
+            fi
+          else
+            echo "ℹ No existing App Runner service (first deploy)"
+          fi
+
       - name: Terraform Plan
         run: |
           terraform plan \
