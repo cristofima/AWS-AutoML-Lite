@@ -1,13 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable standalone output for Docker deployment
-  output: 'standalone',
-  
-  // Optimize images for production
+  // Disable image optimization (not needed for this app)
   images: {
-    formats: ['image/avif', 'image/webp'],
+    unoptimized: true,
   },
+  
+  // Trailing slashes for better compatibility
+  trailingSlash: true,
 };
 
 export default nextConfig;

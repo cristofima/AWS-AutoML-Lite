@@ -65,18 +65,5 @@ output "ecr_repository_name" {
   value       = aws_ecr_repository.training.name
 }
 
-# Frontend outputs (App Runner)
-output "frontend_url" {
-  description = "App Runner service URL for frontend"
-  value       = "https://${aws_apprunner_service.frontend.service_url}"
-}
-
-output "frontend_ecr_repository_url" {
-  description = "ECR repository URL for frontend container"
-  value       = aws_ecr_repository.frontend.repository_url
-}
-
-output "apprunner_service_arn" {
-  description = "App Runner service ARN"
-  value       = aws_apprunner_service.frontend.arn
-}
+# Frontend will be deployed via AWS Amplify (separate from Terraform)
+# Amplify handles SSR routing for Next.js dynamic routes

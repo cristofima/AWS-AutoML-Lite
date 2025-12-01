@@ -1,0 +1,81 @@
+# Frontend Validation & Build Check
+# Actual deployment is handled by AWS Amplify (auto-deploys from GitHub)
+# This workflow validates the build works before Amplify picks it up
+
+name: Validate Frontend
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'frontend/**'
+      - '!frontend/README.md'
+      - '!frontend/.gitignore'
+      - '.github/workflows/validate-frontend.yml'
+  pull_request:
+    paths:
+      - 'frontend/**'
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  validate:
+    name: Validate Frontend Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: frontend
+        run: pnpm run lint || echo "Lint warnings found"
+
+      - name: Type Check
+        working-directory: frontend
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        working-directory: frontend
+        env:
+          # Use placeholder URL for build validation
+          NEXT_PUBLIC_API_URL: https://api.example.com
+        run: pnpm run build
+
+      - name: Build Summary
+        run: |
+          echo "### ✅ Frontend Validation Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment:**" >> $GITHUB_STEP_SUMMARY
+          echo "Frontend is deployed automatically by AWS Amplify." >> $GITHUB_STEP_SUMMARY
+          echo "Check AWS Amplify Console for deployment status." >> $GITHUB_STEP_SUMMARY
