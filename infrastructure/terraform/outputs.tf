@@ -65,17 +65,18 @@ output "ecr_repository_name" {
   value       = aws_ecr_repository.training.name
 }
 
+# Frontend outputs (App Runner)
 output "frontend_url" {
-  description = "CloudFront distribution URL for frontend"
-  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+  description = "App Runner service URL for frontend"
+  value       = "https://${aws_apprunner_service.frontend.service_url}"
 }
 
-output "frontend_bucket_name" {
-  description = "S3 bucket name for frontend"
-  value       = aws_s3_bucket.frontend.id
+output "frontend_ecr_repository_url" {
+  description = "ECR repository URL for frontend container"
+  value       = aws_ecr_repository.frontend.repository_url
 }
 
-output "cloudfront_distribution_id" {
-  description = "CloudFront distribution ID for cache invalidation"
-  value       = aws_cloudfront_distribution.frontend.id
+output "apprunner_service_arn" {
+  description = "App Runner service ARN"
+  value       = aws_apprunner_service.frontend.arn
 }

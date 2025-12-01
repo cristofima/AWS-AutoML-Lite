@@ -4,6 +4,7 @@
 *.tfstate.*
 .terraform.lock.hcl
 *.tfvars.backup
+tfplan*
 override.tf
 override.tf.json
 *_override.tf
