@@ -198,6 +198,24 @@ Go to: **Settings → Actions → General**
 
 **Fast deployment:** ~3-5 minutes (only container, no infrastructure)
 
+### **deploy-frontend.yml** - Frontend Deployment
+**Triggers:** Changes to `frontend/` or manual  
+**Actions:**
+1. Check infrastructure exists (auto-validation)
+2. Get API URL from Terraform outputs (automatic)
+3. Build Next.js static export with API URL
+4. Deploy to S3 bucket
+5. Invalidate CloudFront cache
+6. Test frontend accessibility
+
+**Smart features:**
+- Automatically validates infrastructure is deployed first
+- Retrieves API URL from Terraform (no manual configuration)
+- Separate deployments for dev/prod environments
+- Fast deployment: ~3-5 minutes
+
+**Fast deployment:** ~3-5 minutes (frontend only, no infrastructure)
+
 ### **deploy-infrastructure.yml** - Full Infrastructure Deployment
 **Triggers:** Changes to `infrastructure/terraform/` or manual  
 **Actions:**
@@ -245,6 +263,19 @@ git push origin dev
 # ✅ Lambda function untouched
 ```
 
+### Deploy Frontend Only (Fast - 3 min)
+```bash
+# Edit frontend code
+git add frontend/
+git commit -m "feat: Add training progress bar"
+git push origin dev
+
+# ✅ Only frontend updated (S3 + CloudFront invalidation)
+# ✅ Infrastructure untouched
+# ✅ API untouched
+# ✅ Automatically gets API URL from Terraform
+```
+
 ### Deploy Infrastructure (Full - 10 min)
 ```bash
 # Edit Terraform
@@ -273,9 +304,15 @@ git push origin main
 # Go to: Actions → Select workflow
 # - Deploy Lambda API
 # - Deploy Training Container
+# - Deploy Frontend
 # - Deploy Infrastructure
 # Click "Run workflow" → Select environment → Run
 ```
+
+**Note for Frontend Deployment:**
+- Frontend deployment will automatically check if infrastructure exists
+- If infrastructure not found, it will fail with clear instructions
+- Deploy infrastructure first, then frontend will work automatically
 
 ### Destroy Environment
 ```bash
@@ -284,6 +321,152 @@ git push origin main
 # Type "DESTROY" to confirm
 # Approve if production
 ```
+
+---
+
+## Deployment Order & Dependencies
+
+### 🎯 Automatic Dependency Resolution
+
+The workflows are smart and **automatically validate dependencies**:
+
+```
+Infrastructure (Terraform)
+    ↓ (creates API Gateway, S3, CloudFront)
+    ├→ Backend API (Lambda)
+    ├→ Training Container (ECR/Batch)
+    └→ Frontend (S3 + CloudFront)
+         ↓ (automatically gets API URL from Terraform outputs)
+```
+
+### ✅ First-Time Setup Order
+
+When deploying a **new environment** from scratch:
+
+1. **Deploy Infrastructure** (Required first)
+```bash
+cd infrastructure/terraform
+terraform workspace select dev
+terraform apply
+```
+   - Creates all AWS resources
+   - Outputs API Gateway URL
+   - Creates S3 + CloudFront for frontend
+   - Takes ~5-10 minutes
+
+2. **Deploy Backend API** (Automatic after infrastructure)
+```bash
+# Either:
+# - Workflow runs automatically if triggered by infrastructure deployment
+# - Or manually: Actions → Deploy Lambda API
+```
+   - Deploys FastAPI code to Lambda
+   - Takes ~2-3 minutes
+
+3. **Deploy Training Container** (Automatic after infrastructure)
+```bash
+# Either:
+# - Workflow runs automatically if triggered by infrastructure deployment  
+# - Or manually: Actions → Deploy Training Container
+```
+   - Builds and pushes Docker image to ECR
+   - Takes ~3-5 minutes
+
+4. **Deploy Frontend** (Automatic dependency check)
+```bash
+# Either:
+# - Push changes to frontend/
+# - Or manually: Actions → Deploy Frontend
+```
+   - **Automatically checks if infrastructure exists**
+   - **Automatically retrieves API URL from Terraform**
+   - Builds Next.js static site with correct API URL
+   - Deploys to S3 and invalidates CloudFront
+   - Takes ~3-5 minutes
+
+### 🔄 Subsequent Deployments
+
+After initial setup, you can deploy components **independently**:
+
+| Component | Checks Infrastructure? | Gets API URL? | Independent? |
+|-----------|------------------------|---------------|--------------|
+| Infrastructure | N/A | N/A | ✅ Yes |
+| Lambda API | ✅ Auto-validates | N/A | ✅ Yes (if infra exists) |
+| Training Container | ✅ Auto-validates | N/A | ✅ Yes (if infra exists) |
+| Frontend | ✅ Auto-validates | ✅ Auto-retrieves | ✅ Yes (if infra exists) |
+
+### ❌ What Happens if You Deploy in Wrong Order?
+
+**Scenario: Deploy frontend before infrastructure**
+```
+✅ Workflow starts
+✅ Checks if infrastructure exists
+❌ Infrastructure not found
+❌ Workflow fails with clear message:
+   "Infrastructure must be deployed first!"
+   "Run 'Deploy Infrastructure' workflow for dev environment"
+```
+
+**No broken deployments** - the workflow protects you!
+
+### 🎯 How API URL is Passed (Automatic)
+
+You asked: *"¿Cómo se pasa la variable para la URL del backend?"*
+
+**Answer: Completely automatic via Terraform outputs!**
+
+```yaml
+# In deploy-frontend.yml workflow:
+
+# Step 1: Get API URL from Terraform (automatic)
+- name: Get Infrastructure Outputs
+  run: |
+    cd infrastructure/terraform
+    terraform workspace select ${{ env.ENVIRONMENT }}
+    API_URL=$(terraform output -raw api_gateway_url)  # ← Automatic!
+    echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+
+# Step 2: Build with API URL as environment variable
+- name: Build Frontend
+  env:
+    NEXT_PUBLIC_API_URL: ${{ steps.infra.outputs.api_url }}  # ← Injected automatically!
+  run: pnpm build
+```
+
+**No manual configuration needed!** The workflow:
+1. ✅ Checks infrastructure exists
+2. ✅ Retrieves API URL from Terraform state
+3. ✅ Builds frontend with correct API URL
+4. ✅ Deploys to S3
+5. ✅ Invalidates CloudFront cache
+
+### 🚦 Validation Flow
+
+```mermaid
+graph TD
+    A[Frontend Workflow Starts] --> B{Infrastructure exists?}
+    B -->|No| C[❌ Fail with instructions]
+    B -->|Yes| D[Get API URL from Terraform]
+    D --> E[Build Next.js with API URL]
+    E --> F{Frontend resources exist?}
+    F -->|No| G[⚠️ Build only, skip deploy]
+    F -->|Yes| H[Deploy to S3]
+    H --> I[Invalidate CloudFront]
+    I --> J[✅ Success]
+```
+
+### 📝 Manual Override (Optional)
+
+If you need to manually specify API URL (not recommended):
+
+```bash
+# Local development
+cd frontend
+export NEXT_PUBLIC_API_URL=https://your-api.execute-api.us-east-1.amazonaws.com/dev
+pnpm build
+```
+
+But in CI/CD, **it's always automatic** - no manual steps required!
 
 ---
 
