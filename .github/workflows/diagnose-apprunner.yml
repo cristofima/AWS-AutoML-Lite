@@ -10,7 +10,9 @@ on:
         description: 'Environment to diagnose'
         required: true
         type: choice
-        options: [dev, prod]
+        options:
+          - dev
+          - prod
 
 permissions:
   id-token: write
