@@ -80,6 +80,9 @@ jobs:
         run: terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
 
       - name: Terraform Plan
+        env:
+          TF_VAR_github_repository: https://github.com/${{ github.repository }}
+          TF_VAR_github_token: ${{ secrets.GH_PAT_AMPLIFY }}
         run: |
           terraform plan \
             -var-file="${{ env.ENVIRONMENT }}.tfvars" \
@@ -144,16 +147,32 @@ jobs:
         run: terraform workspace select ${{ env.ENVIRONMENT }}
 
       - name: Terraform Apply
+        env:
+          TF_VAR_github_repository: https://github.com/${{ github.repository }}
+          TF_VAR_github_token: ${{ secrets.GH_PAT_AMPLIFY }}
         run: terraform apply tfplan-${{ env.ENVIRONMENT }}
 
       - name: Capture Outputs
         id: outputs
         run: |
           API_URL=$(terraform output -raw api_gateway_url)
+          FRONTEND_URL=$(terraform output -raw frontend_url 2>/dev/null || echo "Not deployed")
+          AMPLIFY_APP_ID=$(terraform output -raw amplify_app_id 2>/dev/null || echo "Not deployed")
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "frontend_url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+          echo "amplify_app_id=$AMPLIFY_APP_ID" >> $GITHUB_OUTPUT
+          
           echo "### 🚀 Deployment Complete - ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
-          echo "**API URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
-          echo "**Region:** ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Backend API** | $API_URL |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Frontend** | $FRONTEND_URL |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Region** | ${{ env.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
+          if [ "$AMPLIFY_APP_ID" != "Not deployed" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Amplify Console:** [Open](https://console.aws.amazon.com/amplify/home?region=${{ env.AWS_REGION }}#/$AMPLIFY_APP_ID)" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Test API Health
         run: |

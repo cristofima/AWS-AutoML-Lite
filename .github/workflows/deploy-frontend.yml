@@ -1,0 +1,191 @@
+# Re-deploy Frontend to AWS Amplify (Manual Trigger)
+# 
+# NOTE: Amplify automatically deploys on push via webhooks.
+# This workflow is for manual re-deploys or troubleshooting.
+#
+# Amplify handles the actual build using amplify.yml
+
+name: Re-deploy Frontend
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Re-deploy to ${{ github.event.inputs.environment == 'prod' && 'PROD' || 'DEV' }}
+    runs-on: ubuntu-latest
+    
+    env:
+      ENVIRONMENT: ${{ github.event.inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get Amplify App ID
+        id: amplify
+        run: |
+          # Get Amplify app by name pattern
+          APP_NAME="automl-lite-${{ env.ENVIRONMENT }}"
+          
+          APP_ID=$(aws amplify list-apps --query "apps[?name=='${APP_NAME}'].appId" --output text)
+          
+          if [ -z "$APP_ID" ] || [ "$APP_ID" == "None" ]; then
+            echo "❌ Amplify app '${APP_NAME}' not found"
+            echo "app_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "✅ Found Amplify app: $APP_ID"
+          echo "app_id=$APP_ID" >> $GITHUB_OUTPUT
+          echo "app_exists=true" >> $GITHUB_OUTPUT
+
+      - name: App Not Found - Instructions
+        if: steps.amplify.outputs.app_exists == 'false'
+        run: |
+          echo "### ❌ Amplify App Not Found" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Setup Required:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Click **Create new app** → **GitHub**" >> $GITHUB_STEP_SUMMARY
+          echo "3. Connect repository: \`cristofima/AWS-AutoML-Lite\`" >> $GITHUB_STEP_SUMMARY
+          echo "4. Branch: \`${{ env.ENVIRONMENT == 'prod' && 'main' || 'dev' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "5. **App name:** \`automl-lite-${{ env.ENVIRONMENT }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "6. **Monorepo:** Yes, directory: \`frontend\`" >> $GITHUB_STEP_SUMMARY
+          echo "7. **Environment variables:**" >> $GITHUB_STEP_SUMMARY
+          echo "   - \`NEXT_PUBLIC_API_URL\` = API Gateway URL from Terraform" >> $GITHUB_STEP_SUMMARY
+          echo "8. Deploy" >> $GITHUB_STEP_SUMMARY
+          exit 1
+
+      - name: Get Branch Name
+        if: steps.amplify.outputs.app_exists == 'true'
+        id: branch
+        run: |
+          if [ "${{ env.ENVIRONMENT }}" == "prod" ]; then
+            BRANCH_NAME="main"
+          else
+            BRANCH_NAME="dev"
+          fi
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Start Amplify Build
+        if: steps.amplify.outputs.app_exists == 'true'
+        id: build
+        run: |
+          APP_ID="${{ steps.amplify.outputs.app_id }}"
+          BRANCH="${{ steps.branch.outputs.branch_name }}"
+          
+          echo "Starting Amplify build for app $APP_ID, branch $BRANCH..."
+          
+          # Start a new build
+          BUILD_RESULT=$(aws amplify start-job \
+            --app-id "$APP_ID" \
+            --branch-name "$BRANCH" \
+            --job-type RELEASE \
+            --output json)
+          
+          JOB_ID=$(echo "$BUILD_RESULT" | jq -r '.jobSummary.jobId')
+          echo "job_id=$JOB_ID" >> $GITHUB_OUTPUT
+          
+          echo "✅ Build started: Job ID $JOB_ID"
+
+      - name: Wait for Build
+        if: steps.amplify.outputs.app_exists == 'true'
+        run: |
+          APP_ID="${{ steps.amplify.outputs.app_id }}"
+          BRANCH="${{ steps.branch.outputs.branch_name }}"
+          JOB_ID="${{ steps.build.outputs.job_id }}"
+          
+          echo "Waiting for build to complete..."
+          
+          MAX_WAIT=600  # 10 minutes
+          INTERVAL=30
+          ELAPSED=0
+          
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATUS=$(aws amplify get-job \
+              --app-id "$APP_ID" \
+              --branch-name "$BRANCH" \
+              --job-id "$JOB_ID" \
+              --query 'job.summary.status' \
+              --output text)
+            
+            echo "Build status: $STATUS (${ELAPSED}s elapsed)"
+            
+            case $STATUS in
+              SUCCEED)
+                echo "✅ Build completed successfully!"
+                exit 0
+                ;;
+              FAILED|CANCELLED)
+                echo "❌ Build $STATUS"
+                exit 1
+                ;;
+              *)
+                sleep $INTERVAL
+                ELAPSED=$((ELAPSED + INTERVAL))
+                ;;
+            esac
+          done
+          
+          echo "⚠️ Build still running after ${MAX_WAIT}s - check Amplify console"
+          exit 0
+
+      - name: Get Deployment URL
+        if: steps.amplify.outputs.app_exists == 'true'
+        id: url
+        run: |
+          APP_ID="${{ steps.amplify.outputs.app_id }}"
+          BRANCH="${{ steps.branch.outputs.branch_name }}"
+          
+          # Get the default domain
+          DOMAIN=$(aws amplify get-branch \
+            --app-id "$APP_ID" \
+            --branch-name "$BRANCH" \
+            --query 'branch.displayName' \
+            --output text)
+          
+          # Construct URL
+          APP_DOMAIN=$(aws amplify get-app \
+            --app-id "$APP_ID" \
+            --query 'app.defaultDomain' \
+            --output text)
+          
+          FRONTEND_URL="https://${BRANCH}.${APP_DOMAIN}"
+          echo "frontend_url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+
+      - name: Deployment Summary
+        if: steps.amplify.outputs.app_exists == 'true'
+        run: |
+          echo "### 🚀 Frontend Deployed - ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "**Platform:** AWS Amplify (Next.js SSR)" >> $GITHUB_STEP_SUMMARY
+          echo "**App ID:** ${{ steps.amplify.outputs.app_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ steps.branch.outputs.branch_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Job ID:** ${{ steps.build.outputs.job_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend URL:** ${{ steps.url.outputs.frontend_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
