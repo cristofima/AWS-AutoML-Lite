@@ -150,9 +150,27 @@ pnpm lint
 
 **Built with ❤️ for AWS Community Builder Year 5**
 
+## 🚀 Deployment
 
-## Deploy on Vercel
+### AWS Amplify (Production)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This frontend is deployed using **AWS Amplify** with automatic deployments from GitHub.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Key Configuration:**
+- `amplify.yml` in repo root (monorepo format)
+- `.npmrc` with `node-linker=hoisted` for pnpm
+- Platform: `WEB_COMPUTE` (required for Next.js SSR)
+- Auto-deploy on push to `dev`/`main` branches
+
+**Environment Variables (set in Amplify Console):**
+- `NEXT_PUBLIC_API_URL` - API Gateway URL
+- `AMPLIFY_MONOREPO_APP_ROOT` - `frontend`
+
+See [FRONTEND_DEPLOYMENT_ANALYSIS.md](../docs/FRONTEND_DEPLOYMENT_ANALYSIS.md) for deployment decision rationale.
+
+### Why Not Vercel?
+
+We use AWS Amplify to keep all infrastructure within AWS ecosystem, enabling:
+- Terraform management via `aws_amplify_app`
+- Consistent IAM and security
+- Single cloud provider billing

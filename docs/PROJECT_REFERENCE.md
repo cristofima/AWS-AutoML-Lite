@@ -22,7 +22,7 @@
 ### High-Level Architecture
 
 ```
-User → CloudFront → S3 (Next.js Static Frontend)
+User → AWS Amplify (Next.js SSR Frontend)
          ↓
     API Gateway → Lambda Functions (FastAPI + Mangum)
          ↓
@@ -30,11 +30,9 @@ User → CloudFront → S3 (Next.js Static Frontend)
          ↓
     Lambda triggers AWS Batch Job
          ↓
-    Batch (Fargate Spot) → Train with AutoGluon/FLAML
+    Batch (Fargate Spot) → Train with FLAML
          ↓
     Save model to S3 + metrics to DynamoDB
-         ↓
-    EventBridge → Completion notification
 ```
 
 ### AWS Services Used
@@ -67,12 +65,13 @@ User → CloudFront → S3 (Next.js Static Frontend)
 
 ### Frontend
 - **Framework**: Next.js 14+ (App Router)
-- **Deployment**: S3 + CloudFront static hosting
+- **Deployment**: AWS Amplify (auto-deploy from Git)
+- **Build**: pnpm with SSR support
 - **Key Features**:
   - CSV upload with drag & drop
   - Column selection UI
   - Training history dashboard
-  - Results visualization
+  - Results visualization with embedded reports
 
 ### Backend
 - **Framework**: FastAPI + Mangum (for Lambda)

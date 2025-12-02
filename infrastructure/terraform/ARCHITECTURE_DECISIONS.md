@@ -247,7 +247,7 @@ Total:                             $25.00/month
 
 | Component | Uses Containers? | Justified? | Reason |
 |-----------|------------------|------------|--------|
-| **Frontend** | ❌ No | N/A | Static files (S3) |
+| **Frontend** | ❌ No | N/A | AWS Amplify (Next.js SSR) |
 | **Backend API** | ❌ No | ✅ Correct | Small size (~5MB), fast deploys |
 | **Training Job** | ✅ Yes | ✅ **JUSTIFIED** | Large deps (265MB), long runtime (>15min) |
 

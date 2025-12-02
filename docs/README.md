@@ -33,6 +33,18 @@ Complete documentation for AWS AutoML Lite platform.
   - Cost comparison
   - Technical justification
 
+### Lessons & Analysis
+- **[LESSONS_LEARNED.md](./LESSONS_LEARNED.md)** - Challenges, solutions & best practices
+  - Docker & container management
+  - Environment variables cascade
+  - ML & feature engineering
+  - Frontend deployment evolution (App Runner → Amplify)
+
+- **[FRONTEND_DEPLOYMENT_ANALYSIS.md](./FRONTEND_DEPLOYMENT_ANALYSIS.md)** - Frontend deployment decision
+  - Why Amplify was selected
+  - App Runner, S3+CloudFront, ECS analysis
+  - Cost comparison
+
 ### Component-Specific
 - **[Backend README](../backend/README.md)** - API development guide *(pending)*
 - **[Frontend README](../frontend/README.md)** - Next.js setup
@@ -47,7 +59,9 @@ Complete documentation for AWS AutoML Lite platform.
 docs/
 ├── README.md                    # This file - Documentation index
 ├── QUICKSTART.md                # Deployment guide (start here)
-└── PROJECT_REFERENCE.md         # Complete technical docs
+├── PROJECT_REFERENCE.md         # Complete technical docs
+├── LESSONS_LEARNED.md           # Challenges & solutions
+└── FRONTEND_DEPLOYMENT_ANALYSIS.md  # Frontend deployment decision
 
 .github/
 ├── SETUP_CICD.md                # CI/CD setup
@@ -77,6 +91,10 @@ tools/
 
 **Questions about architecture?** Read [ARCHITECTURE_DECISIONS.md](../infrastructure/terraform/ARCHITECTURE_DECISIONS.md)
 
+**Ran into issues?** Check [LESSONS_LEARNED.md](./LESSONS_LEARNED.md)
+
+**Frontend deployment?** See [FRONTEND_DEPLOYMENT_ANALYSIS.md](./FRONTEND_DEPLOYMENT_ANALYSIS.md)
+
 ---
 
-**Last Updated:** 2025-11-28
+**Last Updated:** 2025-12-01
