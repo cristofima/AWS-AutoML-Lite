@@ -16,34 +16,34 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 <details>
 <summary><strong>Configure Training</strong> - Select target column with auto problem detection</summary>
 
-![Configure - Target Selection](screenshoots/configure-page-2-target-selection.png)
+![Configure - Target Selection](screenshots/configure-page-2-target-selection.png)
 </details>
 
 <details>
 <summary><strong>Training Progress</strong> - Real-time training status monitoring</summary>
 
-![Training - Running](screenshoots/training-page-2-running.png)
+![Training - Running](screenshots/training-page-2-running.png)
 </details>
 
 <details>
 <summary><strong>Results - Model Metrics</strong> - View accuracy, F1 score, precision & recall</summary>
 
-![Results - Metrics](screenshoots/results-page-1-metrics.png)
+![Results - Metrics](screenshots/results-page-1-metrics.png)
 </details>
 
 <details>
 <summary><strong>Results - Feature Importance</strong> - Understand which features matter most</summary>
 
-![Results - Feature Importance](screenshoots/training-report-2-feature-importance.png)
+![Results - Feature Importance](screenshots/training-report-2-feature-importance.png)
 </details>
 
 <details>
 <summary><strong>EDA Report</strong> - Comprehensive exploratory data analysis</summary>
 
-![EDA Report - Overview](screenshoots/eda-report-1-overview.png)
+![EDA Report - Overview](screenshots/eda-report-1-overview.png)
 </details>
 
-> 📁 More screenshots available in the [screenshoots](./screenshoots/) folder including full page captures of Configure (3), Training (3), Results (3), EDA Report (6), and Training Report (4)
+> 📁 More screenshots available in the [screenshots](./screenshots/) folder including full page captures of Configure (3), Training (3), Results (3), EDA Report (6), and Training Report (4)
 
 ## 🏗️ Architecture
 
