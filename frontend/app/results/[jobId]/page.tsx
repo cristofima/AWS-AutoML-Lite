@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
 import { getJobDetails, JobDetails, downloadWithFilename } from '@/lib/api';
-import { formatMetric, getProblemTypeIcon } from '@/lib/utils';
+import { formatMetric, getProblemTypeIcon, formatDateTime } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Header from '@/components/Header';
 
@@ -127,7 +126,7 @@ export default function ResultsPage() {
             <div>
               <span className="text-gray-600">Completed At:</span>
               <p className="text-gray-900 mt-1">
-                {job.completed_at ? new Date(job.completed_at).toLocaleString() : 'N/A'}
+                {job.completed_at ? formatDateTime(job.completed_at) : 'N/A'}
               </p>
             </div>
             <div>
