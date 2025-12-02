@@ -495,7 +495,7 @@ param(
 
 ### Frontend Deployment
 1. ✅ Research industry best practices BEFORE committing to a deployment service
-2. ✅ Use ECS Fargate + ALB for Next.js SSR/standalone applications
+2. ✅ Use AWS Amplify for Next.js SSR applications (purpose-built for Next.js)
 3. ✅ Use S3 + CloudFront only for static exports (SSG)
 4. ✅ Configure health check grace periods (60s+) for framework initialization
 5. ✅ Set health check intervals to 30s, not aggressive 5-10s defaults
@@ -533,7 +533,7 @@ param(
 | Use default FLAML metrics | Explicitly set for multiclass |
 | Add training params without env vars | Update `containerOverrides` |
 | Test only in AWS | Use docker-compose locally |
-| Use App Runner for Next.js SSR | Use ECS Fargate + ALB |
+| Use App Runner for Next.js SSR | Use AWS Amplify for Next.js SSR |
 | Start health checks immediately | Configure 60s grace period |
 | Hardcode deployment architecture | Research industry best practices first |
 
@@ -571,7 +571,7 @@ The most critical lessons learned:
 3. **Feature Engineering:** Always filter useless columns automatically
 4. **IAM Permissions:** Both Lambda and Batch need DynamoDB access
 5. **Local Testing:** Docker Compose with mounted credentials enables fast iteration
-6. **Frontend Deployment Architecture:** Research industry best practices before committing - App Runner is NOT suitable for Next.js SSR, use ECS Fargate + ALB
+6. **Frontend Deployment Architecture:** Research industry best practices before committing - App Runner is NOT suitable for Next.js SSR, use AWS Amplify instead
 7. **Health Check Configuration:** Configure 60s grace periods for frameworks with non-trivial startup times
 
 These lessons transformed the development process from trial-and-error to predictable, efficient workflows. The frontend deployment challenges alone saved future iterations from 80+ minutes of debugging by identifying architectural mismatches early.
