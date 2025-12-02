@@ -16,6 +16,20 @@ export default function ResultsPage() {
   const [job, setJob] = useState<JobDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copiedDocker, setCopiedDocker] = useState(false);
+  const [copiedPython, setCopiedPython] = useState(false);
+
+  const handleCopyDocker = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedDocker(true);
+    setTimeout(() => setCopiedDocker(false), 2000);
+  };
+
+  const handleCopyPython = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedPython(true);
+    setTimeout(() => setCopiedPython(false), 2000);
+  };
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -294,11 +308,15 @@ docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0
 
 # Batch predictions from CSV
 docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl -i /data/test.csv -o /data/predictions.csv`;
-                  navigator.clipboard.writeText(code);
+                  handleCopyDocker(code);
                 }}
-                className="absolute top-2 right-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs rounded transition-colors cursor-pointer"
+                className={`absolute top-2 right-2 px-3 py-1 text-xs rounded transition-all cursor-pointer ${
+                  copiedDocker 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                }`}
               >
-                📋 Copy
+                {copiedDocker ? '✓ Copied!' : '📋 Copy'}
               </button>
             </div>
           </div>
@@ -340,6 +358,37 @@ X = new_data[preprocessor.feature_columns]
 predictions = model.predict(X)
 print(f"Predictions: {predictions}")`}</code>
                 </pre>
+                <button
+                  onClick={() => {
+                    const code = `import joblib
+import pandas as pd
+
+# Load the model package
+model_package = joblib.load('model_${job.job_id.slice(0, 8)}.pkl')
+
+model = model_package['model']
+preprocessor = model_package['preprocessor']
+print(f"Features: {preprocessor.feature_columns}")
+
+# Prepare your data
+new_data = pd.DataFrame([{
+    # Add your features here
+}])
+
+# Predict
+X = new_data[preprocessor.feature_columns]
+predictions = model.predict(X)
+print(f"Predictions: {predictions}")`;
+                    handleCopyPython(code);
+                  }}
+                  className={`absolute top-2 right-2 px-3 py-1 text-xs rounded transition-all cursor-pointer ${
+                    copiedPython 
+                      ? 'bg-green-600 text-white' 
+                      : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                  }`}
+                >
+                  {copiedPython ? '✓ Copied!' : '📋 Copy'}
+                </button>
               </div>
             </details>
           </div>
