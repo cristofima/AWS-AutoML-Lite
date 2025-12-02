@@ -197,6 +197,14 @@ curl -X POST http://localhost:8000/train \
     "target_column": "target",
     "config": {"time_budget": 60}
   }'
+
+# Start training with auto-calculated time budget
+curl -X POST http://localhost:8000/train \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dataset_id": "your-dataset-id",
+    "target_column": "target"
+  }'
 ```
 
 ### Using Python
@@ -247,3 +255,27 @@ Or mount `~/.aws` when using Docker (already configured in docker-compose.yml).
 pip install pytest pytest-asyncio httpx
 pytest --cov=api
 ```
+
+## Smart Features
+
+### Auto-calculated Time Budget
+
+When `time_budget` is not provided in the training request, the API automatically calculates an optimal value based on dataset size:
+
+| Dataset Rows | Time Budget |
+|--------------|-------------|
+| < 1,000 | 120s (2 min) |
+| 1,000 - 10,000 | 300s (5 min) |
+| 10,000 - 50,000 | 600s (10 min) |
+| > 50,000 | 1,200s (20 min) |
+
+### Problem Type Detection
+
+The API automatically detects whether a target column is for **Classification** or **Regression**:
+
+- **Categorical columns** → Classification
+- **Numeric columns with < 20 unique values** → Classification
+- **Numeric columns with < 5% unique ratio** → Classification
+- **Other numeric columns** → Regression
+
+This detection is performed both in the API (for UI display) and in the training container (for model training).

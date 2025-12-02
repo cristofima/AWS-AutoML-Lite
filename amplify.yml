@@ -14,7 +14,7 @@ applications:
             - echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >> .env.production
             - pnpm run build
       artifacts:
-        # For Next.js 14+ SSR, baseDirectory must be .next
+        # For Next.js 16+ SSR, baseDirectory must be .next
         baseDirectory: .next
         files:
           - '**/*'

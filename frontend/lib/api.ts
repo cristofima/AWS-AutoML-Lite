@@ -9,6 +9,12 @@ export interface UploadResponse {
   expires_in: number;
 }
 
+export interface ColumnStats {
+  unique: number;
+  missing: number;
+  missing_pct: number;
+}
+
 export interface DatasetMetadata {
   dataset_id: string;
   filename: string;
@@ -17,6 +23,7 @@ export interface DatasetMetadata {
   columns: string[];
   row_count: number;
   column_types: Record<string, string>;
+  column_stats?: Record<string, ColumnStats>;
   problem_type?: 'classification' | 'regression';
 }
 

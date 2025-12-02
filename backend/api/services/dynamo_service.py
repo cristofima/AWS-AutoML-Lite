@@ -25,6 +25,16 @@ class DynamoDBService:
             return float(obj)
         return obj
     
+    def _convert_floats_to_decimal(self, obj: Any) -> Any:
+        """Convert float objects to Decimal for DynamoDB storage"""
+        if isinstance(obj, list):
+            return [self._convert_floats_to_decimal(i) for i in obj]
+        elif isinstance(obj, dict):
+            return {k: self._convert_floats_to_decimal(v) for k, v in obj.items()}
+        elif isinstance(obj, float):
+            return Decimal(str(obj))
+        return obj
+    
     # Dataset operations
     def create_dataset(self, dataset: DatasetMetadata) -> bool:
         """Create a new dataset record"""
@@ -141,7 +151,9 @@ class DynamoDBService:
     def save_dataset_metadata(self, metadata: Dict) -> bool:
         """Save dataset metadata to DynamoDB"""
         try:
-            self.datasets_table.put_item(Item=metadata)
+            # Convert floats to Decimal for DynamoDB compatibility
+            item = self._convert_floats_to_decimal(metadata)
+            self.datasets_table.put_item(Item=item)
             return True
         except ClientError as e:
             raise Exception(f"Error saving dataset metadata: {str(e)}")

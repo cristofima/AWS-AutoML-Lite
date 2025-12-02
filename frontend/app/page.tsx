@@ -1,28 +1,10 @@
-import Link from 'next/link';
 import FileUpload from '@/components/FileUpload';
+import Header from '@/components/Header';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">🤖</span>
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900">AWS AutoML Lite</h1>
-            </div>
-            <Link 
-              href="/history" 
-              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-            >
-              View History →
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Header showViewHistory />
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -86,7 +68,7 @@ export default function Home() {
       <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-12">
         <div className="text-center text-gray-600 text-sm">
           <p>Built with FastAPI, FLAML, and AWS Batch</p>
-          <p className="mt-1">~$7-10/month operational cost</p>
+          <p className="mt-1">~$10-25/month operational cost</p>
         </div>
       </footer>
     </div>

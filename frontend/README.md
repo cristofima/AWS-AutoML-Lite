@@ -1,6 +1,6 @@
 # AWS AutoML Lite - Frontend
 
-Next.js 14 frontend for AWS AutoML Lite platform.
+Next.js 16 frontend for AWS AutoML Lite platform.
 
 ## 🚀 Quick Start
 
@@ -66,10 +66,10 @@ frontend/
    - Feature overview
 
 2. **Configure (`/configure/[datasetId]`)**
-   - Column selection
+   - Column selection with unique value counts
    - Target column picker
-   - Problem type detection
-   - Training time budget configuration
+   - Smart problem type detection (Classification vs Regression)
+   - Optional time budget configuration (auto-calculated if empty)
 
 3. **Training Status (`/training/[jobId]`)**
    - Real-time status updates (polling every 5s)
@@ -90,7 +90,7 @@ frontend/
 
 ## 🔧 Tech Stack
 
-- **Framework**: Next.js 14 with App Router
+- **Framework**: Next.js 16 with App Router
 - **Language**: TypeScript
 - **Styling**: TailwindCSS
 - **Charts**: Recharts
@@ -119,6 +119,21 @@ const { jobs, next_token } = await listJobs(10);
 ```
 
 ## 🎯 Development
+
+### Smart Features
+
+#### Problem Type Detection
+The UI automatically detects and displays the problem type for each column:
+- **Classification** (purple badge): Categorical columns OR numeric columns with < 20 unique values or < 5% unique ratio
+- **Regression** (blue badge): Numeric columns with many unique values
+
+Each column shows the number of unique values to help users make informed decisions.
+
+#### Time Budget
+- Optional field with placeholder showing recommended value (300s)
+- Validation: 60-3600 seconds
+- If left empty, backend auto-calculates based on dataset size
+- Real-time validation with error messages
 
 ### Run Development Server
 ```bash

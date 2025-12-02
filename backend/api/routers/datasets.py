@@ -49,8 +49,9 @@ async def confirm_upload(dataset_id: str):
         row_count = len(df)
         file_size = len(csv_content)
         
-        # Determine column types
+        # Determine column types and stats
         column_types = {}
+        column_stats = {}
         for col in columns:
             dtype = str(df[col].dtype)
             if 'int' in dtype or 'float' in dtype:
@@ -59,6 +60,14 @@ async def confirm_upload(dataset_id: str):
                 column_types[col] = 'datetime'
             else:
                 column_types[col] = 'categorical'
+            
+            # Calculate column stats
+            missing_count = int(df[col].isna().sum())
+            column_stats[col] = {
+                'unique': int(df[col].nunique()),
+                'missing': missing_count,
+                'missing_pct': round(missing_count / row_count * 100, 2) if row_count > 0 else 0
+            }
         
         # Create metadata object
         metadata = DatasetMetadata(
@@ -68,7 +77,8 @@ async def confirm_upload(dataset_id: str):
             uploaded_at=datetime.now(timezone.utc).isoformat(),
             columns=columns,
             row_count=row_count,
-            column_types=column_types
+            column_types=column_types,
+            column_stats=column_stats
         )
         
         # Save metadata to DynamoDB

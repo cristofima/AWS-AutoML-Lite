@@ -13,7 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AWS AutoML Lite"
+  title: {
+    default: "AWS AutoML Lite",
+    template: "%s | AWS AutoML Lite"
+  },
+  description: "Train ML models in minutes with AutoML. Upload your CSV, select a target, and let FLAML find the best model."
 };
 
 export default function RootLayout({

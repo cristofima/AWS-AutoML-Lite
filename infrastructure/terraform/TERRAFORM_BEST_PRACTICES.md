@@ -661,7 +661,7 @@ resource "aws_amplify_branch" "main" {
 **Status:** ✅ **EXCELLENT**
 
 **Why Amplify (not S3 + CloudFront):**
-- Next.js 14+ requires SSR for dynamic routes (`/configure/[datasetId]`)
+- Next.js 16+ requires SSR for dynamic routes (`/configure/[datasetId]`)
 - S3 + CloudFront only works for static exports (SSG)
 - Amplify provides native Next.js SSR support with `WEB_COMPUTE` platform
 - Auto-deploy on push to connected branches

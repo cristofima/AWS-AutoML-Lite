@@ -20,7 +20,7 @@
 
 | Requirement | Amplify | S3+CloudFront | App Runner | ECS+ALB |
 |-------------|---------|---------------|------------|---------|
-| Next.js 14+ SSR | ✅ Native | ❌ Static only | ❌ Health fails | ✅ Works |
+| Next.js 16+ SSR | ✅ Native | ❌ Static only | ❌ Health fails | ✅ Works |
 | Dynamic routes | ✅ Works | ❌ Needs export | ❌ N/A | ✅ Works |
 | Auto deploy | ✅ Webhooks | ⚠️ Manual | ⚠️ Manual | ⚠️ Manual |
 | **Cost/month** | **$5-15** | $1-2 | $12-15 | $27-40 |
@@ -93,7 +93,7 @@ resource "aws_amplify_app" "frontend" {
   name         = "${var.project_name}-${var.environment}"
   repository   = var.github_repository
   access_token = var.github_token
-  platform     = "WEB_COMPUTE"  # Required for Next.js 14+ SSR
+  platform     = "WEB_COMPUTE"  # Required for Next.js 16+ SSR
 
   environment_variables = {
     NEXT_PUBLIC_API_URL       = aws_api_gateway_stage.main.invoke_url

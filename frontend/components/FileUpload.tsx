@@ -112,7 +112,7 @@ export default function FileUpload() {
             </div>
             <button
               onClick={() => setFile(null)}
-              className="text-sm text-red-600 hover:text-red-700"
+              className="text-sm text-red-600 hover:text-red-700 cursor-pointer"
             >
               Remove file
             </button>
@@ -133,7 +133,7 @@ export default function FileUpload() {
           onClick={handleUpload}
           disabled={isUploading}
           className={`
-            w-full py-3 px-6 rounded-lg font-medium text-white
+            w-full py-3 px-6 rounded-lg font-medium text-white cursor-pointer
             ${isUploading 
               ? 'bg-gray-400 cursor-not-allowed' 
               : 'bg-indigo-600 hover:bg-indigo-700'

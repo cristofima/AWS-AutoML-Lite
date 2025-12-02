@@ -4,12 +4,12 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 
 ## 🚀 Features
 
-- **Automatic Problem Detection**: Classifies tasks as regression or classification
+- **Smart Problem Detection**: Automatically classifies tasks as regression or classification based on data characteristics
 - **Automated EDA**: Generates comprehensive exploratory data analysis reports
-- **Model Training**: Uses FLAML for efficient AutoML
+- **Model Training**: Uses FLAML for efficient AutoML with auto-calculated time budgets
 - **Training History**: Track all your experiments with DynamoDB
-- **Cost-Effective**: ~$7-10/month (vs $50-200 for SageMaker Autopilot)
-- **Portable Models**: Download trained models (.pkl) for local use
+- **Cost-Effective**: ~$10-25/month (vs $50-200 for SageMaker Autopilot)
+- **Portable Models**: Download trained models (.pkl) for local use with Docker
 
 ## 🏗️ Architecture
 
@@ -126,9 +126,19 @@ pnpm install && pnpm dev
 ## 📝 Usage
 
 1. Upload a CSV file
-2. Select your target column
-3. Wait for training to complete
-4. Download your model and view metrics
+2. Select your target column (UI shows unique values and auto-detects problem type)
+3. Optionally configure time budget (auto-calculated based on dataset size if left empty)
+4. Wait for training to complete
+5. Download your model and view metrics
+
+### Smart Features
+
+| Feature | Description |
+|---------|-------------|
+| **Problem Type Detection** | Automatically detects Classification vs Regression based on column characteristics |
+| **Smart Classification** | Numeric columns with <20 unique values or <5% unique ratio → Classification |
+| **Auto Time Budget** | Based on dataset size: <1K rows→2min, 1K-10K→5min, 10K-50K→10min, >50K→20min |
+| **Column Statistics** | Shows unique values count for each column to help with target selection |
 
 ## 🔮 Using Your Trained Model
 
@@ -162,7 +172,6 @@ See [scripts/README.md](./scripts/README.md) for detailed documentation.
 | Training | [backend/training/](./backend/training/) | ML training container |
 | Terraform | [infrastructure/terraform/README.md](./infrastructure/terraform/README.md) | Infrastructure as Code |
 | Scripts | [scripts/README.md](./scripts/README.md) | Prediction & local training |
-| Tools | [tools/README.md](./tools/README.md) | Manual operations & verification |
 
 ## 🤝 Contributing
 
@@ -186,4 +195,4 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 ---
 
-**Status**: 🚧 MVP In Progress (Backend ✅ | Training ✅ | Frontend 🚧 Deploying to Amplify)
+**Status**: ✅ MVP Complete (Backend ✅ | Training ✅ | Frontend ✅)

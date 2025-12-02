@@ -7,86 +7,66 @@ applyTo: "**"
 
 ## Architecture Overview
 
-Serverless AutoML platform with **split architecture** - understanding this is critical:
+Serverless AutoML platform with **split architecture**:
 
 | Component | Technology | Deployment | Why |
 |-----------|------------|------------|-----|
 | Backend API | FastAPI + Mangum | Lambda ZIP (5MB) | Fast cold starts, simple deploys |
 | Training | FLAML + scikit-learn | Docker on AWS Batch | 265MB deps, >15min runtime exceed Lambda limits |
-| Frontend | Next.js 14 App Router | AWS Amplify | Native SSR support, monorepo-friendly |
-| Infrastructure | Terraform | HCL in `infrastructure/terraform/` | State management, reproducibility |
+| Frontend | Next.js 16 App Router | AWS Amplify | SSR support |
+| Infrastructure | Terraform | `infrastructure/terraform/` | State management |
 
-**Key insight:** Containers are used ONLY for training because ML dependencies (265MB) exceed Lambda's 250MB limit and jobs can run 2-60min (Lambda max: 15min).
+**Key insight:** Containers ONLY for training - ML deps (265MB) exceed Lambda's 250MB limit.
 
 ## Critical: Environment Variable Cascade
 
 Training container is **autonomous** - receives ALL context via environment variables, never calls the API:
 
 ```
-Terraform (lambda.tf) → Lambda env vars
-    ↓
-batch_service.py containerOverrides → Batch container
-    ↓  
-train.py reads via os.getenv() → Direct DynamoDB/S3 operations
+lambda.tf → Lambda env vars → batch_service.py containerOverrides → train.py os.getenv()
 ```
 
-**⚠️ If you add a parameter to `train.py`, you MUST add it to `containerOverrides` in `batch_service.py` or the job will silently fail.**
+**⚠️ Adding a param to `train.py`? You MUST also add it to `containerOverrides` in `batch_service.py`.**
 
 Required env vars in training container: `DATASET_ID`, `TARGET_COLUMN`, `JOB_ID`, `TIME_BUDGET`, `S3_BUCKET_DATASETS`, `S3_BUCKET_MODELS`, `S3_BUCKET_REPORTS`, `DYNAMODB_JOBS_TABLE`, `REGION`
 
 ## Key Data Flows
 
-**Upload:** Frontend → `POST /upload` → presigned URL → direct S3 PUT → `POST /datasets/{id}/confirm` → analyze CSV → save to DynamoDB
+**Upload:** Frontend → `POST /upload` → presigned URL → S3 PUT → `POST /datasets/{id}/confirm` → DynamoDB
 
-**Training:** `POST /train` → create DynamoDB job → submit Batch job → container runs autonomously → updates DynamoDB directly → frontend polls `GET /jobs/{id}`
+**Training:** `POST /train` → DynamoDB job → Batch job → container writes directly to DynamoDB → frontend polls `GET /jobs/{id}`
 
 ## Code Patterns
 
 ### Backend (Python)
 
-**Configuration** - All AWS resource names via environment variables (`backend/api/utils/helpers.py`):
-```python
-class Settings(BaseSettings):
-    s3_bucket_datasets: str = "automl-lite-dev-datasets-123"  # From lambda.tf
-    dynamodb_jobs_table: str = "automl-lite-dev-training-jobs"
-```
-Never hardcode bucket/table names - they include AWS account ID suffixes.
+**Configuration** (`backend/api/utils/helpers.py`): All AWS resource names via `Settings(BaseSettings)`. Never hardcode bucket/table names - they include AWS account ID suffixes.
 
 **Layered architecture:**
-- `routers/*.py` - Thin HTTP layer, validation only, delegates to services
+- `routers/*.py` - Thin HTTP layer, delegates to services
 - `services/*.py` - AWS SDK calls (boto3), business logic
 - `models/schemas.py` - Pydantic schemas for all requests/responses
 
-**Lambda handler** (`backend/api/main.py`): Just `handler = Mangum(app)` - write normal FastAPI.
+**Lambda handler**: `handler = Mangum(app)` in `main.py` - write normal FastAPI.
 
 ### Training Container (Python)
 
-**Feature preprocessing** (`backend/training/preprocessor.py`):
-- Auto-detects ID columns via regex patterns and data characteristics
-- Uses `feature-engine` for constant/duplicate column detection  
-- Problem type: `<20 unique values or <5% unique ratio` = classification
-
-**Model training** (`backend/training/model_trainer.py`):
-- Uses FLAML with estimators: `['lgbm', 'rf', 'extra_tree']` (xgboost excluded due to bugs)
-- For multiclass, explicitly use `metric='accuracy'`
+- **Preprocessing** (`preprocessor.py`): Auto-detects ID columns, uses `feature-engine` for constant/duplicate detection
+- **Problem type**: `<20 unique values OR <5% unique ratio` = classification
+- **Model training** (`model_trainer.py`): FLAML with `['lgbm', 'rf', 'extra_tree']` - xgboost excluded (bugs)
+- **Multiclass**: Explicitly set `metric='accuracy'`
 
 ### Frontend (TypeScript)
 
-**API client** (`frontend/lib/api.ts`) - Centralized, typed interfaces matching backend Pydantic schemas. All API calls go through here.
-
-**Client components** - Use `'use client'` ONLY for: file uploads, polling, form interactions. Server components by default.
-
-**Dynamic routes** - Cast `useParams()` results: `const datasetId = params.datasetId as string;`
+- **API client** (`frontend/lib/api.ts`): Centralized, typed interfaces matching backend Pydantic schemas
+- **Client components**: Use `'use client'` ONLY for file uploads, polling, forms - server components by default
+- **Dynamic routes**: Cast `useParams()` results: `const datasetId = params.datasetId as string`
 
 ### Infrastructure (Terraform)
 
-**Naming:** All resources use `${var.project_name}-${var.environment}` prefix (e.g., `automl-lite-dev-datasets`).
-
-**Key files:**
-- `lambda.tf` - Lambda env vars (source of truth for resource names)
-- `iam.tf` - Permissions (Batch task role needs DynamoDB write access!)
-- `outputs.tf` - API URL, ECR URL for deployment scripts
-- `amplify.tf` - Frontend deployment with `WEB_COMPUTE` platform for SSR
+- **Naming**: All resources use `${var.project_name}-${var.environment}` prefix
+- **Key files**: `lambda.tf` (env vars source of truth), `iam.tf` (permissions), `outputs.tf` (URLs), `amplify.tf` (frontend)
+- **IAM**: Batch task role needs DynamoDB write access - both Lambda AND Batch write to DynamoDB
 
 ## Development Commands
 
@@ -113,30 +93,34 @@ docker tag automl-training:latest "$EcrUrl:latest"; docker push "$EcrUrl:latest"
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Lambda ZIP too large | Included `training/` folder | Check exclude patterns in CI build |
-| Batch job instant FAILED | Container not in ECR | Push image, verify with `aws ecr describe-images` |
-| Job stuck RUNNING | Missing DynamoDB permissions | Add `dynamodb:UpdateItem` to Batch task role in `iam.tf` |
-| Frontend 404/CORS errors | Wrong API URL | Get URL from `terraform output api_gateway_url` |
-| Training wrong problem type | Threshold mismatch | Check `<20 unique values = classification` in `preprocessor.py` |
+| Batch job instant FAILED | Container not in ECR | `docker push` + verify with `aws ecr describe-images` |
+| Job stuck RUNNING | Missing DynamoDB perms | Add `dynamodb:UpdateItem` to Batch task role in `iam.tf` |
 | New train.py param ignored | Not in containerOverrides | Add to `batch_service.py` environment list |
+| Frontend CORS errors | Wrong API URL | Get from `terraform output api_gateway_url` |
 
 ## File Reference by Task
 
 **Adding an API endpoint:** `routers/*.py` → `schemas.py` → `services/*.py` → `frontend/lib/api.ts`
 
-**Modifying training:** `train.py` (orchestration) → `preprocessor.py` → `model_trainer.py` → `eda.py`
+**Modifying training:** `train.py` → `preprocessor.py` → `model_trainer.py` → **ALSO update** `batch_service.py` containerOverrides
 
-**Adding AWS resources:** Create `<service>.tf` → `variables.tf` → `outputs.tf` → `iam.tf` for permissions
+**Adding AWS resources:** `<service>.tf` → `variables.tf` → `outputs.tf` → `iam.tf` for permissions
+
+## Schema Sync Pattern
+
+Backend Pydantic and Frontend TypeScript schemas must match. When adding fields:
+1. `backend/api/models/schemas.py` - Add to Pydantic model
+2. `frontend/lib/api.ts` - Add to TypeScript interface
+3. Example: `JobResponse` (backend) ↔ `JobDetails` (frontend)
 
 ## Debugging
 
 - Lambda logs: `/aws/lambda/automl-lite-{env}-api`
 - Batch logs: `/aws/batch/automl-lite-{env}-training`
-- Local API test: Visit `http://localhost:8000/docs` (Swagger UI)
-- Check training env vars: Compare `batch_service.py` containerOverrides with `train.py` os.getenv() calls
+- Local API: `http://localhost:8000/docs` (Swagger UI)
+- Env var mismatch: Compare `batch_service.py` containerOverrides with `train.py` os.getenv()
 
-## Key Documentation
+## Key Docs
 
-- `docs/LESSONS_LEARNED.md` - Critical debugging insights and architectural decisions
-- `docs/QUICKSTART.md` - Complete deployment guide
+- `docs/LESSONS_LEARNED.md` - Critical debugging insights
 - `infrastructure/terraform/ARCHITECTURE_DECISIONS.md` - Why Lambda + Batch split
