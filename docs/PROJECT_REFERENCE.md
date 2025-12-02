@@ -397,17 +397,17 @@ S3 Requests:                    $0.05
 DynamoDB (on-demand):           $1.00
 Lambda (API - 100K invokes):    $0.80
 API Gateway (100K requests):    $1.00
-Batch + Fargate Spot:           $3.00
-Amplify (Frontend SSR):         $5.00
+Batch + Fargate Spot:           $2-5 (depends on jobs)
+Amplify (Frontend SSR):         $5-15 (depends on traffic)
 CloudWatch Logs:                $0.50
 
-Total: ~$12-15/month
+Total: ~$10-25/month
 ```
 
 **Comparison:**
-- SageMaker Autopilot: $50-200/month (with endpoints)
-- This solution: $7-10/month
-- **Savings: ~85-95%**
+- SageMaker with real-time endpoint: ~$150-300/month (ml.c5.xlarge 24/7)
+- This solution: $12-15/month
+- **Savings: ~80-95%**
 
 ---
 
@@ -607,7 +607,7 @@ joblib==1.3.2
 
 **Technical:**
 - Backend infrastructure deployed ✅
-- Cost under $10/month ✅ (~$7/month actual)
+- Cost under $25/month ✅ (~$10-25/month depending on usage)
 - CI/CD with GitHub Actions ✅
 - Lambda cold start < 2s ✅
 - Component-specific deployments ✅

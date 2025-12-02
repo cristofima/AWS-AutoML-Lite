@@ -8,7 +8,7 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 - **Automated EDA**: Generates comprehensive exploratory data analysis reports
 - **Model Training**: Uses FLAML for efficient AutoML with auto-calculated time budgets
 - **Training History**: Track all your experiments with DynamoDB
-- **Cost-Effective**: ~$10-25/month (vs $50-200 for SageMaker Autopilot)
+- **Cost-Effective**: ~$10-25/month (vs ~$150+/month for SageMaker real-time endpoints)
 - **Portable Models**: Download trained models (.pkl) for local use with Docker
 
 ## 📸 Screenshots

@@ -668,7 +668,7 @@ But in CI/CD, **it's always automatic** - no manual steps required!
 - **Previous approach:** ~100-200 deployments/month (full deploys only)
 
 ### AWS Costs
-- Infrastructure: ~$7-10/month (as documented)
+- Infrastructure: ~$10-25/month (depends on usage)
 - No additional CI/CD costs
 - Monitor: AWS Cost Explorer with Project tag filter
 

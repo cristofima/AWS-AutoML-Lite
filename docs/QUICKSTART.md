@@ -157,7 +157,7 @@ terraform output
 | **CloudWatch Logs** | Monitoring | $0.50/month |
 | **IAM Roles** | Permissions | Free |
 
-**💰 Total Estimated Cost:** ~$7-10/month for moderate usage
+**💰 Total Estimated Cost:** ~$10-25/month for moderate usage
 
 ---
 
