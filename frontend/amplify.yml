@@ -3,14 +3,16 @@ frontend:
   phases:
     preBuild:
       commands:
-        - corepack enable
-        - corepack prepare pnpm@latest --activate
+        # Install pnpm globally (more reliable than corepack in Amplify)
+        - npm install -g pnpm
         - pnpm install --frozen-lockfile
     build:
       commands:
+        # Set the API URL environment variable for the build
         - echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >> .env.production
         - pnpm run build
   artifacts:
+    # For Next.js SSR, baseDirectory should be .next
     baseDirectory: .next
     files:
       - '**/*'
