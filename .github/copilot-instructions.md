@@ -13,7 +13,7 @@ Serverless AutoML platform with **split architecture** - understanding this is c
 |-----------|------------|------------|-----|
 | Backend API | FastAPI + Mangum | Lambda ZIP (5MB) | Fast cold starts, simple deploys |
 | Training | FLAML + scikit-learn | Docker on AWS Batch | 265MB deps, >15min runtime exceed Lambda limits |
-| Frontend | Next.js 14 App Router | Static (S3/CloudFront) | SSG for cost efficiency |
+| Frontend | Next.js 14 App Router | AWS Amplify | Native SSR support, monorepo-friendly |
 | Infrastructure | Terraform | HCL in `infrastructure/terraform/` | State management, reproducibility |
 
 **Key insight:** Containers are used ONLY for training because ML dependencies (265MB) exceed Lambda's 250MB limit and jobs can run 2-60min (Lambda max: 15min).
@@ -32,6 +32,8 @@ train.py reads via os.getenv() → Direct DynamoDB/S3 operations
 
 **⚠️ If you add a parameter to `train.py`, you MUST add it to `containerOverrides` in `batch_service.py` or the job will silently fail.**
 
+Required env vars in training container: `DATASET_ID`, `TARGET_COLUMN`, `JOB_ID`, `TIME_BUDGET`, `S3_BUCKET_DATASETS`, `S3_BUCKET_MODELS`, `S3_BUCKET_REPORTS`, `DYNAMODB_JOBS_TABLE`, `REGION`
+
 ## Key Data Flows
 
 **Upload:** Frontend → `POST /upload` → presigned URL → direct S3 PUT → `POST /datasets/{id}/confirm` → analyze CSV → save to DynamoDB
@@ -48,33 +50,33 @@ class Settings(BaseSettings):
     s3_bucket_datasets: str = "automl-lite-dev-datasets-123"  # From lambda.tf
     dynamodb_jobs_table: str = "automl-lite-dev-training-jobs"
 ```
-Never hardcode bucket/table names.
+Never hardcode bucket/table names - they include AWS account ID suffixes.
 
 **Layered architecture:**
-- `routers/*.py` - Thin, validation only, delegates to services
-- `services/*.py` - AWS SDK calls (boto3)
+- `routers/*.py` - Thin HTTP layer, validation only, delegates to services
+- `services/*.py` - AWS SDK calls (boto3), business logic
 - `models/schemas.py` - Pydantic schemas for all requests/responses
 
 **Lambda handler** (`backend/api/main.py`): Just `handler = Mangum(app)` - write normal FastAPI.
 
+### Training Container (Python)
+
+**Feature preprocessing** (`backend/training/preprocessor.py`):
+- Auto-detects ID columns via regex patterns and data characteristics
+- Uses `feature-engine` for constant/duplicate column detection  
+- Problem type: `<20 unique values or <5% unique ratio` = classification
+
+**Model training** (`backend/training/model_trainer.py`):
+- Uses FLAML with estimators: `['lgbm', 'rf', 'extra_tree']` (xgboost excluded due to bugs)
+- For multiclass, explicitly use `metric='accuracy'`
+
 ### Frontend (TypeScript)
 
-**API client** (`frontend/lib/api.ts`) - Centralized, typed interfaces matching backend Pydantic schemas:
-```typescript
-export async function uploadAndConfirm(file: File): Promise<DatasetMetadata> {
-  const { dataset_id, upload_url } = await requestUploadUrl(file.name);
-  await uploadFile(upload_url, file);
-  return await confirmUpload(dataset_id);
-}
-```
+**API client** (`frontend/lib/api.ts`) - Centralized, typed interfaces matching backend Pydantic schemas. All API calls go through here.
 
 **Client components** - Use `'use client'` ONLY for: file uploads, polling, form interactions. Server components by default.
 
-**Dynamic routes with useParams** (`app/configure/[datasetId]/page.tsx`):
-```typescript
-const params = useParams();
-const datasetId = params.datasetId as string;
-```
+**Dynamic routes** - Cast `useParams()` results: `const datasetId = params.datasetId as string;`
 
 ### Infrastructure (Terraform)
 
@@ -84,15 +86,19 @@ const datasetId = params.datasetId as string;
 - `lambda.tf` - Lambda env vars (source of truth for resource names)
 - `iam.tf` - Permissions (Batch task role needs DynamoDB write access!)
 - `outputs.tf` - API URL, ECR URL for deployment scripts
+- `amplify.tf` - Frontend deployment with `WEB_COMPUTE` platform for SSR
 
 ## Development Commands
 
 ```powershell
-# Backend (local)
-cd backend; uvicorn api.main:app --reload  # http://localhost:8000/docs
+# Backend (local) - http://localhost:8000/docs
+cd backend; uvicorn api.main:app --reload
 
-# Frontend (local) 
-cd frontend; pnpm dev  # Set NEXT_PUBLIC_API_URL=http://localhost:8000 in .env.local
+# Frontend (local) - Set NEXT_PUBLIC_API_URL=http://localhost:8000 in .env.local
+cd frontend; pnpm dev
+
+# Test training container locally (requires uploaded dataset)
+docker-compose --profile training run training
 
 # Deploy Lambda only
 cd infrastructure/terraform; terraform apply -target=aws_lambda_function.api
@@ -107,11 +113,12 @@ docker tag automl-training:latest "$EcrUrl:latest"; docker push "$EcrUrl:latest"
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Lambda ZIP too large | Included `training/` folder | Check `lambda.tf` excludes list |
+| Lambda ZIP too large | Included `training/` folder | Check exclude patterns in CI build |
 | Batch job instant FAILED | Container not in ECR | Push image, verify with `aws ecr describe-images` |
 | Job stuck RUNNING | Missing DynamoDB permissions | Add `dynamodb:UpdateItem` to Batch task role in `iam.tf` |
 | Frontend 404/CORS errors | Wrong API URL | Get URL from `terraform output api_gateway_url` |
-| Training wrong problem type | Threshold mismatch | Check `<10 unique values = classification` rule in `preprocessor.py` |
+| Training wrong problem type | Threshold mismatch | Check `<20 unique values = classification` in `preprocessor.py` |
+| New train.py param ignored | Not in containerOverrides | Add to `batch_service.py` environment list |
 
 ## File Reference by Task
 
@@ -127,3 +134,9 @@ docker tag automl-training:latest "$EcrUrl:latest"; docker push "$EcrUrl:latest"
 - Batch logs: `/aws/batch/automl-lite-{env}-training`
 - Local API test: Visit `http://localhost:8000/docs` (Swagger UI)
 - Check training env vars: Compare `batch_service.py` containerOverrides with `train.py` os.getenv() calls
+
+## Key Documentation
+
+- `docs/LESSONS_LEARNED.md` - Critical debugging insights and architectural decisions
+- `docs/QUICKSTART.md` - Complete deployment guide
+- `infrastructure/terraform/ARCHITECTURE_DECISIONS.md` - Why Lambda + Batch split
