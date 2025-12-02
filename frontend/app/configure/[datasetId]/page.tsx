@@ -13,16 +13,49 @@ export default function ConfigurePage() {
 
   const [metadata, setMetadata] = useState<DatasetMetadata | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<string>('');
-  const [timeBudget, setTimeBudget] = useState<number>(300);
+  const [timeBudget, setTimeBudget] = useState<number | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Detect problem type based on column type
+  // Time budget validation
+  const MIN_TIME_BUDGET = 60;
+  const MAX_TIME_BUDGET = 3600;
+  
+  const isTimeBudgetValid = timeBudget === undefined || 
+    (timeBudget >= MIN_TIME_BUDGET && timeBudget <= MAX_TIME_BUDGET);
+  
+  const timeBudgetError = timeBudget !== undefined && !isTimeBudgetValid
+    ? `Time budget must be between ${MIN_TIME_BUDGET} and ${MAX_TIME_BUDGET} seconds`
+    : null;
+
+  // Detect problem type based on column type and unique values
+  // Classification if: categorical OR numeric with <20 unique values or <5% unique ratio
   const detectProblemType = (columnName: string): 'classification' | 'regression' => {
     if (!metadata) return 'regression';
+    
     const columnType = metadata.column_types[columnName];
-    return columnType === 'categorical' ? 'classification' : 'regression';
+    
+    // Categorical columns are always classification
+    if (columnType === 'categorical') {
+      return 'classification';
+    }
+    
+    // For numeric columns, check unique values
+    if (columnType === 'numeric' && metadata.column_stats) {
+      const stats = metadata.column_stats[columnName];
+      if (stats) {
+        const uniqueCount = stats.unique;
+        const uniqueRatio = metadata.row_count > 0 ? uniqueCount / metadata.row_count : 1;
+        
+        // If less than 20 unique values OR less than 5% unique ratio → classification
+        if (uniqueCount < 20 || uniqueRatio < 0.05) {
+          return 'classification';
+        }
+      }
+    }
+    
+    return 'regression';
   };
 
   useEffect(() => {
@@ -53,9 +86,7 @@ export default function ConfigurePage() {
       const response = await startTraining({
         dataset_id: datasetId,
         target_column: selectedTarget,
-        config: {
-          time_budget: timeBudget,
-        },
+        config: timeBudget ? { time_budget: timeBudget } : undefined,
       });
 
       // Redirect to training status page
@@ -164,10 +195,19 @@ export default function ConfigurePage() {
                     <div className="font-medium text-gray-900">{column}</div>
                     <div className="text-sm text-gray-500">
                       Type: {columnTypes[column] || 'unknown'}
+                      {metadata?.column_stats?.[column] && (
+                        <span className="ml-2">
+                          ({metadata.column_stats[column].unique.toLocaleString()} unique values)
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700">
-                    {columnTypes[column] === 'categorical' ? 'Classification' : 'Regression'}
+                  <div className={`text-xs px-2 py-1 rounded ${
+                    detectProblemType(column) === 'classification' 
+                      ? 'bg-purple-100 text-purple-700' 
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {detectProblemType(column) === 'classification' ? 'Classification' : 'Regression'}
                   </div>
                 </label>
               ))}
@@ -211,19 +251,27 @@ export default function ConfigurePage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Time Budget (seconds)
+                  Time Budget (seconds) <span className="text-gray-400 font-normal">- Optional</span>
                 </label>
                 <input
                   type="number"
-                  value={timeBudget}
-                  onChange={(e) => setTimeBudget(parseInt(e.target.value))}
-                  min="60"
-                  max="3600"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  value={timeBudget ?? ''}
+                  onChange={(e) => setTimeBudget(e.target.value ? parseInt(e.target.value) : undefined)}
+                  placeholder="300"
+                  min={60}
+                  max={3600}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Recommended: 300 seconds for small datasets, 600-1800 for larger ones
+                  Recommended: 300 seconds for small datasets, 600-1800 for larger ones.
+                  <br />
+                  Leave empty for auto-calculation based on dataset size. Range: 60-3600 seconds.
                 </p>
+                {timeBudgetError && (
+                  <p className="text-xs text-red-600 mt-1">
+                    {timeBudgetError}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -245,10 +293,10 @@ export default function ConfigurePage() {
             </button>
             <button
               onClick={handleStartTraining}
-              disabled={!selectedTarget || isStarting}
+              disabled={!selectedTarget || isStarting || !isTimeBudgetValid}
               className={`
                 flex-1 py-3 px-6 rounded-lg font-medium text-white cursor-pointer
-                ${!selectedTarget || isStarting
+                ${!selectedTarget || isStarting || !isTimeBudgetValid
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-indigo-600 hover:bg-indigo-700'
                 }
