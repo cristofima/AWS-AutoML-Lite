@@ -34,7 +34,7 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 <details>
 <summary><strong>Results - Feature Importance</strong> - Understand which features matter most</summary>
 
-![Results - Feature Importance](screenshoots/results-page-2-feature-importance.png)
+![Results - Feature Importance](screenshoots/training-report-2-feature-importance.png)
 </details>
 
 <details>
