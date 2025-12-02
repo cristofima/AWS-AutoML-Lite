@@ -15,20 +15,7 @@ Commit to main → Plan → Manual Approval → Deploy to PROD → Build Contain
 
 ## Prerequisites
 
-### 1. Setup Terraform Backend (One-Time)
-
-Run the setup script to create S3 backend for Terraform state:
-
-```powershell
-# From project root
-.\tools\setup-backend.ps1
-```
-
-This creates:
-- S3 bucket for Terraform state (with encryption + versioning)
-- DynamoDB table for state locking
-
-### 2. AWS OIDC Provider Setup
+### 1. AWS OIDC Provider Setup
 
 Create an OIDC provider in AWS to allow GitHub Actions to assume IAM roles without long-lived credentials.
 
@@ -131,16 +118,6 @@ aws iam get-role --role-name GitHubActionsDeployRole --query 'Role.Arn' --output
 ---
 
 ## GitHub Configuration
-
-### 1. Verify Deployment (Optional)
-
-After deploying infrastructure, verify all resources:
-
-```powershell
-.\tools\verify-resources.ps1
-```
-
-This validates API Gateway, Lambda, S3, DynamoDB, Batch, ECR, CloudWatch, and IAM resources.
 
 ### 2. Add Repository Secrets
 

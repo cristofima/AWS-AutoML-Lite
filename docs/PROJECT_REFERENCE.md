@@ -166,11 +166,6 @@ aws-automl-lite/
 │       └── scripts/
 │           └── Dockerfile.lambda   # Lambda build artifact
 │
-├── tools/                          # Manual operations
-│   ├── setup-backend.ps1           # Terraform S3 backend setup
-│   ├── verify-resources.ps1        # Resource validation
-│   └── README.md
-│
 ├── .github/
 │   ├── copilot-instructions.md     # AI coding guidelines
 │   ├── SETUP_CICD.md               # CI/CD setup guide

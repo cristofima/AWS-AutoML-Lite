@@ -49,7 +49,6 @@ Complete documentation for AWS AutoML Lite platform.
 - **[Backend README](../backend/README.md)** - API development guide *(pending)*
 - **[Frontend README](../frontend/README.md)** - Next.js setup
 - **[Terraform README](../infrastructure/terraform/README.md)** - Infrastructure basics
-- **[Tools README](../tools/README.md)** - Manual operations
 
 ---
 
@@ -74,9 +73,6 @@ infrastructure/terraform/
 
 frontend/
 └── README.md                    # Frontend setup
-
-tools/
-└── README.md                    # Manual tools
 ```
 
 ---

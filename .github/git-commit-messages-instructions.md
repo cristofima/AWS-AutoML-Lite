@@ -115,7 +115,7 @@ GitHub Actions, deployment scripts, automated testing, ECR pushes.
 ci(github-actions): add Lambda deployment workflow
 ci: add automated ECR image push script
 ci: add Terraform validation on PR
-ci(scripts): add verify-resources health check
+ci(workflows): add frontend deployment to Amplify
 ```
 
 ### `style` - Formatting Only
