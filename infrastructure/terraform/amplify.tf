@@ -56,7 +56,7 @@ resource "aws_amplify_app" "frontend" {
 
   # Environment variables available during build
   environment_variables = {
-    NEXT_PUBLIC_API_URL = aws_api_gateway_stage.main.invoke_url
+    NEXT_PUBLIC_API_URL       = aws_api_gateway_stage.main.invoke_url
     AMPLIFY_MONOREPO_APP_ROOT = "frontend"
   }
 
