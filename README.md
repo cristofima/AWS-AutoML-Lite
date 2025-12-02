@@ -14,7 +14,7 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 ## 🏗️ Architecture
 
 ```
-User → CloudFront → S3 (Frontend - Static Next.js)
+User → AWS Amplify (Frontend - Next.js SSR)
          ↓
     API Gateway → Lambda (FastAPI - No containers, direct code)
          ↓
@@ -76,6 +76,8 @@ terraform output api_gateway_url
 - [PROJECT_REFERENCE.md](./docs/PROJECT_REFERENCE.md) - Technical documentation
 - [SETUP_CICD.md](./.github/SETUP_CICD.md) - CI/CD with GitHub Actions
 - [ARCHITECTURE_DECISIONS.md](./infrastructure/terraform/ARCHITECTURE_DECISIONS.md) - Container usage rationale
+- [LESSONS_LEARNED.md](./docs/LESSONS_LEARNED.md) - Challenges, solutions & best practices
+- [FRONTEND_DEPLOYMENT_ANALYSIS.md](./docs/FRONTEND_DEPLOYMENT_ANALYSIS.md) - Frontend deployment decision analysis
 
 ## 💰 Cost Estimation
 
@@ -83,12 +85,11 @@ Based on moderate usage (20 training jobs/month):
 
 | Service | Monthly Cost |
 |---------|-------------|
-| S3 Storage | $0.23 |
-| DynamoDB | $1.00 |
-| Lambda | $0.80 |
-| API Gateway | $1.00 |
-| AWS Batch (Fargate Spot) | $3.00 |
-| **Total** | **~$7-10/month** |
+| AWS Amplify (Frontend) | $5-15 |
+| Lambda + API Gateway | $1-2 |
+| AWS Batch (Fargate Spot) | $2-5 |
+| S3 + DynamoDB | $1-2 |
+| **Total** | **~$10-25/month** |
 
 ## 🧪 Local Development
 
@@ -152,13 +153,24 @@ docker run --rm -v ${PWD}:/data automl-predict /data/model.pkl -i /data/test.csv
 
 See [scripts/README.md](./scripts/README.md) for detailed documentation.
 
+## 📁 Component Documentation
+
+| Component | README | Description |
+|-----------|--------|-------------|
+| Backend | [backend/README.md](./backend/README.md) | API development & Docker Compose |
+| Frontend | [frontend/README.md](./frontend/README.md) | Next.js setup & pages |
+| Training | [backend/training/](./backend/training/) | ML training container |
+| Terraform | [infrastructure/terraform/README.md](./infrastructure/terraform/README.md) | Infrastructure as Code |
+| Scripts | [scripts/README.md](./scripts/README.md) | Prediction & local training |
+| Tools | [tools/README.md](./tools/README.md) | Manual operations & verification |
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-MIT License - see LICENSE file for details
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
 ## 👤 Author
 
@@ -174,4 +186,4 @@ MIT License - see LICENSE file for details
 
 ---
 
-**Status**: 🚧 MVP In Progress (Backend Complete ✅ | Frontend ~60% 🚧)
+**Status**: 🚧 MVP In Progress (Backend ✅ | Training ✅ | Frontend 🚧 Deploying to Amplify)

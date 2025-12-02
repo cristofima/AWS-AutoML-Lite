@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-**Status**: ✅ Configuration is well-structured with minor improvements recommended
+**Status**: ✅ Configuration is production-ready and follows best practices
 
 **Current State:**
 - ✅ Remote state with S3 backend + DynamoDB locking
@@ -10,7 +10,9 @@
 - ✅ Environment-specific tfvars files
 - ✅ Dynamic data sources for VPC/subnet discovery
 - ✅ Consistent naming convention with `${project_name}-${environment}` prefix
-- ⚠️ Minor improvements needed for scalability and maintainability
+- ✅ Variable validation blocks for all critical inputs
+- ✅ Sensitive data properly marked in outputs
+- ✅ AWS Amplify for Next.js SSR frontend hosting
 
 **Alignment with Workflows:**
 - ✅ All workflows correctly use workspace pattern: `select || new`
@@ -81,7 +83,7 @@ terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{
 
 ---
 
-### ⚠️ **3. Variable Validation (Enhancement Opportunity)**
+### ✅ **3. Variable Validation**
 
 **Current Implementation:**
 ```hcl
@@ -89,23 +91,7 @@ variable "environment" {
   description = "Environment name (dev, prod)"
   type        = string
   default     = "dev"
-}
-```
 
-**Status:** ⚠️ **GOOD - Can be Enhanced**
-
-**Microsoft Learn Best Practice:**
-> "It is a good practice to always run terraform validate against your Terraform files before pushing them to your version control system."
-
-**Enhancement Recommendations:**
-
-#### 3.1 Add Variable Validation
-```hcl
-variable "environment" {
-  description = "Environment name (dev, prod)"
-  type        = string
-  default     = "dev"
-  
   validation {
     condition     = contains(["dev", "prod"], var.environment)
     error_message = "Environment must be either 'dev' or 'prod'."
@@ -116,10 +102,10 @@ variable "lambda_memory_size" {
   description = "Lambda function memory size in MB"
   type        = number
   default     = 1024
-  
+
   validation {
     condition     = var.lambda_memory_size >= 128 && var.lambda_memory_size <= 10240
-    error_message = "Lambda memory must be between 128 MB and 10240 MB."
+    error_message = "Lambda memory must be between 128 MB and 10240 MB (AWS limits)."
   }
 }
 
@@ -127,80 +113,59 @@ variable "aws_region" {
   description = "AWS region"
   type        = string
   default     = "us-east-1"
-  
+
   validation {
-    condition     = can(regex("^[a-z]{2}-[a-z]+-\\d{1}$", var.aws_region))
-    error_message = "AWS region must be in format: us-east-1, eu-west-1, etc."
+    condition     = can(regex("^[a-z]{2}-[a-z]+-[0-9]{1}$", var.aws_region))
+    error_message = "AWS region must be in valid format (e.g., us-east-1, eu-west-2)."
   }
 }
 ```
 
-#### 3.2 Add Descriptions to Outputs
-```hcl
-# Current outputs are good but can add usage examples
-output "api_gateway_url" {
-  description = "API Gateway endpoint URL for the AutoML API. Use this URL in frontend NEXT_PUBLIC_API_URL."
-  value       = aws_api_gateway_stage.main.invoke_url
-}
+**Status:** ✅ **EXCELLENT - IMPLEMENTED**
 
-output "ecr_repository_url" {
-  description = "ECR repository URL for training container. Format: <account>.dkr.ecr.<region>.amazonaws.com/<repo>"
-  value       = aws_ecr_repository.training.repository_url
-}
-```
+**Microsoft Learn Best Practice:**
+> "It is a good practice to always run terraform validate against your Terraform files before pushing them to your version control system."
 
-**Priority:** MEDIUM - Improves error detection before deployment
+**Recommendation:** ✅ No changes needed - validation blocks already implemented
 
 ---
 
-### ⚠️ **4. Sensitive Data Handling**
+### ✅ **4. Sensitive Data Handling**
 
 **Current Implementation:**
-- No explicit `sensitive = true` flags on outputs
-- State contains resource ARNs, bucket names, etc.
-
-**Status:** ⚠️ **NEEDS ATTENTION**
-
-**Microsoft Learn Best Practice (TFNFR19):**
-> "If variable's type is object and contains one or more fields that would be assigned to a sensitive argument, then this whole variable SHOULD be declared as sensitive = true"
-
-**Enhancement Recommendations:**
-
-#### 4.1 Mark Sensitive Outputs
 ```hcl
 output "lambda_function_arn" {
   description = "Lambda function ARN"
   value       = aws_lambda_function.api.arn
-  sensitive   = true  # ARNs can reveal account structure
+  sensitive   = true
 }
 
 output "batch_job_definition" {
   description = "Batch job definition ARN"
   value       = aws_batch_job_definition.training.arn
-  sensitive   = true  # Contains account ID
+  sensitive   = true
 }
 
-# Keep non-sensitive outputs visible
-output "api_gateway_url" {
-  description = "API Gateway endpoint URL"
-  value       = aws_api_gateway_stage.main.invoke_url
-  # Not marked sensitive - needed for frontend config
+output "amplify_webhook_url" {
+  description = "Amplify webhook URL for manual deployments"
+  value       = length(aws_amplify_webhook.main) > 0 ? aws_amplify_webhook.main[0].url : null
+  sensitive   = true
+}
+
+variable "github_token" {
+  description = "GitHub personal access token for Amplify"
+  type        = string
+  sensitive   = true
+  default     = ""
 }
 ```
 
-#### 4.2 Add .gitignore for Sensitive Files
-```gitignore
-# Already in .gitignore but verify:
-terraform.tfstate
-terraform.tfstate.backup
-.terraform/
-*.tfvars  # Except dev.tfvars and prod.tfvars templates
-*.tfplan
-override.tf
-override.tf.json
-```
+**Status:** ✅ **EXCELLENT - IMPLEMENTED**
 
-**Priority:** HIGH - Security best practice
+**Microsoft Learn Best Practice (TFNFR19):**
+> "If variable's type is object and contains one or more fields that would be assigned to a sensitive argument, then this whole variable SHOULD be declared as sensitive = true"
+
+**Recommendation:** ✅ No changes needed - sensitive data properly handled
 
 ---
 
@@ -234,7 +199,7 @@ s3_lifecycle_days  = 365
 
 ---
 
-### ⚠️ **6. Resource Naming and Tagging**
+### ✅ **6. Resource Naming and Tagging**
 
 **Current Implementation:**
 ```hcl
@@ -258,52 +223,13 @@ provider "aws" {
 }
 ```
 
-**Status:** ✅ **GOOD - Can be Enhanced**
+**Status:** ✅ **EXCELLENT**
 
-**Enhancement Recommendations:**
+- Consistent naming convention (`${project}-${env}-${resource}`)
+- Default tags applied to all resources automatically
+- Additional resource-specific tags for Lambda, Batch, Amplify
 
-#### 6.1 Add Cost Allocation Tags
-```hcl
-provider "aws" {
-  region = var.aws_region
-
-  default_tags {
-    tags = {
-      Project     = "AWS-AutoML-Lite"
-      Environment = var.environment
-      ManagedBy   = "Terraform"
-      CostCenter  = var.cost_center  # Add to variables
-      Owner       = var.owner_email  # Add to variables
-      Workspace   = terraform.workspace
-    }
-  }
-}
-```
-
-#### 6.2 Add Resource-Specific Tags
-```hcl
-resource "aws_lambda_function" "api" {
-  # ... existing config ...
-  
-  tags = {
-    Name        = "${local.name_prefix}-api"
-    Component   = "Backend-API"
-    Runtime     = "Python3.11"
-  }
-}
-
-resource "aws_batch_job_definition" "training" {
-  # ... existing config ...
-  
-  tags = {
-    Name        = "${local.name_prefix}-training"
-    Component   = "ML-Training"
-    ContainerImage = "FLAML-AutoML"
-  }
-}
-```
-
-**Priority:** MEDIUM - Improves cost tracking and resource management
+**Recommendation:** ✅ No changes needed - optional cost allocation tags can be added later
 
 ---
 
@@ -361,8 +287,10 @@ infrastructure/terraform/
 ├── batch.tf                   # AWS Batch (compute, queue, job def)
 ├── ecr.tf                     # ECR repository
 ├── iam.tf                     # IAM roles and policies
+├── amplify.tf                 # AWS Amplify frontend hosting (Next.js SSR)
 ├── terraform.tfvars           # Dev environment variables
 ├── prod.tfvars                # Prod environment variables
+├── dev.tfvars                 # Dev environment overrides
 ├── .gitignore                 # Excludes state files
 ├── README.md                  # Infrastructure documentation
 ├── ARCHITECTURE_DECISIONS.md  # Why containers for training
@@ -552,67 +480,35 @@ infrastructure/terraform/tests/
 
 ## Priority Recommendations
 
-### 🔴 **HIGH PRIORITY - Security**
+### ✅ **COMPLETED - Security**
 
-1. **Add `sensitive = true` to outputs containing ARNs/IDs**
-   - File: `outputs.tf`
-   - Impact: Prevents accidental exposure in logs
-   - Effort: 5 minutes
+1. ~~**Add `sensitive = true` to outputs containing ARNs/IDs**~~ ✅ DONE
+   - `lambda_function_arn` - marked sensitive
+   - `batch_job_definition` - marked sensitive
+   - `amplify_webhook_url` - marked sensitive
+   - `github_token` variable - marked sensitive
 
-```hcl
-output "lambda_function_arn" {
-  description = "Lambda function ARN"
-  value       = aws_lambda_function.api.arn
-  sensitive   = true
-}
+### ✅ **COMPLETED - Maintainability**
 
-output "batch_job_definition" {
-  description = "Batch job definition ARN"
-  value       = aws_batch_job_definition.training.arn
-  sensitive   = true
-}
-```
+2. ~~**Add variable validation blocks**~~ ✅ DONE
+   - `environment` - validates dev/prod only
+   - `aws_region` - validates region format
+   - `lambda_memory_size` - validates 128-10240 range
+   - `lambda_timeout` - validates 1-900 range
 
-### 🟡 **MEDIUM PRIORITY - Maintainability**
+3. **Add cost allocation tags** ⚠️ OPTIONAL
+   - Current tags are sufficient for project tracking
+   - Add `CostCenter` and `Owner` tags when needed for billing
 
-2. **Add variable validation blocks**
-   - File: `variables.tf`
-   - Impact: Catches configuration errors before deployment
-   - Effort: 15 minutes
+### 🟢 **LOW PRIORITY - Future Enhancements**
 
-```hcl
-variable "environment" {
-  # ... existing ...
-  validation {
-    condition     = contains(["dev", "prod"], var.environment)
-    error_message = "Environment must be either 'dev' or 'prod'."
-  }
-}
-```
+4. **Add Terraform modules for reusable components**
+   - When to do: If deploying multiple similar environments
+   - Example: S3 bucket module with lifecycle policies
 
-3. **Add cost allocation tags**
-   - File: `main.tf` (provider block)
-   - Impact: Better cost tracking across environments
-   - Effort: 10 minutes
-
-```hcl
-default_tags {
-  tags = {
-    Project     = "AWS-AutoML-Lite"
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-    CostCenter  = var.cost_center
-    Workspace   = terraform.workspace
-  }
-}
-```
-
-### 🟢 **LOW PRIORITY - Documentation**
-
-4. **Enhance output descriptions with usage examples**
-   - File: `outputs.tf`
-   - Impact: Improved developer experience
-   - Effort: 5 minutes
+5. **Add Terraform tests**
+   - When to do: For production-critical infrastructure
+   - Tool: Terratest or terraform test (built-in)
 
 ---
 
@@ -622,15 +518,16 @@ default_tags {
 |----------|--------|-------|
 | Remote State | ✅ Excellent | S3 + DynamoDB locking |
 | Workspace Isolation | ✅ Excellent | Dev/Prod separated |
-| Variable Validation | ⚠️ Good | Add validation blocks |
-| Sensitive Data | ⚠️ Needs Work | Mark sensitive outputs |
+| Variable Validation | ✅ Excellent | Validation blocks implemented |
+| Sensitive Data | ✅ Excellent | Sensitive outputs marked |
 | Environment Config | ✅ Excellent | Separate tfvars files |
 | Resource Naming | ✅ Excellent | Consistent prefix pattern |
-| Tagging Strategy | ⚠️ Good | Add cost tags |
+| Tagging Strategy | ✅ Excellent | Default tags + resource tags |
 | VPC Auto-Discovery | ✅ Excellent | Dynamic data sources |
 | CI/CD Integration | ✅ Excellent | Validation + format checks |
+| Frontend Hosting | ✅ Excellent | AWS Amplify with SSR |
 
-**Overall Grade: A- (90%)**
+**Overall Grade: A (95%)**
 
 ---
 
@@ -671,40 +568,20 @@ terraform fmt -check -recursive
 
 ## Implementation Priority
 
-**Phase 1 - Security (Do Now):**
-```bash
-# 1. Mark sensitive outputs
-# File: infrastructure/terraform/outputs.tf
-# Time: 5 minutes
-```
+All priority items have been **completed**:
 
-**Phase 2 - Validation (Do This Week):**
-```bash
-# 2. Add variable validation blocks
-# File: infrastructure/terraform/variables.tf
-# Time: 15 minutes
+| Phase | Task | Status |
+|-------|------|--------|
+| Security | Mark sensitive outputs | ✅ Done |
+| Security | Sensitive variables (`github_token`) | ✅ Done |
+| Validation | Variable validation blocks | ✅ Done |
+| Validation | Environment/region/memory validation | ✅ Done |
+| Frontend | AWS Amplify integration | ✅ Done |
 
-# 3. Test with invalid values
-terraform plan -var="environment=staging"  # Should fail
-```
-
-**Phase 3 - Cost Tracking (Do This Sprint):**
-```bash
-# 4. Add cost allocation tags
-# File: infrastructure/terraform/main.tf
-# Time: 10 minutes
-
-# 5. Add new variables
-# File: infrastructure/terraform/variables.tf
-variable "cost_center" { default = "Engineering" }
-variable "owner_email" { default = "devops@company.com" }
-```
-
-**Phase 4 - Documentation (Do When Time Permits):**
-```bash
-# 6. Enhance output descriptions
-# 7. Add inline comments for complex logic
-```
+**Optional Future Enhancements:**
+- Add cost allocation tags (CostCenter, Owner)
+- Create reusable Terraform modules
+- Implement Terraform tests with Terratest
 
 ---
 
@@ -735,24 +612,69 @@ variable "owner_email" { default = "devops@company.com" }
 
 ## Conclusion
 
-**Your Terraform configuration is well-structured and follows most AWS/Microsoft best practices.**
+**Your Terraform configuration is production-ready and follows AWS/Microsoft best practices.**
 
-**Strengths:**
-- ✅ Proper remote state with locking
+**Implemented Best Practices:**
+- ✅ Remote state with S3 + DynamoDB locking
 - ✅ Environment isolation via workspaces
+- ✅ Variable validation blocks
+- ✅ Sensitive data handling
 - ✅ Dynamic resource discovery
 - ✅ Consistent naming conventions
-- ✅ CI/CD integration
+- ✅ CI/CD integration with format checks
+- ✅ AWS Amplify for Next.js SSR
 
-**Quick Wins (30 minutes total):**
-1. Mark sensitive outputs (5 min)
-2. Add variable validation (15 min)
-3. Add cost allocation tags (10 min)
-
-**Result:** Configuration becomes more secure, maintainable, and cost-transparent with minimal effort.
+**See Also:**
+- [LESSONS_LEARNED.md](../../docs/LESSONS_LEARNED.md) - Challenges and solutions
+- [ARCHITECTURE_DECISIONS.md](./ARCHITECTURE_DECISIONS.md) - Why containers for training
 
 ---
 
-**Last Updated:** 2025-11-28
-**Reviewed Against:** Microsoft Learn Terraform Best Practices + AWS Well-Architected Framework
-**Status:** Production-Ready with Minor Enhancements Recommended
+## ☁️ **10. Frontend Hosting (AWS Amplify)**
+
+**Current Implementation:**
+```hcl
+# amplify.tf
+resource "aws_amplify_app" "frontend" {
+  count = local.amplify_enabled ? 1 : 0
+
+  name       = "${var.project_name}-${var.environment}"
+  repository = var.github_repository
+  access_token = var.github_token
+  platform = "WEB_COMPUTE"  # Required for Next.js SSR
+
+  environment_variables = {
+    NEXT_PUBLIC_API_URL       = aws_api_gateway_stage.main.invoke_url
+    AMPLIFY_MONOREPO_APP_ROOT = "frontend"
+  }
+}
+
+resource "aws_amplify_branch" "main" {
+  count       = local.amplify_enabled ? 1 : 0
+  app_id      = aws_amplify_app.frontend[0].id
+  branch_name = var.environment == "prod" ? "main" : "dev"
+  framework   = "Next.js - SSR"
+  stage       = var.environment == "prod" ? "PRODUCTION" : "DEVELOPMENT"
+}
+```
+
+**Status:** ✅ **EXCELLENT**
+
+**Why Amplify (not S3 + CloudFront):**
+- Next.js 14+ requires SSR for dynamic routes (`/configure/[datasetId]`)
+- S3 + CloudFront only works for static exports (SSG)
+- Amplify provides native Next.js SSR support with `WEB_COMPUTE` platform
+- Auto-deploy on push to connected branches
+
+**Lessons Learned:**
+- `amplify.yml` must be at **repo root** for monorepos
+- Use `WEB_COMPUTE` platform (not `WEB`) for SSR
+- Use `.npmrc` with `node-linker=hoisted` for pnpm compatibility
+
+**See Also:** [LESSONS_LEARNED.md - Section 5: Frontend Deployment Architecture](../../docs/LESSONS_LEARNED.md)
+
+---
+
+**Last Updated:** 2025-12-01
+**Reviewed Against:** Microsoft Learn Terraform Best Practices + AWS Well-Architected Framework + Lessons Learned
+**Status:** Production-Ready ✅

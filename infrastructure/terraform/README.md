@@ -36,6 +36,7 @@ Core Terraform modules:
 
 - `api_gateway_url` - API endpoint
 - `ecr_repository_url` - Container registry
+- `amplify_app_url` - Frontend URL (Amplify)
 - `*_bucket_name` - S3 buckets for datasets/models/reports
 
 ## Cleanup
@@ -53,5 +54,17 @@ terraform destroy
 ## Additional Resources
 
 - [ARCHITECTURE_DECISIONS.md](./ARCHITECTURE_DECISIONS.md) - Why containers for training
+- [TERRAFORM_BEST_PRACTICES.md](./TERRAFORM_BEST_PRACTICES.md) - Configuration best practices
 - [PROJECT_REFERENCE.md](../../docs/PROJECT_REFERENCE.md) - Complete technical docs
+- [LESSONS_LEARNED.md](../../docs/LESSONS_LEARNED.md) - Challenges & solutions
 - [SETUP_CICD.md](../../.github/SETUP_CICD.md) - CI/CD with GitHub Actions
+
+## Key Terraform Files
+
+| File | Purpose |
+|------|--------|
+| `amplify.tf` | Frontend hosting (Amplify) |
+| `lambda.tf` | Backend API (Lambda) |
+| `batch.tf` | Training infrastructure |
+| `api_gateway.tf` | REST API |
+| `iam.tf` | Permissions |
