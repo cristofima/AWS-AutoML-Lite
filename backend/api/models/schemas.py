@@ -34,6 +34,12 @@ class UploadResponse(BaseModel):
     expires_in: int = 3600
 
 
+class ColumnStats(BaseModel):
+    unique: int
+    missing: int = 0
+    missing_pct: float = 0.0
+
+
 # Dataset metadata for confirm endpoint (matches frontend)
 class DatasetMetadata(BaseModel):
     dataset_id: str
@@ -43,6 +49,7 @@ class DatasetMetadata(BaseModel):
     columns: List[str]
     row_count: int
     column_types: Dict[str, str]
+    column_stats: Optional[Dict[str, ColumnStats]] = None
     problem_type: Optional[ProblemType] = None
     
     model_config = {"protected_namespaces": ()}
@@ -62,7 +69,7 @@ class DatasetMetadataExtended(BaseModel):
 
 
 class TrainingConfig(BaseModel):
-    time_budget: int = Field(default=300, ge=60, le=3600)
+    time_budget: Optional[int] = Field(default=None, ge=60, le=3600)
     metric: str = "auto"
 
 

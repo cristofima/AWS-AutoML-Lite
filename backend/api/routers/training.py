@@ -58,6 +58,25 @@ async def start_training(request: TrainRequest):
                 # Non-numeric is always classification
                 problem_type = ProblemType.CLASSIFICATION
         
+        # Calculate time_budget if not provided
+        row_count = dataset.get('row_count', 1000)
+        if request.config and request.config.time_budget:
+            time_budget = request.config.time_budget
+        else:
+            # Auto-calculate based on dataset size
+            # Small: <1000 rows -> 120s
+            # Medium: 1000-10000 rows -> 300s
+            # Large: 10000-50000 rows -> 600s
+            # Very large: >50000 rows -> 1200s
+            if row_count < 1000:
+                time_budget = 120
+            elif row_count < 10000:
+                time_budget = 300
+            elif row_count < 50000:
+                time_budget = 600
+            else:
+                time_budget = 1200
+        
         # Create job record
         job_id = str(uuid.uuid4())
         job = JobDetails(
@@ -75,12 +94,15 @@ async def start_training(request: TrainRequest):
         dynamodb_service.create_job(job)
         
         # Submit batch job
+        config_dict = request.config.model_dump() if request.config else {}
+        config_dict['time_budget'] = time_budget
+        
         batch_job_id = batch_service.submit_training_job(
             job_name=f"training-{job_id[:8]}",
             dataset_id=request.dataset_id,
             target_column=request.target_column,
             job_id=job_id,
-            config=request.config.model_dump()
+            config=config_dict
         )
         
         # Update job with batch job ID
@@ -93,7 +115,7 @@ async def start_training(request: TrainRequest):
         return TrainResponse(
             job_id=job_id,
             status=JobStatus.PENDING,
-            estimated_time=request.config.time_budget
+            estimated_time=time_budget
         )
     
     except HTTPException:
