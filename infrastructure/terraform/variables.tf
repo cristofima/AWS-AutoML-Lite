@@ -107,3 +107,20 @@ variable "terraform_locks_table" {
   type        = string
   default     = "automl-lite-terraform-locks"
 }
+
+# =============================================================================
+# Frontend (Amplify) Variables
+# =============================================================================
+
+variable "github_repository" {
+  description = "GitHub repository URL for Amplify (e.g., https://github.com/owner/repo)"
+  type        = string
+  default     = ""
+}
+
+variable "github_token" {
+  description = "GitHub personal access token for Amplify to access the repository"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

@@ -107,6 +107,7 @@ cat > github-actions-permissions.json <<EOF
         "ecs:*",
         "xray:*",
         "cloudwatch:*",
+        "amplify:*",
         "sts:GetCallerIdentity"
       ],
       "Resource": "*"
@@ -141,14 +142,37 @@ After deploying infrastructure, verify all resources:
 
 This validates API Gateway, Lambda, S3, DynamoDB, Batch, ECR, CloudWatch, and IAM resources.
 
-### 2. Add Repository Secret (Shared by All Workflows)
+### 2. Add Repository Secrets
 
 Go to: **Settings → Secrets and variables → Actions → New repository secret**
 
-- Name: `AWS_ROLE_ARN`
-- Value: `arn:aws:iam::YOUR_ACCOUNT:role/GitHubActionsDeployRole`
+#### Required Secrets:
 
-**That's it!** One secret for all environments.
+| Secret Name | Description | Example |
+|-------------|-------------|---------|
+| `AWS_ROLE_ARN` | IAM Role ARN for OIDC | `arn:aws:iam::123456789:role/GitHubActionsDeployRole` |
+| `GH_PAT_AMPLIFY` | GitHub PAT for Amplify | `ghp_xxxxxxxxxxxx` |
+
+#### Creating the GitHub Personal Access Token (PAT) for Amplify:
+
+1. Go to: **GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)**
+2. Click **Generate new token (classic)**
+3. Configure:
+   - **Note:** `Amplify Deploy Token`
+   - **Expiration:** 90 days (or custom)
+   - **Scopes:** Select:
+     - ✅ `repo` (Full control of private repositories)
+     - ✅ `admin:repo_hook` (Full control of repository hooks)
+4. Click **Generate token**
+5. Copy the token (starts with `ghp_`)
+6. Add as repository secret: `GH_PAT_AMPLIFY`
+
+**⚠️ Note:** This token is required for Amplify to:
+- Access the repository
+- Set up webhooks for auto-deploy on push
+- Read the `amplify.yml` build configuration
+
+**That's it!** Two secrets for all environments.
 
 ### 3. Create GitHub Environments (Only for Production Protection)
 

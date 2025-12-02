@@ -3,7 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
-        # Install pnpm globally (more reliable than corepack in Amplify)
+        # Install pnpm globally (required for pnpm monorepos in Amplify)
         - npm install -g pnpm
         - pnpm install --frozen-lockfile
     build:
@@ -12,7 +12,8 @@ frontend:
         - echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >> .env.production
         - pnpm run build
   artifacts:
-    # For Next.js SSR, baseDirectory should be .next
+    # For Next.js 14+ (including 16), baseDirectory must be .next
+    # This applies to both SSR and SSG apps
     baseDirectory: .next
     files:
       - '**/*'

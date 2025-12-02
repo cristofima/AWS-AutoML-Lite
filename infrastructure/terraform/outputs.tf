@@ -65,5 +65,27 @@ output "ecr_repository_name" {
   value       = aws_ecr_repository.training.name
 }
 
-# Frontend will be deployed via AWS Amplify (separate from Terraform)
-# Amplify handles SSR routing for Next.js dynamic routes
+# =============================================================================
+# Frontend (Amplify) Outputs
+# =============================================================================
+
+output "amplify_app_id" {
+  description = "Amplify App ID"
+  value       = length(aws_amplify_app.frontend) > 0 ? aws_amplify_app.frontend[0].id : null
+}
+
+output "amplify_default_domain" {
+  description = "Amplify default domain"
+  value       = length(aws_amplify_app.frontend) > 0 ? aws_amplify_app.frontend[0].default_domain : null
+}
+
+output "frontend_url" {
+  description = "Frontend URL (Amplify)"
+  value       = length(aws_amplify_app.frontend) > 0 ? "https://${aws_amplify_branch.main[0].branch_name}.${aws_amplify_app.frontend[0].default_domain}" : null
+}
+
+output "amplify_webhook_url" {
+  description = "Amplify webhook URL for manual deployments"
+  value       = length(aws_amplify_webhook.main) > 0 ? aws_amplify_webhook.main[0].url : null
+  sensitive   = true
+}
