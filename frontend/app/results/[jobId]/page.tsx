@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getJobDetails, JobDetails, downloadWithFilename } from '@/lib/api';
 import { formatMetric, getProblemTypeIcon } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import Header from '@/components/Header';
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function ResultsPage() {
           <p className="text-gray-600 mb-4">{error || 'Results not available'}</p>
           <button
             onClick={() => router.push('/')}
-            className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer"
           >
             Go Home
           </button>
@@ -76,20 +77,7 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Training Results</h1>
-            <Link
-              href="/history"
-              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-            >
-              View All Jobs →
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Header title="Training Results" showViewAllJobs />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -230,7 +218,7 @@ export default function ResultsPage() {
             {job.model_download_url && (
               <button
                 onClick={() => downloadWithFilename(job.model_download_url!, `model_${job.job_id.slice(0, 8)}.pkl`)}
-                className="flex items-center justify-center space-x-2 px-6 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                className="flex items-center justify-center space-x-2 px-6 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
               >
                 <span className="text-2xl">📦</span>
                 <span className="font-medium">Download Model (.pkl)</span>
@@ -242,7 +230,7 @@ export default function ResultsPage() {
                   job.eda_report_download_url || job.report_download_url!, 
                   `eda_report_${job.job_id.slice(0, 8)}.html`
                 )}
-                className="flex items-center justify-center space-x-2 px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="flex items-center justify-center space-x-2 px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
               >
                 <span className="text-2xl">📊</span>
                 <span className="font-medium">EDA Report (.html)</span>
@@ -254,7 +242,7 @@ export default function ResultsPage() {
                   job.training_report_download_url!, 
                   `training_report_${job.job_id.slice(0, 8)}.html`
                 )}
-                className="flex items-center justify-center space-x-2 px-6 py-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="flex items-center justify-center space-x-2 px-6 py-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors cursor-pointer"
               >
                 <span className="text-2xl">🏆</span>
                 <span className="font-medium">Training Report (.html)</span>
@@ -308,7 +296,7 @@ docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0
 docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl -i /data/test.csv -o /data/predictions.csv`;
                   navigator.clipboard.writeText(code);
                 }}
-                className="absolute top-2 right-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs rounded transition-colors"
+                className="absolute top-2 right-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs rounded transition-colors cursor-pointer"
               >
                 📋 Copy
               </button>
@@ -361,13 +349,13 @@ print(f"Predictions: {predictions}")`}</code>
         <div className="flex space-x-4">
           <button
             onClick={() => router.push('/')}
-            className="flex-1 py-3 px-6 border-2 border-indigo-600 text-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition-colors"
+            className="flex-1 py-3 px-6 border-2 border-indigo-600 text-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition-colors cursor-pointer"
           >
             Train Another Model
           </button>
           <button
             onClick={() => router.push('/history')}
-            className="flex-1 py-3 px-6 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
+            className="flex-1 py-3 px-6 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors cursor-pointer"
           >
             View All Jobs
           </button>

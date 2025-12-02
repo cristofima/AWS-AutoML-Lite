@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { DatasetMetadata, startTraining, getDatasetMetadata } from '@/lib/api';
 import { getProblemTypeIcon, getProblemTypeDescription } from '@/lib/utils';
+import Header from '@/components/Header';
 
 export default function ConfigurePage() {
   const router = useRouter();
@@ -85,7 +86,7 @@ export default function ConfigurePage() {
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={() => router.push('/')}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer"
           >
             Back to Home
           </button>
@@ -100,12 +101,7 @@ export default function ConfigurePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Configure Training</h1>
-        </div>
-      </header>
+      <Header title="Configure Training" showBackToUpload />
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -243,7 +239,7 @@ export default function ConfigurePage() {
           <div className="flex space-x-4">
             <button
               onClick={() => router.push('/')}
-              className="flex-1 py-3 px-6 border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex-1 py-3 px-6 border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -251,7 +247,7 @@ export default function ConfigurePage() {
               onClick={handleStartTraining}
               disabled={!selectedTarget || isStarting}
               className={`
-                flex-1 py-3 px-6 rounded-lg font-medium text-white
+                flex-1 py-3 px-6 rounded-lg font-medium text-white cursor-pointer
                 ${!selectedTarget || isStarting
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-indigo-600 hover:bg-indigo-700'

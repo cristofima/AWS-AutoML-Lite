@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { listJobs, deleteJob, JobDetails } from '@/lib/api';
 import { getStatusColor, getStatusIcon, formatDate } from '@/lib/utils';
+import Header from '@/components/Header';
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -68,20 +69,7 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Training History</h1>
-            <Link
-              href="/"
-              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-            >
-              ← Back to Upload
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Header title="Training History" showBackToUpload />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -93,7 +81,7 @@ export default function HistoryPage() {
                 key={status}
                 onClick={() => setFilter(status)}
                 className={`
-                  px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors
+                  px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors cursor-pointer
                   ${filter === status
                     ? 'bg-indigo-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -137,7 +125,7 @@ export default function HistoryPage() {
             {filter === 'all' && (
               <Link
                 href="/"
-                className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
               >
                 Upload Dataset
               </Link>
@@ -209,7 +197,7 @@ export default function HistoryPage() {
                               e.stopPropagation();
                               router.push(`/results/${job.job_id}`);
                             }}
-                            className="text-indigo-600 hover:text-indigo-900 font-medium"
+                            className="text-indigo-600 hover:text-indigo-900 font-medium cursor-pointer"
                           >
                             View Results
                           </button>
@@ -219,7 +207,7 @@ export default function HistoryPage() {
                               e.stopPropagation();
                               router.push(`/training/${job.job_id}`);
                             }}
-                            className="text-blue-600 hover:text-blue-900 font-medium"
+                            className="text-blue-600 hover:text-blue-900 font-medium cursor-pointer"
                           >
                             View Status
                           </button>
@@ -230,7 +218,7 @@ export default function HistoryPage() {
                             setShowDeleteModal(job.job_id);
                           }}
                           disabled={deletingJobId === job.job_id}
-                          className="text-red-600 hover:text-red-900 font-medium disabled:opacity-50"
+                          className="text-red-600 hover:text-red-900 font-medium disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                         >
                           {deletingJobId === job.job_id ? 'Deleting...' : '🗑️'}
                         </button>
@@ -245,11 +233,39 @@ export default function HistoryPage() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Training Job?</h3>
-              <p className="text-gray-600 mb-4">
-                This will permanently delete the job and all associated data including:
+          <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Training Job?</h3>
+              
+              {/* Job Details */}
+              {(() => {
+                const jobToDelete = jobs.find(j => j.job_id === showDeleteModal);
+                return jobToDelete ? (
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-gray-500">Job ID:</span>
+                        <p className="font-mono text-gray-900">{jobToDelete.job_id.substring(0, 12)}...</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Target:</span>
+                        <p className="font-medium text-gray-900">{jobToDelete.target_column || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Type:</span>
+                        <p className="text-gray-900">{jobToDelete.problem_type ? jobToDelete.problem_type.charAt(0).toUpperCase() + jobToDelete.problem_type.slice(1) : 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Status:</span>
+                        <p className="text-gray-900">{jobToDelete.status.charAt(0).toUpperCase() + jobToDelete.status.slice(1)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              <p className="text-gray-600 mb-3">
+                This will permanently delete all associated data:
               </p>
               <ul className="text-sm text-gray-600 mb-4 list-disc list-inside">
                 <li>Trained model file (.pkl)</li>
@@ -263,13 +279,13 @@ export default function HistoryPage() {
               <div className="flex space-x-3">
                 <button
                   onClick={() => setShowDeleteModal(null)}
-                  className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleDeleteJob(showDeleteModal)}
-                  className="flex-1 py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  className="flex-1 py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 cursor-pointer"
                 >
                   Delete
                 </button>
@@ -283,7 +299,7 @@ export default function HistoryPage() {
           <div className="text-center mt-6">
             <button
               onClick={() => fetchJobs(nextToken)}
-              className="px-6 py-3 bg-white border-2 border-indigo-600 text-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition-colors"
+              className="px-6 py-3 bg-white border-2 border-indigo-600 text-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition-colors cursor-pointer"
             >
               Load More
             </button>

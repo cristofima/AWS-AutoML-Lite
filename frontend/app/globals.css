@@ -24,3 +24,31 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Global button and link styles for better UX */
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Ensure all interactive elements have pointer cursor */
+a,
+label:has(input[type="radio"]),
+label:has(input[type="checkbox"]),
+summary,
+details > summary {
+  cursor: pointer;
+}
+
+/* Focus visible styles for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}

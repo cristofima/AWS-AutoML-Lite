@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getJobDetails, JobDetails } from '@/lib/api';
 import { getStatusColor, getStatusIcon, formatDuration, formatDateTime } from '@/lib/utils';
+import Header from '@/components/Header';
 
 export default function TrainingPage() {
   const router = useRouter();
@@ -71,7 +72,7 @@ export default function TrainingPage() {
           <p className="text-gray-600 mb-4">{error || 'Job not found'}</p>
           <button
             onClick={() => router.push('/')}
-            className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer"
           >
             Go Home
           </button>
@@ -94,12 +95,7 @@ export default function TrainingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Training in Progress</h1>
-        </div>
-      </header>
+      <Header title="Training in Progress" showViewAllJobs />
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -183,13 +179,13 @@ export default function TrainingPage() {
           <div className="mt-8 flex space-x-4">
             <button
               onClick={() => router.push('/history')}
-              className="flex-1 py-3 px-6 border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex-1 py-3 px-6 border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
             >
               View All Jobs
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="flex-1 py-3 px-6 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+              className="flex-1 py-3 px-6 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors cursor-pointer"
             >
               Refresh Status
             </button>
@@ -204,7 +200,7 @@ export default function TrainingPage() {
               </p>
               <button
                 onClick={() => router.push('/')}
-                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 cursor-pointer"
               >
                 Start New Training
               </button>
