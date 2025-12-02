@@ -13,7 +13,7 @@ Serverless AutoML platform with **split architecture** - understanding this is c
 |-----------|------------|------------|-----|
 | Backend API | FastAPI + Mangum | Lambda ZIP (5MB) | Fast cold starts, simple deploys |
 | Training | FLAML + scikit-learn | Docker on AWS Batch | 265MB deps, >15min runtime exceed Lambda limits |
-| Frontend | Next.js 14 App Router | AWS Amplify | Native SSR support, monorepo-friendly |
+| Frontend | Next.js 16 App Router | AWS Amplify | Native SSR support, monorepo-friendly |
 | Infrastructure | Terraform | HCL in `infrastructure/terraform/` | State management, reproducibility |
 
 **Key insight:** Containers are used ONLY for training because ML dependencies (265MB) exceed Lambda's 250MB limit and jobs can run 2-60min (Lambda max: 15min).

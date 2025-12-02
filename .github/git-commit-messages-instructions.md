@@ -2,7 +2,7 @@
 
 Generate [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) for AWS AutoML Lite project.
 
-**Tech Stack:** Next.js 14 + FastAPI + AWS Lambda + Terraform + AWS Batch + DynamoDB + S3
+**Tech Stack:** Next.js 16 + FastAPI + AWS Lambda + Terraform + AWS Batch + DynamoDB + S3
 
 ## Commit Structure
 

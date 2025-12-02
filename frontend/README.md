@@ -1,6 +1,6 @@
 # AWS AutoML Lite - Frontend
 
-Next.js 14 frontend for AWS AutoML Lite platform.
+Next.js 16 frontend for AWS AutoML Lite platform.
 
 ## 🚀 Quick Start
 
@@ -90,7 +90,7 @@ frontend/
 
 ## 🔧 Tech Stack
 
-- **Framework**: Next.js 14 with App Router
+- **Framework**: Next.js 16 with App Router
 - **Language**: TypeScript
 - **Styling**: TailwindCSS
 - **Charts**: Recharts

@@ -281,7 +281,7 @@ resource "aws_amplify_app" "frontend" {
   name       = "${var.project_name}-${var.environment}"
   repository = var.github_repository
   access_token = var.github_token
-  platform = "WEB_COMPUTE"  # Required for Next.js 14+ SSR
+  platform = "WEB_COMPUTE"  # Required for Next.js 16+ SSR
 
   environment_variables = {
     NEXT_PUBLIC_API_URL       = aws_api_gateway_stage.main.invoke_url
@@ -335,7 +335,7 @@ resource "aws_amplify_branch" "main" {
    - Add `amplify:*` to GitHub Actions deploy role
    - Required actions: `amplify:CreateApp`, `amplify:CreateBranch`, `amplify:TagResource`
 
-**Key Insight:** For Next.js 14+ applications:
+**Key Insight:** For Next.js 16+ applications:
 - **WEB_COMPUTE platform** is required (not WEB)
 - **baseDirectory must be `.next`** regardless of SSR or SSG
 - **Don't use `output: 'export'`** if you need dynamic routes with SSR
@@ -378,7 +378,7 @@ NEXT_PUBLIC_API_URL=https://abc123.execute-api.us-east-1.amazonaws.com/dev
 **Key Insight:** Never hardcode URLs. Use environment variables and Terraform outputs for all endpoints.
 
 ### Challenge: Dynamic Routes with useParams
-**Problem:** TypeScript errors accessing route parameters in Next.js 14 App Router.
+**Problem:** TypeScript errors accessing route parameters in Next.js 16 App Router.
 
 **Solution:** Cast params to string:
 ```typescript

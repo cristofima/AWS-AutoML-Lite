@@ -64,7 +64,7 @@ User → AWS Amplify (Next.js SSR Frontend)
 ## 🎯 Technical Stack
 
 ### Frontend
-- **Framework**: Next.js 14+ (App Router)
+- **Framework**: Next.js 16+ (App Router)
 - **Deployment**: AWS Amplify (auto-deploy from Git)
 - **Build**: pnpm with SSR support
 - **Key Features**:
@@ -140,7 +140,7 @@ aws-automl-lite/
 │   └── requirements.txt            # API dependencies
 │
 ├── frontend/
-│   ├── app/                        # Next.js 14 App Router
+│   ├── app/                        # Next.js 16 App Router
 │   │   ├── page.tsx                # Home/upload page
 │   │   ├── configure/[datasetId]/  # Column selection
 │   │   ├── training/[jobId]/       # Training status
@@ -532,7 +532,7 @@ Orchestrate multi-step pipeline:
 ### 🚧 Frontend (In Progress - ~60%)
 **MVP Scope:** Upload CSV → Train model → Download model + view history
 
-- [x] Next.js 14 project structure
+- [x] Next.js 16 project structure
 - [x] API client library
 - [ ] Upload page with drag & drop
 - [ ] Column selection & configuration
