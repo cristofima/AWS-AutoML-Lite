@@ -4,6 +4,34 @@ Generate [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) 
 
 **Tech Stack:** Next.js 16 + FastAPI + AWS Lambda + Terraform + AWS Batch + DynamoDB + S3
 
+## 📑 Table of Contents
+
+- [Commit Structure](#commit-structure)
+- [Commit Types](#commit-types)
+  - [feat - New Functionality](#feat---new-functionality)
+  - [fix - Bug Resolution](#fix---bug-resolution)
+  - [refactor - Code Improvement](#refactor---code-improvement-same-behavior)
+  - [perf - Performance Optimization](#perf---performance-optimization)
+  - [docs - Documentation](#docs---documentation-only)
+  - [test - Test Code](#test---test-code)
+  - [build - Build System & Infrastructure](#build---build-system--infrastructure)
+  - [ci - CI/CD Pipelines](#ci---cicd-pipelines)
+  - [style - Formatting](#style---formatting-only)
+  - [chore - Miscellaneous](#chore---miscellaneous)
+  - [revert - Revert Commit](#revert---revert-commit)
+- [Scopes](#scopes-project-specific)
+- [Body Guidelines](#body-guidelines)
+- [Breaking Changes](#breaking-changes)
+- [Quick Decision Tree](#quick-decision-tree)
+- [File Type Reference](#file-type-reference)
+- [Examples](#examples)
+- [Common Mistakes](#common-mistakes)
+- [Checklist Before Committing](#checklist-before-committing)
+- [Key Principles](#key-principles)
+- [AWS AutoML Lite Specific Notes](#aws-automl-lite-specific-notes)
+
+---
+
 ## Commit Structure
 
 ```
@@ -156,51 +184,119 @@ Reason: Fargate doesn't support GPU, reverting to CPU.
 
 ## Scopes (Project-Specific)
 
-**Backend layers:**
-- `api`: FastAPI routers and main application
-- `services`: S3, DynamoDB, Batch service layers
-- `models`: Pydantic schemas
-- `training`: ML training container code
-- `utils`: Helper functions
+**IMPORTANT:** Use full path context for clarity. Format: `area/component` or just `component` for obvious cases.
 
-**Frontend:**
-- `upload`: File upload flow
-- `configure`: Training configuration page
-- `history`: Training jobs history
-- `results`: Model results display
-- `components`: Reusable UI components
-- `lib`: API client and utilities
+### Backend Scopes
 
-**Infrastructure:**
-- `terraform`: Infrastructure as code
-- `lambda`: Lambda function configuration
-- `batch`: AWS Batch job definitions
-- `dynamodb`: DynamoDB table schemas
-- `s3`: S3 bucket configurations
-- `iam`: IAM roles and policies
-- `ecr`: Container registry
+**API Layer (`backend/api/`):**
+- `backend/api` or `api`: General API changes
+- `api/routers`: All routers
+- `api/routers/upload`: Upload router specifically
+- `api/routers/training`: Training router
+- `api/routers/datasets`: Datasets router
+- `api/routers/models`: Models router
+- `api/services`: All services
+- `api/services/s3`: S3 service only
+- `api/services/dynamo`: DynamoDB service
+- `api/services/batch`: Batch service
+- `api/models`: Pydantic schemas
+- `api/utils`: Helper functions
 
-**Cross-cutting:**
-- `api/upload`: Upload router specifically
-- `api/training`: Training router
-- `training/eda`: EDA generation logic
+**Training Container (`backend/training/`):**
+- `backend/training` or `training`: General training changes
+- `training/train`: Main training script
 - `training/preprocessor`: Data preprocessing
+- `training/model_trainer`: FLAML AutoML trainer
+- `training/eda`: EDA report generation
+- `training/training_report`: Training report generation
 
-Examples:
+### Frontend Scopes
+
+**Pages (`frontend/app/`):**
+- `frontend` or `frontend/app`: General frontend changes
+- `frontend/upload`: Upload page (home)
+- `frontend/configure`: Configuration page
+- `frontend/training`: Training progress page
+- `frontend/results`: Results page
+- `frontend/history`: Training history page
+
+**Components & Utilities (`frontend/`):**
+- `frontend/components`: All components
+- `frontend/components/FileUpload`: FileUpload component
+- `frontend/components/Header`: Header component
+- `frontend/lib`: Utilities
+- `frontend/lib/api`: API client
+- `frontend/lib/utils`: Utility functions
+
+### Infrastructure Scopes
+
+**Terraform (`infrastructure/terraform/`):**
+- `terraform`: General Terraform changes
+- `terraform/lambda`: Lambda configuration
+- `terraform/batch`: AWS Batch configuration
+- `terraform/dynamodb`: DynamoDB tables
+- `terraform/s3`: S3 buckets
+- `terraform/iam`: IAM roles and policies
+- `terraform/ecr`: ECR repository
+- `terraform/amplify`: Amplify configuration
+- `terraform/api-gateway`: API Gateway
+
+**CI/CD (`.github/workflows/`):**
+- `ci`: General CI/CD changes
+- `ci/deploy-infrastructure`: Infrastructure deployment workflow
+- `ci/deploy-lambda`: Lambda deployment workflow
+- `ci/deploy-training`: Training container workflow
+- `ci/deploy-frontend`: Frontend deployment workflow
+- `ci/terraform-validation`: Terraform validation workflow
+
+### Cross-Cutting Scopes
+
+When changes span multiple areas, use the most specific common scope:
 
 ```
 feat(api/upload): add CSV validation before S3 upload
 fix(training/eda): resolve matplotlib memory leak
-refactor(services/dynamo): consolidate query builders
+refactor(api/services): consolidate query builders
 build(terraform/batch): increase job timeout to 60min
+ci/deploy-lambda: add health check after deployment
 ```
 
-Omit scope for project-wide changes:
+### Scope Selection Guidelines
+
+**Use full path when:**
+- Changes are specific to a subfolder
+- Multiple similar components exist (e.g., multiple services)
+- Context is needed for clarity
+
+**Examples:**
+```
+✅ feat(api/routers/upload): add file size validation
+✅ fix(training/preprocessor): handle missing values
+✅ refactor(frontend/lib/api): extract error handling
+✅ build(terraform/lambda): increase memory to 2GB
+```
+
+**Use short scope when:**
+- Change affects entire area
+- Context is obvious from description
+
+**Examples:**
+```
+✅ feat(api): add health check endpoint
+✅ fix(training): resolve memory overflow
+✅ refactor(frontend): standardize error messages
+✅ build(terraform): update to version 1.9
+```
+
+### Omit Scope When
+
+Changes affect the entire project:
 
 ```
-refactor: standardize error responses
-style: format all Python files
+refactor: standardize error responses across all services
+style: format all Python files with Black
 docs: update architecture documentation
+build: upgrade all dependencies to latest versions
 ```
 
 ---
@@ -307,21 +403,22 @@ All jobs created after this commit include new fields.
 
 ## File Type Reference
 
-| File Pattern                           | Type    | Example                                |
-| -------------------------------------- | ------- | -------------------------------------- |
-| `*.md`                                 | `docs`  | `docs: update QUICKSTART`              |
-| `.vscode/*`, `.editorconfig`           | `chore` | `chore: configure Python linting`      |
-| `.github/workflows/*.yml`              | `ci`    | `ci: add Lambda deployment workflow`   |
-| `infrastructure/terraform/*.tf`        | `build` | `build(terraform): add S3 bucket`      |
-| `backend/training/Dockerfile`          | `build` | `build(docker): optimize image layers` |
-| `backend/requirements.txt`             | `build` | `build: upgrade FastAPI to 0.115`      |
-| `frontend/package.json` (deps)         | `build` | `build: add chart.js for metrics`      |
-| `backend/api/routers/*.py` (new)       | `feat`  | `feat(api): add model download route`  |
-| `backend/training/*.py` (new logic)    | `feat`  | `feat(training): add FLAML estimator`  |
-| `frontend/app/**/page.tsx` (new)       | `feat`  | `feat(history): add jobs list page`    |
-| `frontend/components/*.tsx` (new)      | `feat`  | `feat(components): add FileUpload`     |
-| `backend/api/services/*.py` (bugfix)   | `fix`   | `fix(services): handle S3 exceptions`  |
-| `infrastructure/terraform/scripts/*.ps1` | `ci`    | `ci: add automated deployment script`  |
+| File Pattern                           | Type    | Example with Full Scope                                |
+| -------------------------------------- | ------- | ------------------------------------------------------ |
+| `*.md`                                 | `docs`  | `docs: update QUICKSTART`                              |
+| `.vscode/*`, `.editorconfig`           | `chore` | `chore: configure Python linting`                      |
+| `.github/workflows/*.yml`              | `ci`    | `ci/deploy-lambda: add health check`                   |
+| `infrastructure/terraform/*.tf`        | `build` | `build(terraform/s3): add lifecycle policy`            |
+| `backend/training/Dockerfile`          | `build` | `build(training): optimize Docker image layers`        |
+| `backend/requirements.txt`             | `build` | `build(backend): upgrade FastAPI to 0.115`             |
+| `backend/training/requirements.txt`    | `build` | `build(training): add sweetviz for EDA`                |
+| `frontend/package.json` (deps)         | `build` | `build(frontend): add recharts for visualization`      |
+| `backend/api/routers/*.py` (new)       | `feat`  | `feat(api/routers/models): add download endpoint`      |
+| `backend/training/*.py` (new logic)    | `feat`  | `feat(training/model_trainer): add FLAML estimator`    |
+| `frontend/app/**/page.tsx` (new)       | `feat`  | `feat(frontend/history): add jobs list page`           |
+| `frontend/components/*.tsx` (new)      | `feat`  | `feat(frontend/components): add FileUpload component`  |
+| `backend/api/services/*.py` (bugfix)   | `fix`   | `fix(api/services/s3): handle upload exceptions`       |
+| `infrastructure/terraform/scripts/*.ps1` | `ci`  | `ci: add automated deployment script`                  |
 
 ---
 
@@ -330,24 +427,24 @@ All jobs created after this commit include new fields.
 ### Simple Commits
 
 ```
-feat(upload): add presigned S3 URL generation
-feat(training): integrate FLAML AutoML
-fix(batch): resolve container OOM errors
-fix(api): correct DynamoDB pagination
-refactor(services): extract S3 client logic
-perf(lambda): reduce cold start time
-test(training): add preprocessor tests
+feat(api/routers/upload): add presigned S3 URL generation
+feat(training/model_trainer): integrate FLAML AutoML
+fix(terraform/batch): resolve container OOM errors
+fix(api/services/dynamo): correct pagination logic
+refactor(api/services): extract S3 client logic
+perf(backend/api): reduce Lambda cold start time
+test(training/preprocessor): add unit tests
 docs: update deployment guide
-build(terraform): add ECR repository
-build: upgrade FastAPI dependencies
-ci: add ECR push automation
-chore: update .gitignore for Python
+build(terraform/ecr): add repository for training image
+build(backend): upgrade FastAPI dependencies
+ci/deploy-training: add ECR push automation
+chore: update .gitignore for Python cache
 ```
 
 ### With Body (Upload Feature)
 
 ```
-feat(upload): implement CSV upload with validation
+feat(api/upload): implement CSV upload with validation
 
 Complete upload workflow with presigned URLs, validation,
 and metadata extraction for AutoML training.
@@ -371,7 +468,7 @@ Features:
 ### Bug Fix (Training Container)
 
 ```
-fix(batch): resolve training container memory errors
+fix(training): resolve training container memory errors
 
 Fixed OOM kills during FLAML training on large datasets.
 Increased Fargate memory from 2GB to 4GB and optimized
@@ -394,7 +491,7 @@ Fixes #78
 ### Performance (Lambda Optimization)
 
 ```
-perf(lambda): reduce package size by 40%
+perf(backend/api): reduce Lambda package size by 40%
 
 Optimized Lambda deployment package by excluding training
 dependencies, reducing cold start from 3.5s to 2.1s.
@@ -419,7 +516,7 @@ Refs: #45
 ### Infrastructure (Batch Job)
 
 ```
-build(batch): configure Fargate Spot for training jobs
+build(terraform/batch): configure Fargate Spot for training jobs
 
 Implemented AWS Batch with Fargate Spot compute for
 cost-effective AutoML training. 70% cost savings vs on-demand.
@@ -455,30 +552,30 @@ Cost estimate: ~$0.34/month for 20 training jobs (Fargate compute only)
 ### Infrastructure
 
 ```
-❌ feat(terraform): add S3 bucket → ✅ build(terraform): add S3 bucket
-❌ chore(batch): increase memory → ✅ build(batch): increase memory
-❌ fix(terraform): correct IAM policy → ✅ build(iam): fix Batch permissions
+❌ feat(terraform): add S3 bucket → ✅ build(terraform/s3): add datasets bucket
+❌ chore(batch): increase memory → ✅ build(terraform/batch): increase memory to 4GB
+❌ fix(terraform): correct IAM policy → ✅ build(terraform/iam): fix Batch execution permissions
 ```
 
 ### CI/CD
 
 ```
-❌ build(github-actions): add workflow → ✅ ci(github-actions): add workflow
-❌ feat(scripts): deployment script → ✅ ci(scripts): add deployment automation
+❌ build(github-actions): add workflow → ✅ ci/deploy-lambda: add deployment workflow
+❌ feat(scripts): deployment script → ✅ ci: add automated deployment script
 ```
 
 ### Backend API
 
 ```
-❌ refactor(api): add new endpoint → ✅ feat(api): add model download endpoint
-❌ feat: fix upload bug → ✅ fix(upload): resolve presigned URL expiry
+❌ refactor(api): add new endpoint → ✅ feat(api/routers/models): add download endpoint
+❌ feat: fix upload bug → ✅ fix(api/routers/upload): resolve presigned URL expiry
 ```
 
 ### Training Code
 
 ```
-❌ chore(training): add FLAML → ✅ feat(training): integrate FLAML AutoML
-❌ refactor: fix preprocessing → ✅ fix(training): correct target detection
+❌ chore(training): add FLAML → ✅ feat(training/model_trainer): integrate FLAML AutoML
+❌ refactor: fix preprocessing → ✅ fix(training/preprocessor): correct target detection logic
 ```
 
 ---
@@ -518,15 +615,15 @@ Cost estimate: ~$0.34/month for 20 training jobs (Fargate compute only)
 
 ### Lambda vs Batch Container
 
-- **Lambda changes** (API, services, routers): Usually `feat` or `fix`
-- **Training container** (Dockerfile, training/*.py): Usually `feat(training)` or `build(docker)`
-- **Remember:** Lambda = direct code, Batch = Docker container
+- **Lambda changes** (backend/api/): Usually `feat(api/...)` or `fix(api/...)`
+- **Training container** (backend/training/): Usually `feat(training/...)` or `build(training)`
+- **Remember:** Lambda = direct code (backend/api), Batch = Docker container (backend/training)
 
 ### Common Workflows
 
 **Upload flow:**
 ```
-feat(upload): add CSV upload workflow
+feat(api/upload): add CSV upload workflow
 
 Modified files (4):
 - backend/api/routers/upload.py
@@ -549,7 +646,7 @@ Modified files (5):
 
 **Frontend page:**
 ```
-feat(history): add training jobs history page
+feat(frontend/history): add training jobs history page
 
 Modified files (3):
 - frontend/app/history/page.tsx
@@ -567,7 +664,7 @@ Always mention cost impact for:
 
 Example:
 ```
-build(batch): increase training job timeout to 60min
+build(terraform/batch): increase training job timeout to 60min
 
 Cost impact: ~$0.10/job → ~$0.15/job (longer runtime)
 Allows FLAML to explore more models for better accuracy.
@@ -578,7 +675,7 @@ Allows FLAML to explore more models for better accuracy.
 When modifying environment variables:
 
 ```
-build(lambda): add S3_BUCKET_MODELS environment variable
+build(terraform/lambda): add S3_BUCKET_MODELS environment variable
 
 Modified files (2):
 - infrastructure/terraform/lambda.tf: Added env var
@@ -593,7 +690,7 @@ with default value fallback.
 When updating training container:
 
 ```
-build(docker): optimize training image size
+build(training): optimize Docker image size
 
 Reduced image from 1.2GB to 850MB using multi-stage build
 and Alpine base image where possible.
@@ -616,7 +713,7 @@ docker push $(terraform output -raw ecr_repository_url):latest
 When modifying API contracts:
 
 ```
-feat(api)!: add optional metadata to dataset schema
+feat(api/models)!: add optional metadata to dataset schema
 
 BREAKING CHANGE: DatasetResponse now includes metadata field.
 
@@ -640,7 +737,7 @@ Backward compatible: metadata defaults to null for old datasets.
 When adding new endpoints:
 
 ```
-feat(api): add model metrics endpoint
+feat(api/routers/models): add model metrics endpoint
 
 Added /models/{model_id}/metrics for retrieving training
 performance metrics from DynamoDB.
@@ -659,7 +756,7 @@ Returns: accuracy, precision, recall, f1_score, training_time
 When modifying table structures:
 
 ```
-build(terraform): add GSI for dataset queries by user
+build(terraform/dynamodb): add GSI for dataset queries by user
 
 Added Global Secondary Index to support multi-tenant features
 for filtering datasets by user_id.
