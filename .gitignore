@@ -45,3 +45,6 @@ Thumbs.db
 *.pem
 *.key
 credentials.json
+
+# MCP
+.playwright-mcp/*

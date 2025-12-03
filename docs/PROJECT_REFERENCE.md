@@ -21,6 +21,11 @@
 
 ### High-Level Architecture
 
+![AWS AutoML Lite Architecture](./diagrams/architecture-main.png)
+
+<details>
+<summary>Text version</summary>
+
 ```
 User → AWS Amplify (Next.js SSR Frontend)
          ↓
@@ -34,6 +39,7 @@ User → AWS Amplify (Next.js SSR Frontend)
          ↓
     Save model to S3 + metrics to DynamoDB
 ```
+</details>
 
 ### AWS Services Used
 
@@ -47,7 +53,6 @@ User → AWS Amplify (Next.js SSR Frontend)
 - **IAM**: Granular roles per service
 
 **Enhanced Services (Nice to Have):**
-- **CloudFront**: CDN for frontend
 - **EventBridge**: Training completion events
 - **X-Ray**: Distributed tracing
 - **Systems Manager Parameter Store**: Configuration management
@@ -186,6 +191,8 @@ aws-automl-lite/
 
 ## 🔄 Complete Workflow
 
+![Data Flow](./diagrams/architecture-dataflow.png)
+
 ### 1. Upload Phase
 ```
 User uploads CSV → Frontend requests presigned URL from API
@@ -208,6 +215,12 @@ Lambda validates selection → Detects problem type (classification/regression)
 ```
 
 ### 3. Training Phase (Batch Container)
+
+![Training Container Flow](./diagrams/architecture-training.png)
+
+<details>
+<summary>Text version</summary>
+
 ```
 Batch job starts → Downloads CSV from S3
                → Generates EDA report (HTML)
@@ -220,6 +233,7 @@ Batch job starts → Downloads CSV from S3
                → Updates job status to "completed"
                → EventBridge emits completion event
 ```
+</details>
 
 ### 4. Results Phase
 ```
@@ -398,17 +412,17 @@ S3 Requests:                    $0.05
 DynamoDB (on-demand):           $1.00
 Lambda (API - 100K invokes):    $0.80
 API Gateway (100K requests):    $1.00
-Batch + Fargate Spot:           $3.00
-CloudFront (optional):          $0.50
+Batch + Fargate Spot:           $2-5 (depends on jobs)
+Amplify (Frontend SSR):         $5-15 (depends on traffic)
 CloudWatch Logs:                $0.50
 
-Total: ~$7-10/month
+Total: ~$10-25/month
 ```
 
 **Comparison:**
-- SageMaker Autopilot: $50-200/month (with endpoints)
-- This solution: $7-10/month
-- **Savings: ~85-95%**
+- SageMaker with real-time endpoint: ~$150-300/month (ml.c5.xlarge 24/7)
+- This solution: $12-15/month
+- **Savings: ~80-95%**
 
 ---
 
@@ -465,10 +479,10 @@ Orchestrate multi-step pipeline:
 - Role-based access
 
 ### Production Deployment
-- Lambda@Edge for global performance
 - Multi-region deployment
 - Disaster recovery
 - Automated backups
+- Custom domain with SSL
 
 ---
 
@@ -529,21 +543,20 @@ Orchestrate multi-step pipeline:
 
 - [x] Next.js 16 project structure
 - [x] API client library
-- [ ] Upload page with drag & drop
-- [ ] Column selection & configuration
-- [ ] Training status page (polling)
-- [ ] Results page (metrics + download)
-- [ ] Training history table
-- [ ] Deploy to S3
+- [x] Upload page with drag & drop
+- [x] Column selection & configuration
+- [x] Training status page (polling)
+- [x] Results page (metrics + download)
+- [x] Training history table
+- [x] Deploy to AWS Amplify
 
 ### 📋 Future Enhancements (Post-MVP)
-- [ ] CloudFront CDN
 - [ ] Real-time updates (WebSocket/SSE)
 - [ ] Model comparison
 - [ ] ONNX export
 - [ ] Email notifications
 - [ ] Advanced visualizations
-- [ ] Multi-user authentication
+- [ ] Multi-user authentication (Cognito)
 
 ---
 
@@ -609,7 +622,7 @@ joblib==1.3.2
 
 **Technical:**
 - Backend infrastructure deployed ✅
-- Cost under $10/month ✅ (~$7/month actual)
+- Cost under $25/month ✅ (~$10-25/month depending on usage)
 - CI/CD with GitHub Actions ✅
 - Lambda cold start < 2s ✅
 - Component-specific deployments ✅
@@ -623,6 +636,6 @@ joblib==1.3.2
 
 ---
 
-**Last Updated:** 2025-11-28  
+**Last Updated:** 2025-12-02  
 **Author:** Cristofima  
-**Status:** MVP ~75% Complete (Backend ✅ | Frontend 🚧)
+**Status:** MVP Complete (Backend ✅ | Frontend ✅)

@@ -33,6 +33,12 @@ Complete documentation for AWS AutoML Lite platform.
   - Cost comparison
   - Technical justification
 
+- **[Architecture Diagrams](./diagrams/)** - Visual architecture documentation
+  - Main architecture overview
+  - Data flow diagrams
+  - CI/CD pipeline
+  - Cost comparison
+
 ### Lessons & Analysis
 - **[LESSONS_LEARNED.md](./LESSONS_LEARNED.md)** - Challenges, solutions & best practices
   - Docker & container management

@@ -291,7 +291,7 @@ If you want to eliminate Docker for demo purposes, you can:
 
 1. ✅ **Backend API:** Lambda (no containers) - Simple, fast, cheap
 2. ✅ **Training:** AWS Batch + Fargate Spot (containers) - Necessary for ML workload
-3. ✅ **Cost:** ~$7-10/month (lowest possible for this feature set)
+3. ✅ **Cost:** ~$10-25/month (lowest possible for this feature set)
 4. ✅ **Flexibility:** Can handle small to large datasets
 
 **Containers are used ONLY in the training component, where they are technically required due to:**

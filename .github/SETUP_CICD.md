@@ -6,10 +6,16 @@ This project uses GitHub Actions for automated CI/CD with AWS using OIDC (OpenID
 
 ## Architecture
 
+![CI/CD Pipeline](../docs/diagrams/architecture-cicd.png)
+
+<details>
+<summary>Text version</summary>
+
 ```
 Commit to dev  → Auto Deploy to DEV  → Build Training Container
 Commit to main → Plan → Manual Approval → Deploy to PROD → Build Container
 ```
+</details>
 
 ---
 
@@ -74,29 +80,164 @@ cat > github-actions-permissions.json <<EOF
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "TerraformStateManagement",
       "Effect": "Allow",
       "Action": [
-        "s3:*",
-        "dynamodb:*",
-        "lambda:*",
-        "apigateway:*",
-        "batch:*",
-        "ecr:*",
-        "iam:*",
-        "logs:*",
-        "ec2:Describe*",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::automl-lite-terraform-state-*",
+        "arn:aws:s3:::automl-lite-terraform-state-*/*"
+      ]
+    },
+    {
+      "Sid": "TerraformStateLocking",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": "arn:aws:dynamodb:*:*:table/automl-lite-terraform-locks"
+    },
+    {
+      "Sid": "S3Management",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::automl-lite-*",
+        "arn:aws:s3:::automl-lite-*/*"
+      ]
+    },
+    {
+      "Sid": "DynamoDBManagement",
+      "Effect": "Allow",
+      "Action": "dynamodb:*",
+      "Resource": "arn:aws:dynamodb:*:*:table/automl-lite-*"
+    },
+    {
+      "Sid": "LambdaManagement",
+      "Effect": "Allow",
+      "Action": "lambda:*",
+      "Resource": "arn:aws:lambda:*:*:function:automl-lite-*"
+    },
+    {
+      "Sid": "APIGatewayManagement",
+      "Effect": "Allow",
+      "Action": "apigateway:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "BatchManagement",
+      "Effect": "Allow",
+      "Action": "batch:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECRManagement",
+      "Effect": "Allow",
+      "Action": "ecr:*",
+      "Resource": "arn:aws:ecr:*:*:repository/automl-lite-*"
+    },
+    {
+      "Sid": "ECRAuth",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "AmplifyManagement",
+      "Effect": "Allow",
+      "Action": "amplify:*",
+      "Resource": "arn:aws:amplify:*:*:apps/*"
+    },
+    {
+      "Sid": "IAMRoleManagement",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:UpdateRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:PassRole",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfilesForRole",
+        "iam:TagRole",
+        "iam:UntagRole"
+      ],
+      "Resource": "arn:aws:iam::*:role/automl-lite-*"
+    },
+    {
+      "Sid": "IAMServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateServiceLinkedRole",
+        "iam:DeleteServiceLinkedRole",
+        "iam:GetServiceLinkedRoleDeletionStatus"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/aws-service-role/batch.amazonaws.com/*",
+        "arn:aws:iam::*:role/aws-service-role/ecs.amazonaws.com/*",
+        "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/*",
+        "arn:aws:iam::*:role/aws-service-role/spotfleet.amazonaws.com/*"
+      ]
+    },
+    {
+      "Sid": "NetworkingForBatch",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeRouteTables",
         "ec2:CreateSecurityGroup",
         "ec2:DeleteSecurityGroup",
         "ec2:AuthorizeSecurityGroupIngress",
         "ec2:RevokeSecurityGroupIngress",
         "ec2:AuthorizeSecurityGroupEgress",
         "ec2:RevokeSecurityGroupEgress",
-        "ecs:*",
-        "xray:*",
-        "cloudwatch:*",
-        "amplify:*",
-        "sts:GetCallerIdentity"
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
       ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudWatchLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DescribeLogGroups",
+        "logs:ListTagsLogGroup",
+        "logs:TagLogGroup",
+        "logs:UntagLogGroup",
+        "logs:ListTagsForResource",
+        "logs:TagResource",
+        "logs:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:logs:*:*:log-group:/aws/lambda/automl-lite-*",
+        "arn:aws:logs:*:*:log-group:/aws/batch/automl-lite-*",
+        "arn:aws:logs:*:*:log-group:/aws/apigateway/automl-lite-*"
+      ]
+    },
+    {
+      "Sid": "CallerIdentity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
       "Resource": "*"
     }
   ]
@@ -200,14 +341,12 @@ Go to: **Settings → Actions → General**
 **Fast deployment:** ~3-5 minutes (only container, no infrastructure)
 
 ### **deploy-frontend.yml** - Frontend Deployment
-**Triggers:** Changes to `frontend/` or manual  
+**Triggers:** Manual only (Amplify auto-deploys on push)  
 **Actions:**
-1. Check infrastructure exists (auto-validation)
-2. Get API URL from Terraform outputs (automatic)
-3. Build Next.js static export with API URL
-4. Deploy to S3 bucket
-5. Invalidate CloudFront cache
-6. Test frontend accessibility
+1. Get Amplify App ID for environment
+2. Trigger Amplify build job
+3. Wait for build completion
+4. Output deployment URL
 
 **Smart features:**
 - Automatically validates infrastructure is deployed first
@@ -271,7 +410,7 @@ git add frontend/
 git commit -m "feat: Add training progress bar"
 git push origin dev
 
-# ✅ Only frontend updated (S3 + CloudFront invalidation)
+# ✅ Amplify auto-deploys on push (webhook)
 # ✅ Infrastructure untouched
 # ✅ API untouched
 # ✅ Automatically gets API URL from Terraform
@@ -333,11 +472,11 @@ The workflows are smart and **automatically validate dependencies**:
 
 ```
 Infrastructure (Terraform)
-    ↓ (creates API Gateway, S3, CloudFront)
+    ↓ (creates API Gateway, Amplify, S3, ECR)
     ├→ Backend API (Lambda)
     ├→ Training Container (ECR/Batch)
-    └→ Frontend (S3 + CloudFront)
-         ↓ (automatically gets API URL from Terraform outputs)
+    └→ Frontend (Amplify - auto-deploys on push)
+         ↓ (gets API URL from Amplify environment variables)
 ```
 
 ### ✅ First-Time Setup Order
@@ -352,7 +491,7 @@ terraform apply
 ```
    - Creates all AWS resources
    - Outputs API Gateway URL
-   - Creates S3 + CloudFront for frontend
+   - Creates Amplify app for frontend
    - Takes ~5-10 minutes
 
 2. **Deploy Backend API** (Automatic after infrastructure)
@@ -373,16 +512,14 @@ terraform apply
    - Builds and pushes Docker image to ECR
    - Takes ~3-5 minutes
 
-4. **Deploy Frontend** (Automatic dependency check)
+4. **Deploy Frontend** (Automatic via Amplify)
 ```bash
-# Either:
-# - Push changes to frontend/
-# - Or manually: Actions → Deploy Frontend
+# Push to branch triggers Amplify auto-deploy
+git push origin dev
 ```
-   - **Automatically checks if infrastructure exists**
-   - **Automatically retrieves API URL from Terraform**
-   - Builds Next.js static site with correct API URL
-   - Deploys to S3 and invalidates CloudFront
+   - **Amplify auto-deploys on push** (webhook)
+   - **API URL set in Amplify environment variables**
+   - Builds Next.js SSR app
    - Takes ~3-5 minutes
 
 ### 🔄 Subsequent Deployments
@@ -412,48 +549,39 @@ After initial setup, you can deploy components **independently**:
 
 ### 🎯 How API URL is Passed (Automatic)
 
-You asked: *"¿Cómo se pasa la variable para la URL del backend?"*
+**Answer: Automatic via Terraform → Amplify environment variables!**
 
-**Answer: Completely automatic via Terraform outputs!**
-
-```yaml
-# In deploy-frontend.yml workflow:
-
-# Step 1: Get API URL from Terraform (automatic)
-- name: Get Infrastructure Outputs
-  run: |
-    cd infrastructure/terraform
-    terraform workspace select ${{ env.ENVIRONMENT }}
-    API_URL=$(terraform output -raw api_gateway_url)  # ← Automatic!
-    echo "api_url=$API_URL" >> $GITHUB_OUTPUT
-
-# Step 2: Build with API URL as environment variable
-- name: Build Frontend
-  env:
-    NEXT_PUBLIC_API_URL: ${{ steps.infra.outputs.api_url }}  # ← Injected automatically!
-  run: pnpm build
+```hcl
+# In amplify.tf:
+resource "aws_amplify_app" "frontend" {
+  # ...
+  environment_variables = {
+    NEXT_PUBLIC_API_URL = aws_api_gateway_stage.main.invoke_url  # ← Set by Terraform!
+  }
+}
 ```
 
-**No manual configuration needed!** The workflow:
-1. ✅ Checks infrastructure exists
-2. ✅ Retrieves API URL from Terraform state
-3. ✅ Builds frontend with correct API URL
-4. ✅ Deploys to S3
-5. ✅ Invalidates CloudFront cache
+When Amplify builds, it reads `NEXT_PUBLIC_API_URL` from its environment variables (set by Terraform) and injects it into the Next.js build.
+
+**No manual configuration needed!** The flow is:
+1. ✅ Terraform creates API Gateway
+2. ✅ Terraform creates Amplify app with `NEXT_PUBLIC_API_URL` = API Gateway URL
+3. ✅ Push to branch triggers Amplify webhook
+4. ✅ Amplify builds with correct API URL
+5. ✅ Amplify deploys to CDN
 
 ### 🚦 Validation Flow
 
 ```mermaid
 graph TD
-    A[Frontend Workflow Starts] --> B{Infrastructure exists?}
-    B -->|No| C[❌ Fail with instructions]
-    B -->|Yes| D[Get API URL from Terraform]
-    D --> E[Build Next.js with API URL]
-    E --> F{Frontend resources exist?}
-    F -->|No| G[⚠️ Build only, skip deploy]
-    F -->|Yes| H[Deploy to S3]
-    H --> I[Invalidate CloudFront]
-    I --> J[✅ Success]
+    A[Push to Branch] --> B{Amplify webhook triggers?}
+    B -->|Yes| C[Amplify starts build]
+    C --> D[Install dependencies]
+    D --> E[Build Next.js SSR]
+    E --> F[Deploy to Amplify CDN]
+    F --> G[✅ Success]
+    B -->|No webhook| H[Manual: Actions → Re-deploy Frontend]
+    H --> C
 ```
 
 ### 📝 Manual Override (Optional)
@@ -546,7 +674,7 @@ But in CI/CD, **it's always automatic** - no manual steps required!
 - **Previous approach:** ~100-200 deployments/month (full deploys only)
 
 ### AWS Costs
-- Infrastructure: ~$7-10/month (as documented)
+- Infrastructure: ~$10-25/month (depends on usage)
 - No additional CI/CD costs
 - Monitor: AWS Cost Explorer with Project tag filter
 
