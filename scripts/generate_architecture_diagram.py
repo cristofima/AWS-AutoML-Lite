@@ -197,7 +197,7 @@ def create_cost_comparison_diagram():
     }
     
     with Diagram(
-        "Cost: SageMaker ($150+) vs AutoML Lite ($10-25)",
+        "Cost: SageMaker (with endpoint) vs AutoML Lite",
         show=False,
         filename=os.path.join(OUTPUT_DIR, "architecture-cost"),
         outformat="png",
@@ -206,12 +206,12 @@ def create_cost_comparison_diagram():
         edge_attr=EDGE_ATTR,
         direction="LR"  # Horizontal side by side
     ):
-        with Cluster("SageMaker Autopilot\n$150-300/month", graph_attr=sagemaker_cluster):
-            sm_studio = Sagemaker("Studio")
-            sm_endpoint = Sagemaker("Endpoint\n24/7")
+        with Cluster("SageMaker + Endpoint\n$150-300/mo (endpoint 24/7)", graph_attr=sagemaker_cluster):
+            sm_studio = Sagemaker("Training\n$0.68-3.20")
+            sm_endpoint = Sagemaker("Endpoint\n$150+/mo")
             sm_studio - sm_endpoint
         
-        with Cluster("AutoML Lite\n$10-25/month", graph_attr=automl_cluster):
+        with Cluster("AutoML Lite (batch only)\n$10-25/mo total", graph_attr=automl_cluster):
             lite_amplify = Amplify("Amplify\n$5-15")
             lite_lambda = Lambda("Lambda\n$1-2")
             lite_fargate = Fargate("Fargate Spot\n$2-5")

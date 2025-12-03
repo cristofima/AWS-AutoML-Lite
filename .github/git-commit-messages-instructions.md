@@ -435,9 +435,9 @@ Modified files (6):
 Configuration:
 - vCPU: 2, Memory: 4GB
 - Max runtime: 60 minutes
-- Spot pricing: ~$0.05/job vs $0.17/job on-demand
+- Spot pricing: ~$0.017/job (70% savings vs on-demand)
 
-Cost estimate: $3/month for 20 training jobs
+Cost estimate: ~$0.34/month for 20 training jobs (Fargate compute only)
 ```
 
 ---

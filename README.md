@@ -2,6 +2,16 @@
 
 A lightweight, cost-effective AutoML platform built on AWS serverless architecture. Upload CSV files, automatically detect problem types, and train machine learning models with just a few clicks.
 
+## 🔄 CI/CD Status
+
+| Workflow | Main | Dev |
+|----------|------|-----|
+| CI Terraform | [![CI](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/ci-terraform.yml/badge.svg?branch=main)](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/ci-terraform.yml) | [![CI](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/ci-terraform.yml/badge.svg?branch=dev)](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/ci-terraform.yml) |
+| Deploy Infrastructure | [![Deploy](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-infrastructure.yml/badge.svg?branch=main)](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-infrastructure.yml) | [![Deploy](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-infrastructure.yml/badge.svg?branch=dev)](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-infrastructure.yml) |
+| Deploy Lambda API | [![Deploy](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-lambda-api.yml/badge.svg?branch=main)](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-lambda-api.yml) | [![Deploy](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-lambda-api.yml/badge.svg?branch=dev)](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-lambda-api.yml) |
+| Deploy Training Container | [![Deploy](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-training-container.yml/badge.svg?branch=main)](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-training-container.yml) | [![Deploy](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-training-container.yml/badge.svg?branch=dev)](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-training-container.yml) |
+| Deploy Frontend | [![Deploy](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-frontend.yml/badge.svg?branch=main)](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-frontend.yml) | [![Deploy](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-frontend.yml/badge.svg?branch=dev)](https://github.com/cristofima/AWS-AutoML-Lite/actions/workflows/deploy-frontend.yml) |
+
 ## 🚀 Features
 
 - **Smart Problem Detection**: Automatically classifies tasks as regression or classification based on data characteristics

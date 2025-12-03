@@ -164,7 +164,7 @@ Generates 5 PNG diagrams in `docs/diagrams/`:
 |------|-------------|
 | `architecture-main.png` | Main architecture overview |
 | `architecture-dataflow.png` | Data flow from upload to prediction |
-| `architecture-cost.png` | Lambda vs traditional cost comparison |
+| `architecture-cost.png` | AutoML Lite vs SageMaker cost comparison |
 | `architecture-cicd.png` | CI/CD pipeline with GitHub Actions |
 | `architecture-training.png` | Training container detail |
 
