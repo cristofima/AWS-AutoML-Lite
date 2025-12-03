@@ -6,10 +6,16 @@ This project uses GitHub Actions for automated CI/CD with AWS using OIDC (OpenID
 
 ## Architecture
 
+![CI/CD Pipeline](../docs/diagrams/architecture-cicd.png)
+
+<details>
+<summary>Text version</summary>
+
 ```
 Commit to dev  → Auto Deploy to DEV  → Build Training Container
 Commit to main → Plan → Manual Approval → Deploy to PROD → Build Container
 ```
+</details>
 
 ---
 

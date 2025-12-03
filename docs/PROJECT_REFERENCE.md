@@ -21,6 +21,11 @@
 
 ### High-Level Architecture
 
+![AWS AutoML Lite Architecture](./diagrams/architecture-main.png)
+
+<details>
+<summary>Text version</summary>
+
 ```
 User → AWS Amplify (Next.js SSR Frontend)
          ↓
@@ -34,6 +39,7 @@ User → AWS Amplify (Next.js SSR Frontend)
          ↓
     Save model to S3 + metrics to DynamoDB
 ```
+</details>
 
 ### AWS Services Used
 
@@ -185,6 +191,8 @@ aws-automl-lite/
 
 ## 🔄 Complete Workflow
 
+![Data Flow](./diagrams/architecture-dataflow.png)
+
 ### 1. Upload Phase
 ```
 User uploads CSV → Frontend requests presigned URL from API
@@ -207,6 +215,12 @@ Lambda validates selection → Detects problem type (classification/regression)
 ```
 
 ### 3. Training Phase (Batch Container)
+
+![Training Container Flow](./diagrams/architecture-training.png)
+
+<details>
+<summary>Text version</summary>
+
 ```
 Batch job starts → Downloads CSV from S3
                → Generates EDA report (HTML)
@@ -219,6 +233,7 @@ Batch job starts → Downloads CSV from S3
                → Updates job status to "completed"
                → EventBridge emits completion event
 ```
+</details>
 
 ### 4. Results Phase
 ```

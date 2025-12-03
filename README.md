@@ -47,6 +47,11 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 
 ## 🏗️ Architecture
 
+![AWS AutoML Lite Architecture](docs/diagrams/architecture-main.png)
+
+<details>
+<summary>Text version</summary>
+
 ```
 User → AWS Amplify (Frontend - Next.js SSR)
          ↓
@@ -56,6 +61,7 @@ User → AWS Amplify (Frontend - Next.js SSR)
          ↓
     AWS Batch → Fargate Spot (Training - Docker container)
 ```
+</details>
 
 **Why containers only for training?**
 - Backend API: Direct Lambda deployment (5MB code)
@@ -205,7 +211,7 @@ See [scripts/README.md](./scripts/README.md) for detailed documentation.
 | Frontend | [frontend/README.md](./frontend/README.md) | Next.js setup & pages |
 | Training | [backend/training/](./backend/training/) | ML training container |
 | Terraform | [infrastructure/terraform/README.md](./infrastructure/terraform/README.md) | Infrastructure as Code |
-| Scripts | [scripts/README.md](./scripts/README.md) | Prediction & local training |
+| Scripts | [scripts/README.md](./scripts/README.md) | Local training, predictions & diagram generation |
 
 ## 🤝 Contributing
 
@@ -217,7 +223,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 ## 👤 Author
 
-**Cristofima** - AWS Community Builder
+**Cristopher Coronado** - AWS Community Builder
 
 - GitHub: [@cristofima](https://github.com/cristofima)
 
