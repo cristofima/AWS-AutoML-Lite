@@ -1,5 +1,12 @@
 # AWS AutoML Lite
 
+[![Terraform](https://img.shields.io/badge/Terraform-1.9+-623CE4?logo=terraform)](https://www.terraform.io/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![AWS](https://img.shields.io/badge/AWS-Serverless-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 A lightweight, cost-effective AutoML platform built on AWS serverless architecture. Upload CSV files, automatically detect problem types, and train machine learning models with just a few clicks.
 
 ## 🔄 CI/CD Status
@@ -82,9 +89,9 @@ User → AWS Amplify (Frontend - Next.js SSR)
 
 - AWS Account
 - AWS CLI v2 configured
-- Terraform >= 1.5
+- Terraform >= 1.9
 - Docker installed
-- Node.js 18+ (for frontend)
+- Node.js 20+ (for frontend)
 - Python 3.11+
 
 ## 🚀 Quick Start
@@ -128,6 +135,8 @@ terraform output api_gateway_url
 - [ARCHITECTURE_DECISIONS.md](./infrastructure/terraform/ARCHITECTURE_DECISIONS.md) - Container usage rationale
 - [LESSONS_LEARNED.md](./docs/LESSONS_LEARNED.md) - Challenges, solutions & best practices
 - [FRONTEND_DEPLOYMENT_ANALYSIS.md](./docs/FRONTEND_DEPLOYMENT_ANALYSIS.md) - Frontend deployment decision analysis
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - Contribution guidelines
+- [CHANGELOG.md](./CHANGELOG.md) - Version history
 
 ## 💰 Cost Estimation
 

@@ -6,7 +6,7 @@ Next.js 16 frontend for AWS AutoML Lite platform.
 
 ### Prerequisites
 
-- Node.js 18+ installed
+- Node.js 20+ installed
 - Backend API deployed and running
 
 ### Setup

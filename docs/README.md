@@ -22,6 +22,10 @@ Complete documentation for AWS AutoML Lite platform.
   - Data flows
   - Development status
 
+### Project Management
+- **[CHANGELOG.md](../CHANGELOG.md)** - Version history and notable changes
+- **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Contribution guidelines
+
 ### Specialized Guides
 - **[SETUP_CICD.md](../.github/SETUP_CICD.md)** - CI/CD with GitHub Actions
   - OIDC setup

@@ -16,7 +16,7 @@
 
 **Alignment with Workflows:**
 - ✅ All workflows correctly use workspace pattern: `select || new`
-- ✅ Terraform version 1.5.0 consistent across all workflows
+- ✅ Terraform version 1.9.8 consistent across all workflows
 - ✅ CI/CD validates format, init, and validate before deployment
 
 ---

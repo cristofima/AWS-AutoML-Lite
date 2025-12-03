@@ -1,5 +1,22 @@
 # AWS AutoML Lite - Project Reference
 
+## 📑 Table of Contents
+
+- [Project Overview](#-project-overview)
+- [Architecture](#️-architecture)
+- [Technical Stack](#-technical-stack)
+- [Project Structure](#-project-structure)
+- [Data Flow](#-data-flow)
+- [API Endpoints](#-api-endpoints)
+- [Training Pipeline](#️-training-pipeline)
+- [Frontend Pages](#-frontend-pages)
+- [Infrastructure](#-infrastructure)
+- [Cost Analysis](#-cost-analysis)
+- [Development Status](#-development-status)
+- [Next Steps](#-next-steps)
+
+---
+
 ## 📋 Project Overview
 
 **Goal:** Build a lightweight AutoML platform on AWS that allows users to upload CSV files, automatically detect problem types (classification/regression), perform EDA, train models, and maintain training history.
