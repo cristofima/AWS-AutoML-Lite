@@ -4,7 +4,7 @@ Infrastructure as Code for AWS AutoML Lite platform.
 
 ## Prerequisites
 
-- Terraform >= 1.5
+- Terraform >= 1.9
 - AWS CLI configured
 - Docker (for training container)
 

@@ -10,7 +10,7 @@ Before you begin, ensure you have:
 
 - ✅ **AWS Account** with administrative access
 - ✅ **AWS CLI** installed and configured ([Install Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html))
-- ✅ **Terraform** >= 1.5 installed ([Download](https://www.terraform.io/downloads))
+- ✅ **Terraform** >= 1.9 installed ([Download](https://www.terraform.io/downloads))
 - ✅ **Docker** installed and running ([Get Docker](https://www.docker.com/get-started)) - *Only for training container*
 - ✅ **Git** installed
 

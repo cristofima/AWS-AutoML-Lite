@@ -82,9 +82,9 @@ User → AWS Amplify (Frontend - Next.js SSR)
 
 - AWS Account
 - AWS CLI v2 configured
-- Terraform >= 1.5
+- Terraform >= 1.9
 - Docker installed
-- Node.js 18+ (for frontend)
+- Node.js 20+ (for frontend)
 - Python 3.11+
 
 ## 🚀 Quick Start
