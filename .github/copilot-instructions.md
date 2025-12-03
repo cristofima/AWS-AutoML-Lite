@@ -18,6 +18,12 @@ Serverless AutoML platform with **split architecture**:
 
 **Key insight:** Containers ONLY for training - ML deps (265MB) exceed Lambda's 250MB limit.
 
+**Critical architectural principle:** The training container is **fully autonomous** and stateless. It:
+- Never calls the backend API
+- Receives ALL context via environment variables only
+- Writes results directly to DynamoDB and S3
+- Can be tested locally with `docker-compose --profile training run training`
+
 ## Critical: Environment Variable Cascade
 
 Training container is **autonomous** - receives ALL context via environment variables, never calls the API:
@@ -74,26 +80,75 @@ Located in `backend/training/`, runs as Docker container in AWS Batch:
 
 ## Development Commands
 
+### Local Development (Docker Compose)
+
 ```powershell
-# Backend (local) - http://localhost:8000/docs
-cd backend; uvicorn api.main:app --reload
+# 1. Configure backend environment
+cp backend/.env.example backend/.env
+# Edit backend/.env with values from: terraform output
 
-# Frontend (local) - Set NEXT_PUBLIC_API_URL=http://localhost:8000 in .env.local
-cd frontend; pnpm dev
+# 2. Start API (connects to dev AWS services)
+docker-compose up
 
-# Test training container locally (requires uploaded dataset)
-docker-compose --profile training run training
+# 3. Frontend (separate terminal)
+cd frontend
+cp .env.local.example .env.local
+# Edit .env.local with NEXT_PUBLIC_API_URL
+pnpm install && pnpm dev
+```
 
-# Deploy Lambda only
-cd infrastructure/terraform; terraform apply -target=aws_lambda_function.api
+### Backend Development
 
-# Deploy training container
+```powershell
+# Run API locally without Docker
+cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1  # Linux/Mac: source venv/bin/activate
+pip install -r requirements.txt
+uvicorn api.main:app --reload  # API at http://localhost:8000/docs
+```
+
+### Training Container Testing
+
+```powershell
+# Test training locally with uploaded dataset
+DATASET_ID=xxx TARGET_COLUMN=price docker-compose --profile training run training
+
+# Or use helper script (requires dataset uploaded to dev)
+python scripts/run-training-local.py --dataset-id xxx --target-column price --time-budget 120
+```
+
+### Deployment
+
+```powershell
+# Full infrastructure
+cd infrastructure/terraform
+terraform apply
+
+# Deploy Lambda API only (fast iteration)
+terraform apply -target=aws_lambda_function.api
+
+# Build and deploy training container
 $EcrUrl = terraform output -raw ecr_repository_url
+$Region = terraform output -raw aws_region
+aws ecr get-login-password --region $Region | docker login --username AWS --password-stdin $($EcrUrl.Split('/')[0])
 docker build -t automl-training:latest backend/training
-docker tag automl-training:latest "$EcrUrl:latest"; docker push "$EcrUrl:latest"
+docker tag automl-training:latest "$EcrUrl:latest"
+docker push "$EcrUrl:latest"
 
+# Verify image in ECR
+aws ecr describe-images --repository-name automl-lite-dev-training --image-ids imageTag=latest
+```
+
+### Utilities
+
+```powershell
 # Generate architecture diagrams (requires: pip install diagrams + Graphviz)
 python scripts/generate_architecture_diagram.py
+
+# Make predictions with trained model
+docker build -f scripts/Dockerfile.predict -t automl-predict .
+docker run --rm -v ${PWD}:/data automl-predict /data/model.pkl --info
 ```
 
 ## Common Pitfalls
@@ -136,7 +191,59 @@ Backend Pydantic and Frontend TypeScript schemas must match. When adding fields:
 |--------|---------|
 | `scripts/run-training-local.py` | Test training in local Docker container |
 | `scripts/predict.py` | Make predictions with trained models (Docker) |
-| `scripts/generate_architecture_diagram.py` | Generate AWS architecture diagrams |
+- `scripts/generate_architecture_diagram.py` | Generate AWS architecture diagrams |
+
+## Testing & Validation
+
+### API Testing
+
+```powershell
+# Health check
+curl $API_URL/health
+
+# Test upload endpoint
+curl -X POST $API_URL/upload -H "Content-Type: application/json" -d '{"filename": "test.csv"}'
+
+# View API docs (Swagger UI)
+# http://localhost:8000/docs (local) or $API_URL/docs (deployed)
+```
+
+### Container Testing
+
+```powershell
+# Build training container locally
+docker build -t automl-training:latest backend/training
+
+# Test with environment variables
+docker run --rm \
+  -e DATASET_ID=xxx \
+  -e TARGET_COLUMN=price \
+  -e JOB_ID=test-123 \
+  -e TIME_BUDGET=60 \
+  -e S3_BUCKET_DATASETS=automl-lite-dev-datasets-XXX \
+  -e DYNAMODB_JOBS_TABLE=automl-lite-dev-training-jobs \
+  -e REGION=us-east-1 \
+  -v ~/.aws:/root/.aws:ro \
+  automl-training:latest
+```
+
+### Frontend Testing
+
+```powershell
+cd frontend
+pnpm dev  # Development server at http://localhost:3000
+pnpm build  # Test production build
+pnpm lint  # ESLint check
+```
+
+### Terraform Validation
+
+```powershell
+cd infrastructure/terraform
+terraform fmt  # Format files
+terraform validate  # Syntax check
+terraform plan  # Preview changes
+```
 
 ## CI/CD Workflows (`.github/workflows/`)
 
@@ -145,7 +252,14 @@ Backend Pydantic and Frontend TypeScript schemas must match. When adding fields:
 | `deploy-lambda-api.yml` | Push to main/dev | Deploy FastAPI to Lambda |
 | `deploy-training-container.yml` | Push to main/dev | Build & push training image to ECR |
 | `deploy-infrastructure.yml` | Manual | Terraform apply |
+| `deploy-frontend.yml` | Push to main/dev (via Amplify) | Auto-deploy Next.js frontend |
 | `ci-terraform.yml` | PR | Terraform validate & plan |
+| `destroy-environment.yml` | Manual | Destroy all infrastructure (requires confirmation) |
+
+**Branch Strategy:**
+- `dev` → Deploy to dev environment (automl-lite-dev-*)
+- `main` → Deploy to prod environment (automl-lite-prod-*)
+- Feature branches → CI validation only (no deployment)
 
 ## Key Docs
 
