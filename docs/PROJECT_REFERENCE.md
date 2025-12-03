@@ -421,8 +421,10 @@ Total: ~$10-25/month
 
 **Comparison:**
 - SageMaker with real-time endpoint: ~$150-300/month (ml.c5.xlarge 24/7)
-- This solution: $12-15/month
-- **Savings: ~80-95%**
+- This solution: $10-25/month
+- **Savings: ~85-95%** (vs SageMaker with endpoints)
+
+> Note: SageMaker training alone costs ~$0.68-3.20/month for 20 jobs—comparable to this solution. The significant savings come from avoiding always-on inference endpoints.
 
 ---
 

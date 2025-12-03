@@ -81,9 +81,9 @@ For datasets >10K rows, Lambda timeout is insufficient.
 - Cost: ~$0.04 per vCPU-hour (Spot)
 
 **Training job cost comparison (10 min job):**
-- Lambda (10GB): ~$0.17
-- Fargate Spot (2 vCPU, 4GB): ~$0.013
-- **Savings: 92%**
+- Lambda (10GB): ~$0.10
+- Fargate Spot (2 vCPU, 4GB): ~$0.017
+- **Savings: 83%**
 
 ---
 
@@ -130,7 +130,7 @@ For datasets >10K rows, Lambda timeout is insufficient.
 - ✅ No cold starts
 
 **Cons:**
-- ❌ Always running (higher cost: ~$25/month)
+- ❌ Always running (higher cost: ~$12-15/month)
 - ❌ Not ideal for batch jobs
 - ❌ Overkill for intermittent training
 
@@ -297,7 +297,7 @@ If you want to eliminate Docker for demo purposes, you can:
 **Containers are used ONLY in the training component, where they are technically required due to:**
 - Dependency size constraints (265MB > 250MB Lambda limit)
 - Runtime duration (can exceed 15 min Lambda limit)
-- Cost optimization (Batch Spot 92% cheaper)
+- Cost optimization (Batch Spot ~83% cheaper than Lambda for training)
 
 **This is not "unnecessary Docker complexity" - it's the right tool for the job.**
 
