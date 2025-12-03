@@ -51,10 +51,14 @@ Required env vars in training container: `DATASET_ID`, `TARGET_COLUMN`, `JOB_ID`
 
 ### Training Container (Python)
 
-- **Preprocessing** (`preprocessor.py`): Auto-detects ID columns, uses `feature-engine` for constant/duplicate detection
-- **Problem type**: `<20 unique values OR <5% unique ratio` = classification
-- **Model training** (`model_trainer.py`): FLAML with `['lgbm', 'rf', 'extra_tree']` - xgboost excluded (bugs)
-- **Multiclass**: Explicitly set `metric='accuracy'`
+Located in `backend/training/`, runs as Docker container in AWS Batch:
+
+- **Entry point** (`train.py`): Orchestrates 7-step pipeline (download → EDA → preprocess → train → reports → save → update status)
+- **Preprocessing** (`preprocessor.py`): Auto-detects ID columns using regex patterns, uses `feature-engine` for constant/duplicate detection
+- **Problem type detection**: `<20 unique values OR <5% unique ratio` = classification
+- **Model training** (`model_trainer.py`): FLAML with `['lgbm', 'rf', 'extra_tree']` - xgboost excluded due to `best_iteration` bugs
+- **Multiclass**: Explicitly set `metric='accuracy'` (FLAML's auto-detection unreliable)
+- **Reports**: Generates both EDA (`sweetviz`) and training reports with feature importance charts
 
 ### Frontend (TypeScript)
 
@@ -100,6 +104,8 @@ python scripts/generate_architecture_diagram.py
 | Job stuck RUNNING | Missing DynamoDB perms | Add `dynamodb:UpdateItem` to Batch task role in `iam.tf` |
 | New train.py param ignored | Not in containerOverrides | Add to `batch_service.py` environment list |
 | Frontend CORS errors | Wrong API URL | Get from `terraform output api_gateway_url` |
+| Low model accuracy | ID columns in training | Check `preprocessor.py` ID detection patterns |
+| DynamoDB Decimal errors | Floats in metrics dict | Convert to `Decimal(str(v))` before saving |
 
 ## File Reference by Task
 
@@ -112,9 +118,9 @@ python scripts/generate_architecture_diagram.py
 ## Schema Sync Pattern
 
 Backend Pydantic and Frontend TypeScript schemas must match. When adding fields:
-1. `backend/api/models/schemas.py` - Add to Pydantic model
-2. `frontend/lib/api.ts` - Add to TypeScript interface
-3. Example: `JobResponse` (backend) ↔ `JobDetails` (frontend)
+1. `backend/api/models/schemas.py` - Add to Pydantic model (e.g., `JobResponse`)
+2. `frontend/lib/api.ts` - Add to TypeScript interface (e.g., `JobDetails`)
+3. Key pairs: `JobResponse` ↔ `JobDetails`, `DatasetMetadata` ↔ `DatasetMetadata`, `TrainResponse` ↔ `TrainResponse`
 
 ## Debugging
 
@@ -122,6 +128,7 @@ Backend Pydantic and Frontend TypeScript schemas must match. When adding fields:
 - Batch logs: `/aws/batch/automl-lite-{env}-training`
 - Local API: `http://localhost:8000/docs` (Swagger UI)
 - Env var mismatch: Compare `batch_service.py` containerOverrides with `train.py` os.getenv()
+- Training issues: Check `dropped_columns` in preprocessing_info for filtered features
 
 ## Utility Scripts
 
@@ -131,9 +138,19 @@ Backend Pydantic and Frontend TypeScript schemas must match. When adding fields:
 | `scripts/predict.py` | Make predictions with trained models (Docker) |
 | `scripts/generate_architecture_diagram.py` | Generate AWS architecture diagrams |
 
+## CI/CD Workflows (`.github/workflows/`)
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `deploy-lambda-api.yml` | Push to main/dev | Deploy FastAPI to Lambda |
+| `deploy-training-container.yml` | Push to main/dev | Build & push training image to ECR |
+| `deploy-infrastructure.yml` | Manual | Terraform apply |
+| `ci-terraform.yml` | PR | Terraform validate & plan |
+
 ## Key Docs
 
-- `docs/LESSONS_LEARNED.md` - Critical debugging insights
+- `docs/LESSONS_LEARNED.md` - Critical debugging insights (read this first for troubleshooting)
 - `docs/QUICKSTART.md` - Deployment guide
 - `.github/SETUP_CICD.md` - CI/CD with GitHub Actions
 - `infrastructure/terraform/ARCHITECTURE_DECISIONS.md` - Why Lambda + Batch split
+- `.github/git-commit-messages-instructions.md` - Commit message conventions
