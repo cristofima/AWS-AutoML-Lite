@@ -1,5 +1,20 @@
 # Lessons Learned
 
+## 📑 Table of Contents
+
+- [Overview](#overview)
+- [1. Docker & Container Management](#1-docker--container-management)
+- [2. Environment Variables & Configuration](#2-environment-variables--configuration)
+- [3. Machine Learning & Feature Engineering](#3-machine-learning--feature-engineering)
+- [4. AWS Services Integration](#4-aws-services-integration)
+- [5. Frontend Deployment Architecture](#5-frontend-deployment-architecture)
+- [6. CI/CD & Automation](#6-cicd--automation)
+- [7. Cost Optimization](#7-cost-optimization)
+- [8. Development Workflow](#8-development-workflow)
+- [Key Takeaways](#key-takeaways)
+
+---
+
 ## Overview
 
 This document captures key challenges, solutions, and architectural insights discovered during the development and enhancement of AWS AutoML Lite. These lessons are organized by category to help future developers avoid common pitfalls and understand critical design decisions.
