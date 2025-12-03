@@ -2,6 +2,16 @@
 
 Utility scripts for running AutoML operations locally. All scripts are cross-platform (Windows/Linux/Mac).
 
+## Available Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `run-training-local.py` | Run training in local Docker container |
+| `predict.py` | Make predictions using trained models |
+| `generate_architecture_diagram.py` | Generate AWS architecture diagrams |
+
+---
+
 ## Training Script
 
 ### `run-training-local.py`
@@ -128,4 +138,45 @@ docker run --rm -v ${PWD}:/data automl-predict /data/model.pkl --json /data/samp
 
 # Batch predictions
 docker run --rm -v ${PWD}:/data automl-predict /data/model.pkl -i /data/test.csv -o /data/predictions.csv
+```
+
+---
+
+## Architecture Diagrams
+
+### `generate_architecture_diagram.py`
+Generate AWS architecture diagrams for documentation using the Python `diagrams` library.
+
+**Prerequisites:**
+- Python 3.x installed
+- Install diagrams library: `pip install diagrams`
+- Graphviz installed: https://graphviz.org/download/
+
+**Usage:**
+```bash
+python scripts/generate_architecture_diagram.py
+```
+
+**Output:**
+Generates 5 PNG diagrams in `docs/diagrams/`:
+
+| File | Description |
+|------|-------------|
+| `architecture-main.png` | Main architecture overview |
+| `architecture-dataflow.png` | Data flow from upload to prediction |
+| `architecture-cost.png` | Lambda vs traditional cost comparison |
+| `architecture-cicd.png` | CI/CD pipeline with GitHub Actions |
+| `architecture-training.png` | Training container detail |
+
+**Example:**
+```bash
+# Install dependencies (one time)
+pip install diagrams
+# Windows: winget install graphviz
+# Mac: brew install graphviz
+# Ubuntu: sudo apt install graphviz
+
+# Generate diagrams
+python scripts/generate_architecture_diagram.py
+# Output: docs/diagrams/architecture-*.png (5 files)
 ```
