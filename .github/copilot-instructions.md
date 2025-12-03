@@ -191,7 +191,7 @@ Backend Pydantic and Frontend TypeScript schemas must match. When adding fields:
 |--------|---------|
 | `scripts/run-training-local.py` | Test training in local Docker container |
 | `scripts/predict.py` | Make predictions with trained models (Docker) |
-- `scripts/generate_architecture_diagram.py` | Generate AWS architecture diagrams |
+| `scripts/generate_architecture_diagram.py` | Generate AWS architecture diagrams |
 
 ## Testing & Validation
 
