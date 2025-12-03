@@ -14,7 +14,12 @@ Usage:
     python scripts/generate_architecture_diagram.py
 
 Output:
-    Creates 'aws_automl_lite_architecture.png' in the current directory
+    Creates 5 PNG files in the docs/diagrams/ directory:
+    - architecture-main.png
+    - architecture-dataflow.png
+    - architecture-cost.png
+    - architecture-cicd.png
+    - architecture-training.png
 """
 
 from diagrams import Diagram, Cluster, Edge
