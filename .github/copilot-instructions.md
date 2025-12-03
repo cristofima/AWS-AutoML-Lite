@@ -13,7 +13,7 @@ Serverless AutoML platform with **split architecture**:
 |-----------|------------|------------|-----|
 | Backend API | FastAPI + Mangum | Lambda ZIP (5MB) | Fast cold starts, simple deploys |
 | Training | FLAML + scikit-learn | Docker on AWS Batch | 265MB deps, >15min runtime exceed Lambda limits |
-| Frontend | Next.js 16 App Router | AWS Amplify | SSR support |
+| Frontend | Next.js 16 App Router | AWS Amplify | SSR support, auto-deploy on push |
 | Infrastructure | Terraform | `infrastructure/terraform/` | State management |
 
 **Key insight:** Containers ONLY for training - ML deps (265MB) exceed Lambda's 250MB limit.
@@ -87,6 +87,9 @@ cd infrastructure/terraform; terraform apply -target=aws_lambda_function.api
 $EcrUrl = terraform output -raw ecr_repository_url
 docker build -t automl-training:latest backend/training
 docker tag automl-training:latest "$EcrUrl:latest"; docker push "$EcrUrl:latest"
+
+# Generate architecture diagrams (requires: pip install diagrams + Graphviz)
+python scripts/generate_architecture_diagram.py
 ```
 
 ## Common Pitfalls
@@ -120,7 +123,17 @@ Backend Pydantic and Frontend TypeScript schemas must match. When adding fields:
 - Local API: `http://localhost:8000/docs` (Swagger UI)
 - Env var mismatch: Compare `batch_service.py` containerOverrides with `train.py` os.getenv()
 
+## Utility Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/run-training-local.py` | Test training in local Docker container |
+| `scripts/predict.py` | Make predictions with trained models (Docker) |
+| `scripts/generate_architecture_diagram.py` | Generate AWS architecture diagrams |
+
 ## Key Docs
 
 - `docs/LESSONS_LEARNED.md` - Critical debugging insights
+- `docs/QUICKSTART.md` - Deployment guide
+- `.github/SETUP_CICD.md` - CI/CD with GitHub Actions
 - `infrastructure/terraform/ARCHITECTURE_DECISIONS.md` - Why Lambda + Batch split
