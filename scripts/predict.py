@@ -176,7 +176,11 @@ def prepare_input(data: pd.DataFrame, preprocessor) -> pd.DataFrame:
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     for col in numeric_cols:
         if df[col].isnull().any():
-            df[col].fillna(df[col].median(), inplace=True)
+            median_val = df[col].median()
+            # Fallback to 0 if median is NaN (empty column or all NaN)
+            if pd.isna(median_val):
+                median_val = 0
+            df[col].fillna(median_val, inplace=True)
     
     categorical_cols = df.select_dtypes(include=['object']).columns
     for col in categorical_cols:
@@ -243,8 +247,9 @@ def predict_single(model_package: dict, input_data: dict) -> dict:
             
             result['probabilities'] = {str(label): float(p) for label, p in zip(class_labels, probas)}
             result['confidence'] = float(max(probas))
-        except Exception:
-            pass
+        except (AttributeError, ValueError, IndexError) as e:
+            # Log warning but continue - probabilities are optional
+            print(f"⚠️  Could not compute class probabilities: {e}")
     
     return result
 
@@ -283,8 +288,9 @@ def predict_batch(model_package: dict, input_path: str, output_path: str) -> Non
         try:
             probas = model.predict_proba(X)
             df['confidence'] = probas.max(axis=1)
-        except Exception:
-            pass
+        except (AttributeError, ValueError) as e:
+            # Log warning but continue - confidence scores are optional
+            print(f"⚠️  Could not compute confidence scores: {e}")
     
     # Save results
     df.to_csv(output_path, index=False)
