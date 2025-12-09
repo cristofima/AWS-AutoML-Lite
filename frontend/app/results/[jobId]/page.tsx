@@ -30,6 +30,25 @@ export default function ResultsPage() {
     setTimeout(() => setCopiedPython(false), 2000);
   };
 
+  // Generate Docker commands for model prediction (extracted to avoid duplication)
+  const getDockerCommands = (jobId: string) => {
+    const modelFile = `model_${jobId.slice(0, 8)}.pkl`;
+    return `# Build prediction container (one time)
+docker build -f scripts/Dockerfile.predict -t automl-predict .
+
+# Show model info and required features
+docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} --info
+
+# Generate sample input JSON (auto-detects features)
+docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -g /data/sample_input.json
+
+# Edit sample_input.json with your values, then predict
+docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} --json /data/sample_input.json
+
+# Batch predictions from CSV
+docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test.csv -o /data/predictions.csv`;
+  };
+
   useEffect(() => {
     const fetchResults = async () => {
       try {
@@ -276,39 +295,10 @@ export default function ResultsPage() {
             </div>
             <div className="relative">
               <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto text-sm font-mono">
-                <code>{`# Build prediction container (one time)
-docker build -f scripts/Dockerfile.predict -t automl-predict .
-
-# Show model info and required features
-docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl --info
-
-# Generate sample input JSON (auto-detects features)
-docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl -g /data/sample_input.json
-
-# Edit sample_input.json with your values, then predict
-docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl --json /data/sample_input.json
-
-# Batch predictions from CSV
-docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl -i /data/test.csv -o /data/predictions.csv`}</code>
+                <code>{getDockerCommands(job.job_id)}</code>
               </pre>
               <button
-                onClick={() => {
-                  const code = `# Build prediction container (one time)
-docker build -f scripts/Dockerfile.predict -t automl-predict .
-
-# Show model info and required features
-docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl --info
-
-# Generate sample input JSON (auto-detects features)
-docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl -g /data/sample_input.json
-
-# Edit sample_input.json with your values, then predict
-docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl --json /data/sample_input.json
-
-# Batch predictions from CSV
-docker run --rm -v \${PWD}:/data automl-predict /data/model_${job.job_id.slice(0, 8)}.pkl -i /data/test.csv -o /data/predictions.csv`;
-                  handleCopyDocker(code);
-                }}
+                onClick={() => handleCopyDocker(getDockerCommands(job.job_id))}
                 className={`absolute top-2 right-2 px-3 py-1 text-xs rounded transition-all cursor-pointer ${
                   copiedDocker 
                     ? 'bg-green-600 text-white' 
