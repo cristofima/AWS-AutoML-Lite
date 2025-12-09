@@ -184,6 +184,10 @@ class AutoPreprocessor:
     
     def detect_problem_type(self, y: pd.Series) -> str:
         """Detect if problem is classification or regression"""
+        # Guard against empty target
+        if len(y) == 0:
+            return 'classification'  # Default fallback
+        
         # Check if target is numeric
         if pd.api.types.is_numeric_dtype(y):
             # If numeric, check unique values ratio

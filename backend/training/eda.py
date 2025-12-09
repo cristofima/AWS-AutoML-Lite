@@ -54,6 +54,10 @@ class EDAReportGenerator:
     
     def _detect_problem_type(self) -> str:
         """Detect if classification or regression"""
+        # Guard against empty target
+        if len(self.target) == 0:
+            return 'classification'  # Default fallback
+        
         if pd.api.types.is_numeric_dtype(self.target):
             unique_ratio = self.target.nunique() / len(self.target)
             if unique_ratio < 0.05 or self.target.nunique() < 20:
@@ -108,9 +112,10 @@ class EDAReportGenerator:
         
         if self.problem_type == 'classification':
             class_counts = self.target.value_counts()
-            imbalance_ratio = class_counts.max() / class_counts.min()
-            if imbalance_ratio > 3:
-                self.warnings.append(f"Class imbalance detected (ratio: {imbalance_ratio:.1f}:1)")
+            if len(class_counts) > 0 and class_counts.min() > 0:
+                imbalance_ratio = class_counts.max() / class_counts.min()
+                if imbalance_ratio > 3:
+                    self.warnings.append(f"Class imbalance detected (ratio: {imbalance_ratio:.1f}:1)")
     
     def _get_css(self) -> str:
         """Return CSS styles"""
