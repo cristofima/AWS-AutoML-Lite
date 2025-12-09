@@ -35,7 +35,12 @@ resource "aws_s3_bucket_cors_configuration" "datasets" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT", "GET"]
-    allowed_origins = ["*"]
+    # Security: Use specific origins instead of wildcard
+    # Defaults to Amplify domain + localhost for development
+    allowed_origins = length(var.cors_allowed_origins) > 0 ? var.cors_allowed_origins : concat(
+      local.amplify_enabled ? ["https://${aws_amplify_app.frontend[0].default_domain}"] : [],
+      var.environment == "dev" ? ["http://localhost:3000"] : []
+    )
     max_age_seconds = 3600
   }
 }
@@ -77,7 +82,11 @@ resource "aws_s3_bucket_cors_configuration" "models" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET"]
-    allowed_origins = ["*"]
+    # Security: Use specific origins instead of wildcard
+    allowed_origins = length(var.cors_allowed_origins) > 0 ? var.cors_allowed_origins : concat(
+      local.amplify_enabled ? ["https://${aws_amplify_app.frontend[0].default_domain}"] : [],
+      var.environment == "dev" ? ["http://localhost:3000"] : []
+    )
     expose_headers  = ["Content-Disposition"]
     max_age_seconds = 3600
   }
@@ -120,7 +129,11 @@ resource "aws_s3_bucket_cors_configuration" "reports" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET"]
-    allowed_origins = ["*"]
+    # Security: Use specific origins instead of wildcard
+    allowed_origins = length(var.cors_allowed_origins) > 0 ? var.cors_allowed_origins : concat(
+      local.amplify_enabled ? ["https://${aws_amplify_app.frontend[0].default_domain}"] : [],
+      var.environment == "dev" ? ["http://localhost:3000"] : []
+    )
     expose_headers  = ["Content-Disposition"]
     max_age_seconds = 3600
   }
