@@ -127,13 +127,41 @@ cat > github-actions-permissions.json <<EOF
     {
       "Sid": "APIGatewayManagement",
       "Effect": "Allow",
-      "Action": "apigateway:*",
-      "Resource": "*"
+      "Action": [
+        "apigateway:GET",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:PATCH",
+        "apigateway:DELETE",
+        "apigateway:UpdateRestApiPolicy"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:*::/restapis",
+        "arn:aws:apigateway:*::/restapis/*"
+      ]
     },
     {
       "Sid": "BatchManagement",
       "Effect": "Allow",
-      "Action": "batch:*",
+      "Action": [
+        "batch:CreateComputeEnvironment",
+        "batch:UpdateComputeEnvironment",
+        "batch:DeleteComputeEnvironment",
+        "batch:DescribeComputeEnvironments",
+        "batch:CreateJobQueue",
+        "batch:UpdateJobQueue",
+        "batch:DeleteJobQueue",
+        "batch:DescribeJobQueues",
+        "batch:RegisterJobDefinition",
+        "batch:DeregisterJobDefinition",
+        "batch:DescribeJobDefinitions",
+        "batch:SubmitJob",
+        "batch:DescribeJobs",
+        "batch:ListJobs",
+        "batch:TerminateJob",
+        "batch:TagResource",
+        "batch:UntagResource"
+      ],
       "Resource": "*"
     },
     {

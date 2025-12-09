@@ -124,3 +124,11 @@ variable "github_token" {
   sensitive   = true
   default     = ""
 }
+
+variable "cors_allowed_origins" {
+  description = "List of allowed origins for S3 CORS configuration. Use specific domains for security."
+  type        = list(string)
+  default     = []
+  # When empty, defaults to Amplify domain + localhost for dev
+  # For production, specify exact frontend URLs
+}

@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def generate_training_report(
@@ -382,7 +382,7 @@ class TrainingReportGenerator:
     
     def generate(self) -> str:
         """Generate complete HTML report"""
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         
         html = f"""
         <!DOCTYPE html>

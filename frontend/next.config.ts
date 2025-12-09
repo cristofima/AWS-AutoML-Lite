@@ -6,7 +6,9 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   
-  // Trailing slashes for better compatibility
+  // Trailing slashes ensure consistent URL handling across:
+  // - AWS Amplify SSR deployments (prevents 404 on refresh)
+  // - Static file serving and client-side navigation
   trailingSlash: true,
 };
 

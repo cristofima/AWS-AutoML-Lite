@@ -170,8 +170,8 @@ def get_feature_importance(model: AutoML, feature_names) -> Dict[str, float]:
                         print(f"  {i+1}. {feature}: {importance:.4f}")
                     
                     return feature_importance
-            except Exception:
-                pass
+            except (AttributeError, TypeError) as e:
+                print(f"Could not extract feature importances from model: {e}")
         
         # Fallback: Create equal importance for all features
         print("\nCould not extract feature importances, using equal weights")
