@@ -1,3 +1,20 @@
+# =============================================================================
+# CORS Origins - Computed once and validated
+# =============================================================================
+# The cors_origins local calculates allowed origins based on:
+# 1. Manual override via var.cors_allowed_origins (highest priority)
+# 2. Amplify domain (if enabled via github_repository + github_token)
+# 3. localhost:3000 (only in dev environment)
+#
+# IMPORTANT: In production, either enable Amplify OR set cors_allowed_origins
+# =============================================================================
+locals {
+  cors_origins = length(var.cors_allowed_origins) > 0 ? var.cors_allowed_origins : concat(
+    local.amplify_enabled ? ["https://${aws_amplify_app.frontend[0].default_domain}"] : [],
+    var.environment == "dev" ? ["http://localhost:3000"] : []
+  )
+}
+
 # S3 Bucket for Datasets
 resource "aws_s3_bucket" "datasets" {
   bucket = "${local.name_prefix}-datasets-${local.account_id}"
@@ -35,13 +52,15 @@ resource "aws_s3_bucket_cors_configuration" "datasets" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT", "GET"]
-    # Security: Use specific origins instead of wildcard
-    # Defaults to Amplify domain + localhost for development
-    allowed_origins = length(var.cors_allowed_origins) > 0 ? var.cors_allowed_origins : concat(
-      local.amplify_enabled ? ["https://${aws_amplify_app.frontend[0].default_domain}"] : [],
-      var.environment == "dev" ? ["http://localhost:3000"] : []
-    )
+    allowed_origins = local.cors_origins
     max_age_seconds = 3600
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(local.cors_origins) > 0
+      error_message = "CORS allowed_origins cannot be empty. Either enable Amplify (set github_repository and github_token), use dev environment, or set cors_allowed_origins manually."
+    }
   }
 }
 
@@ -82,13 +101,16 @@ resource "aws_s3_bucket_cors_configuration" "models" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET"]
-    # Security: Use specific origins instead of wildcard
-    allowed_origins = length(var.cors_allowed_origins) > 0 ? var.cors_allowed_origins : concat(
-      local.amplify_enabled ? ["https://${aws_amplify_app.frontend[0].default_domain}"] : [],
-      var.environment == "dev" ? ["http://localhost:3000"] : []
-    )
+    allowed_origins = local.cors_origins
     expose_headers  = ["Content-Disposition"]
     max_age_seconds = 3600
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(local.cors_origins) > 0
+      error_message = "CORS allowed_origins cannot be empty. Either enable Amplify (set github_repository and github_token), use dev environment, or set cors_allowed_origins manually."
+    }
   }
 }
 
@@ -129,12 +151,15 @@ resource "aws_s3_bucket_cors_configuration" "reports" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET"]
-    # Security: Use specific origins instead of wildcard
-    allowed_origins = length(var.cors_allowed_origins) > 0 ? var.cors_allowed_origins : concat(
-      local.amplify_enabled ? ["https://${aws_amplify_app.frontend[0].default_domain}"] : [],
-      var.environment == "dev" ? ["http://localhost:3000"] : []
-    )
+    allowed_origins = local.cors_origins
     expose_headers  = ["Content-Disposition"]
     max_age_seconds = 3600
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(local.cors_origins) > 0
+      error_message = "CORS allowed_origins cannot be empty. Either enable Amplify (set github_repository and github_token), use dev environment, or set cors_allowed_origins manually."
+    }
   }
 }
