@@ -64,15 +64,15 @@ export function formatDuration(startDate: string, endDate?: string): string {
 export function getStatusColor(status: string): string {
   switch (status) {
     case 'completed':
-      return 'text-green-600 bg-green-50';
+      return 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30';
     case 'running':
-      return 'text-blue-600 bg-blue-50';
+      return 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30';
     case 'pending':
-      return 'text-yellow-600 bg-yellow-50';
+      return 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-900/30';
     case 'failed':
-      return 'text-red-600 bg-red-50';
+      return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/30';
     default:
-      return 'text-gray-600 bg-gray-50';
+      return 'text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-700/30';
   }
 }
 
