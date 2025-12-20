@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { listJobs, getJobDetails, JobDetails } from '@/lib/api';
-import { getStatusColor, getStatusIcon, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import Header from '@/components/Header';
 
 // Metrics to compare for classification
@@ -53,7 +53,7 @@ export default function ComparePage() {
   const [selectedJobs, setSelectedJobs] = useState<JobDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSelected, setIsLoadingSelected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   // Get job IDs from URL params
   const jobIdsFromUrl = searchParams.get('jobs')?.split(',').filter(Boolean) || [];
