@@ -256,6 +256,16 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                 <span className="font-medium">Download Model (.pkl)</span>
               </button>
             )}
+            {job.onnx_model_download_url && (
+              <button
+                onClick={() => downloadWithFilename(job.onnx_model_download_url!, `model_${job.job_id.slice(0, 8)}.onnx`)}
+                className="flex items-center justify-center space-x-2 px-6 py-4 bg-orange-600 dark:bg-orange-500 text-white rounded-lg hover:bg-orange-700 dark:hover:bg-orange-600 transition-colors cursor-pointer"
+                title="ONNX format for cross-platform inference (C#, JavaScript, Rust, etc.)"
+              >
+                <span className="text-2xl">⚡</span>
+                <span className="font-medium">Download Model (.onnx)</span>
+              </button>
+            )}
             {(job.eda_report_download_url || job.report_download_url) && (
               <button
                 onClick={() => downloadWithFilename(
@@ -281,6 +291,16 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
               </button>
             )}
           </div>
+          
+          {/* ONNX info tooltip */}
+          {job.onnx_model_download_url && (
+            <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
+              <p className="text-sm text-orange-800 dark:text-orange-300">
+                <strong>💡 ONNX Format:</strong> Use for cross-platform inference in C#, JavaScript, Rust, Java, and more. 
+                Run with <a href="https://onnxruntime.ai/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">ONNX Runtime</a>.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* How to Use Your Model Section */}
