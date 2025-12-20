@@ -271,11 +271,33 @@ When `time_budget` is not provided in the training request, the API automaticall
 
 ### Problem Type Detection
 
-The API automatically detects whether a target column is for **Classification** or **Regression**:
+The API automatically detects whether a target column is for **Classification** or **Regression** using smart heuristics:
 
-- **Categorical columns** → Classification
-- **Numeric columns with < 20 unique values** → Classification
-- **Numeric columns with < 5% unique ratio** → Classification
-- **Other numeric columns** → Regression
+| Condition | Problem Type |
+|-----------|-------------|
+| Non-numeric column (strings, categories) | Classification |
+| Integer-like values with ≤10 unique values | Classification |
+| Numeric with <20 unique AND <5% unique ratio | Classification |
+| Float values with decimals (continuous) | Regression |
+| High unique ratio (≥5%) | Regression |
+
+**Key Improvement (v1.1.0):** The detection logic now correctly identifies continuous float values (like `35.5, 40.2, 38.7`) as regression, even when the unique count is below 20. The previous logic used `OR` instead of `AND`, causing false classification detection.
+
+### Shared Utility Module
+
+The training module uses a centralized `utils.py` for shared functions:
+
+```python
+# backend/training/utils.py
+from .utils import (
+    detect_problem_type,      # Classification vs Regression
+    is_id_column,             # Detect identifier columns
+    is_constant_column,       # Detect constant features
+    is_high_cardinality_categorical,  # Detect high-cardinality categoricals
+    ID_PATTERNS,              # Regex patterns for ID detection
+)
+```
+
+This follows the DRY principle - logic is defined once and reused across `preprocessor.py` and `eda.py`.
 
 This detection is performed both in the API (for UI display) and in the training container (for model training).
