@@ -130,6 +130,7 @@ class JobResponse(BaseModel):
     completed_at: Optional[str] = None
     metrics: Optional[TrainingMetrics] = None
     model_download_url: Optional[str] = None
+    onnx_model_download_url: Optional[str] = None
     report_download_url: Optional[str] = None  # Backward compatibility (EDA report)
     eda_report_download_url: Optional[str] = None
     training_report_download_url: Optional[str] = None
