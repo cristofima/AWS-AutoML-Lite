@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { listJobs, getJobDetails, JobDetails } from '@/lib/api';
@@ -45,7 +45,24 @@ function getBestValue(jobs: JobDetails[], metricKey: MetricKey): number | undefi
   return Math.max(...values);
 }
 
-export default function ComparePage() {
+// Loading component for Suspense fallback
+function ComparePageSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 transition-colors">
+      <Header title="Compare Models" showBackToUpload />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-6 mb-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// Main compare page content (uses useSearchParams)
+function ComparePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -371,5 +388,14 @@ export default function ComparePage() {
         )}
       </main>
     </div>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams() during SSR/static generation
+export default function ComparePage() {
+  return (
+    <Suspense fallback={<ComparePageSkeleton />}>
+      <ComparePageContent />
+    </Suspense>
   );
 }
