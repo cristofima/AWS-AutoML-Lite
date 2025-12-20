@@ -9,6 +9,7 @@ interface HeaderProps {
   showBackToUpload?: boolean;
   showViewHistory?: boolean;
   showViewAllJobs?: boolean;
+  showCompare?: boolean;
 }
 
 export default function Header({ 
@@ -16,6 +17,7 @@ export default function Header({
   showBackToUpload = false,
   showViewHistory = false,
   showViewAllJobs = false,
+  showCompare = false,
 }: HeaderProps) {
   const pathname = usePathname();
   const isHomePage = pathname === '/';
@@ -52,13 +54,21 @@ export default function Header({
 
           {/* Navigation links + Dark Mode Toggle */}
           <div className="flex items-center space-x-4">
-            <nav>
+            <nav className="flex items-center space-x-4">
               {showViewHistory && (
                 <Link 
                   href="/history" 
                   className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
                 >
                   View History →
+                </Link>
+              )}
+              {showCompare && (
+                <Link
+                  href="/compare"
+                  className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
+                >
+                  📊 Compare Models
                 </Link>
               )}
               {showBackToUpload && (
