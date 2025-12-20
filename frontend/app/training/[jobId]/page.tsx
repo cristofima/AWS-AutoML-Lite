@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getJobDetails, JobDetails } from '@/lib/api';
+import { JobDetails } from '@/lib/api';
+import { useJobSSE } from '@/lib/useJobSSE';
 import { getStatusColor, getStatusIcon, formatDuration, formatDateTime } from '@/lib/utils';
 import Header from '@/components/Header';
 
@@ -11,9 +12,16 @@ export default function TrainingPage() {
   const params = useParams();
   const jobId = params.jobId as string;
 
-  const [job, setJob] = useState<JobDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use SSE for real-time updates
+  const { job, isLoading, error, sseStatus, isUsingSSE } = useJobSSE(jobId, {
+    enabled: true,
+    fallbackToPolling: true,
+    pollingInterval: 5000,
+    onComplete: (completedJob: JobDetails) => {
+      // Redirect to results when job completes
+      router.push(`/results/${completedJob.job_id}`);
+    },
+  });
 
   // Redirect to results when job completes
   useEffect(() => {
@@ -21,36 +29,6 @@ export default function TrainingPage() {
       router.push(`/results/${jobId}`);
     }
   }, [job?.status, jobId, router]);
-
-  useEffect(() => {
-    const fetchJobStatus = async () => {
-      try {
-        const jobData = await getJobDetails(jobId);
-        setJob(jobData);
-        setIsLoading(false);
-
-        // If job is still running or pending, poll every 5 seconds
-        if (jobData.status === 'running' || jobData.status === 'pending') {
-          const interval = setInterval(async () => {
-            const updated = await getJobDetails(jobId);
-            setJob(updated);
-
-            // Stop polling if completed or failed
-            if (updated.status === 'completed' || updated.status === 'failed') {
-              clearInterval(interval);
-            }
-          }, 5000);
-
-          return () => clearInterval(interval);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load job status');
-        setIsLoading(false);
-      }
-    };
-
-    fetchJobStatus();
-  }, [jobId]);
 
   if (isLoading) {
     return (
@@ -121,6 +99,17 @@ export default function TrainingPage() {
             <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-2">
               This may take a few minutes depending on dataset size and time budget
             </p>
+            {/* SSE Status Indicator */}
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <span className={`inline-block w-2 h-2 rounded-full ${
+                sseStatus === 'connected' ? 'bg-green-500 animate-pulse' :
+                sseStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                sseStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'
+              }`}></span>
+              <span className="text-xs text-gray-500 dark:text-gray-500">
+                {isUsingSSE ? 'Real-time updates' : 'Polling for updates'} • {sseStatus}
+              </span>
+            </div>
           </div>
 
           {/* Job Info */}
