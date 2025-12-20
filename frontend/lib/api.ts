@@ -66,6 +66,7 @@ export interface JobDetails {
   completed_at?: string;
   metrics?: TrainingMetrics;
   model_download_url?: string;
+  onnx_model_download_url?: string;
   report_download_url?: string;  // Backward compatibility (EDA report)
   eda_report_download_url?: string;
   training_report_download_url?: string;

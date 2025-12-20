@@ -30,6 +30,8 @@ NEXT_PUBLIC_API_URL=https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/dev
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
+> **Tip (v1.1.0):** For local development, `.env.development.local` is pre-configured with `http://localhost:8000` and only loads during `pnpm dev`. This keeps production settings safe.
+
 4. Run development server:
 ```bash
 pnpm dev
@@ -46,12 +48,17 @@ frontend/
 │   ├── configure/[datasetId]/        # Column selection & config
 │   ├── training/[jobId]/             # Training status page
 │   ├── results/[jobId]/              # Results & download page
-│   └── history/                      # Training history list
+│   ├── compare/                      # Model comparison page (v1.1.0)
+│   ├── history/                      # Training history list
+│   └── api/jobs/[jobId]/stream/      # SSE endpoint for real-time updates
 ├── components/
-│   └── FileUpload.tsx                # Drag & drop upload component
+│   ├── FileUpload.tsx                # Drag & drop upload component
+│   ├── Header.tsx                    # Navigation header with theme toggle
+│   └── ThemeToggle.tsx               # Dark/light mode switcher
 ├── lib/
 │   ├── api.ts                        # API client functions
-│   └── utils.ts                      # Utility functions
+│   ├── utils.ts                      # Utility functions
+│   └── useJobSSE.ts                  # SSE hook with polling fallback
 ├── public/                           # Static assets
 └── package.json
 ```
@@ -72,21 +79,34 @@ frontend/
    - Optional time budget configuration (auto-calculated if empty)
 
 3. **Training Status (`/training/[jobId]`)**
-   - Real-time status updates (polling every 5s)
-   - Progress visualization
-   - Training details
+   - ✨ **Real-time SSE updates** (v1.1.0) - no more 5s polling!
+   - SSE connection status indicator (green/yellow/red)
+   - Automatic fallback to polling if SSE unavailable
+   - Progress visualization with stage indicators
    - Auto-redirect to results when complete
 
 4. **Results (`/results/[jobId]`)**
    - Model metrics (accuracy, F1, R², RMSE, etc.)
    - Feature importance chart
-   - Download model (.pkl)
+   - Download model (.pkl and .onnx)
    - Download EDA report (.html)
 
-5. **History (`/history`)**
+5. **Compare Models (`/compare`)** (v1.1.0)
+   - Side-by-side comparison of up to 4 training runs
+   - Metrics table with best values highlighted (🏆)
+   - Feature importance visual comparison
+   - URL sharing: `/compare?jobs=id1,id2,id3`
+
+6. **History (`/history`)**
    - List all training jobs
    - Filter by status
-   - Quick access to results
+   - Quick access to results and compare
+
+### UI Features (v1.1.0)
+
+- 🌙 **Dark Mode**: System preference detection with manual toggle
+- 🟢 **SSE Status Indicator**: Visual feedback on connection status
+- 📈 **Compare Link**: Quick access from history page
 
 ## 🔧 Tech Stack
 

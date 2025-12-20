@@ -7,8 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Dark Mode Support** - Full dark/light/system theme support across all pages
+  - Integrated `next-themes` for flicker-free theme switching
+  - `ThemeToggle` component with 3-way cycling (Light → Dark → System)
+  - System preference detection with `enableSystem`
+  - localStorage persistence (automatic via next-themes)
+  - Tailwind v4 `@custom-variant` for dark mode classes
+
+- **ONNX Model Export** - Cross-platform model export for production deployment
+  - Added `skl2onnx`, `onnx`, `onnxruntime`, `onnxmltools` to training container
+  - Automatic ONNX generation alongside .pkl on training completion
+  - New `onnx_model_download_url` field in API responses
+  - Frontend download button with tooltip explaining ONNX benefits
+  - Supports: sklearn models (Random Forest, Extra Trees) and LightGBM
+  - Verification step ensures exported ONNX model is valid
+
+- **Real-time Training Updates (SSE)** - Server-Sent Events for live status updates
+  - New `/api/jobs/[jobId]/stream` SSE endpoint in Next.js
+  - Custom `useJobSSE` hook with automatic fallback to polling
+  - Visual SSE connection status indicator on training page
+  - Updates every 3 seconds instead of 5 seconds polling
+  - Graceful handling of connection errors and timeouts
+
+- **Model Comparison** - Side-by-side comparison of training runs
+  - New `/compare` page for comparing up to 4 models
+  - Metrics comparison table with best model highlighting
+  - Feature importance comparison with visual bars
+  - Quick job selection from completed training history
+  - Link to compare from history page header
+
+### Fixed
+- **Problem Type Detection** - Regression datasets were incorrectly classified as classification
+  - Fixed heuristic logic: now requires BOTH integer-like values AND low cardinality
+  - Previously used `OR` condition which misclassified float targets (e.g., 35.5, 40.2) as classification
+  - Regression correctly detected for continuous numerical targets
+  - Fixes "The least populated class in y has only 1 member" FLAML error
+
 ### Changed
-- Nothing yet - preparing for v1.1.0
+- **Code Quality (DRY Refactoring)** - Centralized shared utilities in training module
+  - Created `backend/training/utils.py` with shared detection functions
+  - `detect_problem_type()`, `is_id_column()`, `is_constant_column()` now in single location
+  - Both `preprocessor.py` and `eda.py` import from utils (eliminated ~140 lines of duplication)
+  - Prevents future inconsistencies between preprocessing and EDA reports
+- Updated all pages with dark mode styling (`dark:` Tailwind variants)
+- Updated status badge colors for dark mode compatibility
+- Training container now outputs both .pkl and .onnx model formats
+- Training page now uses SSE for real-time updates instead of polling
+- Header component supports `showCompare` prop for compare page link
 
 ## [1.0.0] - 2025-12-03
 

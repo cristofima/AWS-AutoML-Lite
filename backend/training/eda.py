@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 from typing import List, Tuple
-import re
+
+# Import shared utilities
+from .utils import detect_problem_type, is_id_column
 
 
 def generate_eda_report(df: pd.DataFrame, target_column: str, output_path: str):
@@ -33,13 +35,6 @@ def generate_eda_report(df: pd.DataFrame, target_column: str, output_path: str):
 class EDAReportGenerator:
     """Generate comprehensive EDA report with CSS-only visualizations"""
     
-    # Common ID column patterns
-    ID_PATTERNS = [
-        r'^id$', r'_id$', r'^id_', r'^uuid$', r'^guid$',
-        r'order.*id', r'customer.*id', r'user.*id', r'transaction.*id',
-        r'^index$', r'^row.*num', r'^serial', r'^record.*id',
-    ]
-    
     def __init__(self, df: pd.DataFrame, target_column: str):
         self.df = df
         self.target_column = target_column
@@ -53,38 +48,12 @@ class EDAReportGenerator:
         self._analyze_columns()
     
     def _detect_problem_type(self) -> str:
-        """Detect if classification or regression"""
-        # Guard against empty target
-        if len(self.target) == 0:
-            return 'classification'  # Default fallback
-        
-        if pd.api.types.is_numeric_dtype(self.target):
-            unique_ratio = self.target.nunique() / len(self.target)
-            if unique_ratio < 0.05 or self.target.nunique() < 20:
-                return 'classification'
-            return 'regression'
-        return 'classification'
+        """Detect if classification or regression using shared utility."""
+        return detect_problem_type(self.target)
     
     def _is_id_column(self, col_name: str, series: pd.Series) -> bool:
-        """Check if column is likely an ID"""
-        col_lower = col_name.lower().strip()
-        for pattern in self.ID_PATTERNS:
-            if re.search(pattern, col_lower):
-                return True
-        
-        # Check if all unique and sequential
-        if pd.api.types.is_numeric_dtype(series):
-            if series.nunique() == len(series):
-                sorted_vals = series.sort_values()
-                if (sorted_vals.diff().dropna() == 1).all():
-                    return True
-        
-        # High cardinality string column
-        if series.dtype == 'object':
-            if series.nunique() / len(series) > 0.95:
-                return True
-        
-        return False
+        """Check if column is likely an ID using shared utility."""
+        return is_id_column(col_name, series)
     
     def _analyze_columns(self):
         """Analyze and categorize columns"""

@@ -3,5 +3,27 @@
     {
       "file": "./.github/git-commit-messages-instructions.md"
     }
-  ]
+  ],
+  "github.copilot.chat.codeGeneration.instructions": [
+    {
+      "file": "./.github/nextjs-code-generation-instructions.md"
+    },
+    {
+      "file": "./.github/python-code-generation-instructions.md"
+    },
+    {
+      "file": "./.github/terraform-code-generation-instructions.md"
+    }
+  ],
+  "github.copilot.chat.reviewSelection.instructions": [
+    {
+      "file": "./.github/nextjs-code-review-instructions.md"
+    },
+    {
+      "file": "./.github/python-code-review-instructions.md"
+    },
+    {
+      "file": "./.github/terraform-code-review-instructions.md"
+    }
+  ],
 }

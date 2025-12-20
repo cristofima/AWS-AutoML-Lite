@@ -77,17 +77,19 @@ export default function FileUpload() {
         onDrop={handleDrop}
         className={`
           border-2 border-dashed rounded-lg p-12 text-center transition-colors
-          ${isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-gray-400'}
-          ${file ? 'bg-gray-50' : ''}
+          ${isDragging 
+            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' 
+            : 'border-gray-300 dark:border-zinc-600 hover:border-gray-400 dark:hover:border-zinc-500'}
+          ${file ? 'bg-gray-50 dark:bg-zinc-700/50' : ''}
         `}
       >
         {!file ? (
           <>
             <div className="text-5xl mb-4">📁</div>
-            <p className="text-lg font-medium text-gray-700 mb-2">
+            <p className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
               Drag and drop your CSV file here
             </p>
-            <p className="text-sm text-gray-500 mb-4">or</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">or</p>
             <label className="inline-block">
               <input
                 type="file"
@@ -95,11 +97,11 @@ export default function FileUpload() {
                 onChange={handleFileSelect}
                 className="hidden"
               />
-              <span className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer inline-block">
+              <span className="bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 cursor-pointer inline-block transition-colors">
                 Browse Files
               </span>
             </label>
-            <p className="text-xs text-gray-500 mt-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
               Maximum file size: 100MB
             </p>
           </>
@@ -107,12 +109,12 @@ export default function FileUpload() {
           <div className="space-y-3">
             <div className="text-5xl">✅</div>
             <div>
-              <p className="font-medium text-gray-900">{file.name}</p>
-              <p className="text-sm text-gray-500">{formatBytes(file.size)}</p>
+              <p className="font-medium text-gray-900 dark:text-white">{file.name}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{formatBytes(file.size)}</p>
             </div>
             <button
               onClick={() => setFile(null)}
-              className="text-sm text-red-600 hover:text-red-700 cursor-pointer"
+              className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 cursor-pointer"
             >
               Remove file
             </button>
@@ -122,7 +124,7 @@ export default function FileUpload() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg">
           <p className="text-sm">{error}</p>
         </div>
       )}
@@ -135,8 +137,8 @@ export default function FileUpload() {
           className={`
             w-full py-3 px-6 rounded-lg font-medium text-white cursor-pointer
             ${isUploading 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-indigo-600 hover:bg-indigo-700'
+              ? 'bg-gray-400 dark:bg-zinc-600 cursor-not-allowed' 
+              : 'bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600'
             }
             transition-colors
           `}

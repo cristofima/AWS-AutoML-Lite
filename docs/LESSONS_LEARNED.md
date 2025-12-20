@@ -183,6 +183,67 @@ estimator_list = ['lgbm', 'rf', 'extra_tree']  # Removed 'xgb'
 
 **Key Insight:** Test each estimator individually. Some FLAML-wrapped models have compatibility issues. Keep only stable estimators in production.
 
+### Challenge: Problem Type Detection Logic Flaw (v1.1.0)
+**Problem:** Training failed with "The least populated class in y has only 1 member" error when training on `Performance Index` column (continuous float values like 35.5, 40.2).
+
+**Root Cause:** The problem type detection logic used `OR` instead of `AND`:
+```python
+# ❌ WRONG - OR causes regression targets to be classified as classification
+if unique_ratio < 0.05 or y.nunique() < 20:
+    return 'classification'
+```
+
+With 10,000 rows and ~91 unique values, `unique_ratio = 0.91%` (< 5%), triggering classification even though values were continuous floats.
+
+**Solution:** Improved heuristics with multiple conditions:
+```python
+# ✅ CORRECT - Check if values are integer-like AND have low cardinality
+try:
+    is_integer_like = (y.dropna() == y.dropna().astype(int)).all()
+except (ValueError, TypeError):
+    is_integer_like = False
+
+# Classification only if integer-like with few classes
+if is_integer_like and n_unique <= 10:
+    return 'classification'
+
+# Or if truly low cardinality WITH low ratio (AND not OR)
+if n_unique < 20 and unique_ratio < 0.05:
+    return 'classification'
+
+return 'regression'  # Default for continuous values
+```
+
+**Key Insight:** Problem type detection must consider:
+1. **Data type**: Floats with decimals = regression
+2. **Value distribution**: Integer-like (0, 1, 2) = classification candidates
+3. **Both conditions**: Low unique count AND low ratio = classification
+
+### Challenge: Duplicated Code Across Training Modules (v1.1.0)
+**Problem:** The `detect_problem_type()` function was duplicated in both `preprocessor.py` and `eda.py`, violating DRY principle. When fixing one, the other was forgotten, causing inconsistent behavior.
+
+**Evidence:** EDA report showed "CLASSIFICATION" while training correctly detected "REGRESSION" after partial fix.
+
+**Solution:** Created centralized `utils.py` module:
+```python
+# backend/training/utils.py
+def detect_problem_type(y: pd.Series) -> str:
+    """Single source of truth for problem type detection."""
+    ...
+
+def is_id_column(col_name: str, series: pd.Series) -> bool:
+    """Detect identifier columns."""
+    ...
+
+# Usage in both files:
+from .utils import detect_problem_type, is_id_column
+```
+
+**Key Insight:** 
+- **DRY principle is critical for ML pipelines** - detection logic must be consistent
+- Create utility modules early, not after bugs surface
+- Shared logic should live in one place with imports
+
 ---
 
 ## 4. AWS Services & IAM
@@ -588,11 +649,13 @@ The most critical lessons learned:
 5. **Local Testing:** Docker Compose with mounted credentials enables fast iteration
 6. **Frontend Deployment Architecture:** Research industry best practices before committing - App Runner is NOT suitable for Next.js SSR, use AWS Amplify instead
 7. **Health Check Configuration:** Configure 60s grace periods for frameworks with non-trivial startup times
+8. **Problem Type Detection (v1.1.0):** Use AND not OR for classification heuristics - float values with decimals should be regression
+9. **DRY Principle (v1.1.0):** Shared ML logic must live in a single utility module to prevent inconsistencies
 
 These lessons transformed the development process from trial-and-error to predictable, efficient workflows. The frontend deployment challenges alone saved future iterations from 80+ minutes of debugging by identifying architectural mismatches early.
 
 ---
 
-**Last Updated:** December 1, 2025  
+**Last Updated:** December 20, 2025  
 **Contributors:** Development team working on AWS AutoML Lite  
 **Related Docs:** [PROJECT_REFERENCE.md](./PROJECT_REFERENCE.md), [QUICKSTART.md](./QUICKSTART.md)

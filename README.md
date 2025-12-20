@@ -26,7 +26,13 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 - **Model Training**: Uses FLAML for efficient AutoML with auto-calculated time budgets
 - **Training History**: Track all your experiments with DynamoDB
 - **Cost-Effective**: ~$10-25/month (vs ~$150+/month for SageMaker real-time endpoints)
-- **Portable Models**: Download trained models (.pkl) for local use with Docker
+- **Portable Models**: Download trained models (.pkl and .onnx) for local use with Docker
+
+### ✨ New in v1.1.0
+- **Real-time SSE Updates**: Live training status via Server-Sent Events (no more polling!)
+- **Model Comparison**: Side-by-side comparison of multiple training runs
+- **Dark Mode**: System preference detection with manual toggle
+- **ONNX Export**: Cross-platform model deployment format
 
 ## 📸 Screenshots
 
@@ -131,6 +137,7 @@ terraform output api_gateway_url
 
 - [QUICKSTART.md](./docs/QUICKSTART.md) - Complete deployment guide
 - [PROJECT_REFERENCE.md](./docs/PROJECT_REFERENCE.md) - Technical documentation
+- [ROADMAP.md](./docs/ROADMAP.md) - Product roadmap & future features
 - [SETUP_CICD.md](./.github/SETUP_CICD.md) - CI/CD with GitHub Actions
 - [ARCHITECTURE_DECISIONS.md](./infrastructure/terraform/ARCHITECTURE_DECISIONS.md) - Container usage rationale
 - [LESSONS_LEARNED.md](./docs/LESSONS_LEARNED.md) - Challenges, solutions & best practices
@@ -194,10 +201,13 @@ pnpm install && pnpm dev
 
 | Feature | Description |
 |---------|-------------|
-| **Problem Type Detection** | Automatically detects Classification vs Regression based on column characteristics |
-| **Smart Classification** | Numeric columns with <20 unique values or <5% unique ratio → Classification |
+| **Problem Type Detection** | Automatically detects Classification vs Regression using smart heuristics |
+| **Smart Classification** | Integer-like values with ≤10 unique values → Classification |
+| **Smart Regression** | Float values with decimals (35.5, 40.2) → Regression (even with low unique count) |
 | **Auto Time Budget** | Based on dataset size: <1K rows→2min, 1K-10K→5min, 10K-50K→10min, >50K→20min |
 | **Column Statistics** | Shows unique values count for each column to help with target selection |
+| **ID Detection** | Automatically excludes identifier columns (order_id, customer_id, etc.) |
+| **ONNX Export** | Cross-platform model format for deployment in any language |
 
 ## 🔮 Using Your Trained Model
 

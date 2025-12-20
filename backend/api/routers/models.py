@@ -48,6 +48,15 @@ async def get_job_status(job_id: str):
                     key=key
                 )
             
+            # ONNX Model download URL
+            if job.get('onnx_model_path'):
+                onnx_path = job['onnx_model_path'].replace('s3://', '')
+                bucket, key = onnx_path.split('/', 1)
+                response.onnx_model_download_url = s3_service.generate_presigned_download_url(
+                    bucket=bucket,
+                    key=key
+                )
+            
             # EDA Report (also keep backward compatibility with report_path)
             eda_path = job.get('eda_report_path') or job.get('report_path')
             if eda_path:

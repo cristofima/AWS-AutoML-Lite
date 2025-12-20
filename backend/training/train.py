@@ -9,6 +9,7 @@ from preprocessor import AutoPreprocessor
 from eda import generate_eda_report
 from model_trainer import train_automl_model
 from training_report import generate_training_report
+from onnx_exporter import export_model_to_onnx
 
 
 def main():
@@ -130,9 +131,11 @@ def main():
         training_report_s3_path = f"s3://{s3_bucket_reports}/{training_report_key}"
         print(f"Training report uploaded to: {training_report_s3_path}")
         
-        # Step 6: Save model to S3
+        # Step 6: Save model to S3 (both PKL and ONNX formats)
         print("Step 6: Saving model...")
         import joblib
+        
+        # Save PKL format (full model with preprocessor)
         model_local_path = f"/tmp/model_{job_id}.pkl"
         joblib.dump({
             'model': model,
@@ -144,13 +147,29 @@ def main():
         model_key = f"models/{job_id}/model.pkl"
         s3_client.upload_file(model_local_path, s3_bucket_models, model_key)
         model_s3_path = f"s3://{s3_bucket_models}/{model_key}"
-        print(f"Model uploaded to: {model_s3_path}")
+        print(f"Model (PKL) uploaded to: {model_s3_path}")
+        
+        # Export and save ONNX format (model only, for cross-platform inference)
+        onnx_s3_path = None
+        onnx_local_path = f"/tmp/model_{job_id}.onnx"
+        onnx_success = export_model_to_onnx(
+            model=model,
+            X_sample=X_train.iloc[:1],  # Use 1 row for shape inference
+            output_path=onnx_local_path
+        )
+        
+        if onnx_success:
+            onnx_key = f"models/{job_id}/model.onnx"
+            s3_client.upload_file(onnx_local_path, s3_bucket_models, onnx_key)
+            onnx_s3_path = f"s3://{s3_bucket_models}/{onnx_key}"
+            print(f"Model (ONNX) uploaded to: {onnx_s3_path}")
         
         # Step 7: Update job status to COMPLETED
         print("Step 7: Updating job status...")
         update_job_completion(
             jobs_table, job_id, 
-            problem_type, model_s3_path, 
+            problem_type, model_s3_path,
+            onnx_model_path=onnx_s3_path,
             eda_report_s3_path=report_s3_path,
             training_report_s3_path=training_report_s3_path,
             metrics=metrics, 
@@ -206,7 +225,7 @@ def update_job_status(table, job_id, status, error_message=None):
     )
 
 
-def update_job_completion(table, job_id, problem_type, model_path, eda_report_s3_path, training_report_s3_path, metrics, feature_importance, dropped_columns=None, feature_columns=None):
+def update_job_completion(table, job_id, problem_type, model_path, onnx_model_path, eda_report_s3_path, training_report_s3_path, metrics, feature_importance, dropped_columns=None, feature_columns=None):
     """Update job with completion details"""
     from decimal import Decimal
     
@@ -232,38 +251,48 @@ def update_job_completion(table, job_id, problem_type, model_path, eda_report_s3
         preprocessing_info['feature_columns'] = feature_columns
         preprocessing_info['feature_count'] = len(feature_columns)
     
+    # Build update expression dynamically to handle optional ONNX path
+    update_expr = """
+        SET #status = :status,
+            updated_at = :updated_at,
+            problem_type = :problem_type,
+            model_path = :model_path,
+            report_path = :report_path,
+            eda_report_path = :eda_report_path,
+            training_report_path = :training_report_path,
+            #metrics = :metrics,
+            feature_importance = :feature_importance,
+            completed_at = :completed_at,
+            preprocessing_info = :preprocessing_info
+    """
+    
+    expr_attr_values = {
+        ':status': 'completed',
+        ':updated_at': datetime.now(timezone.utc).isoformat(),
+        ':completed_at': datetime.now(timezone.utc).isoformat(),
+        ':problem_type': problem_type,
+        ':model_path': model_path,
+        ':report_path': eda_report_s3_path,  # Keep for backward compatibility
+        ':eda_report_path': eda_report_s3_path,
+        ':training_report_path': training_report_s3_path,
+        ':metrics': metrics_decimal,
+        ':feature_importance': feature_importance_decimal,
+        ':preprocessing_info': preprocessing_info if preprocessing_info else None
+    }
+    
+    # Add ONNX path if export was successful
+    if onnx_model_path:
+        update_expr += ", onnx_model_path = :onnx_model_path"
+        expr_attr_values[':onnx_model_path'] = onnx_model_path
+    
     table.update_item(
         Key={'job_id': job_id},
-        UpdateExpression="""
-            SET #status = :status,
-                updated_at = :updated_at,
-                problem_type = :problem_type,
-                model_path = :model_path,
-                report_path = :report_path,
-                eda_report_path = :eda_report_path,
-                training_report_path = :training_report_path,
-                #metrics = :metrics,
-                feature_importance = :feature_importance,
-                completed_at = :completed_at,
-                preprocessing_info = :preprocessing_info
-        """,
+        UpdateExpression=update_expr,
         ExpressionAttributeNames={
             '#status': 'status',
             '#metrics': 'metrics'
         },
-        ExpressionAttributeValues={
-            ':status': 'completed',
-            ':updated_at': datetime.now(timezone.utc).isoformat(),
-            ':completed_at': datetime.now(timezone.utc).isoformat(),
-            ':problem_type': problem_type,
-            ':model_path': model_path,
-            ':report_path': eda_report_s3_path,  # Keep for backward compatibility
-            ':eda_report_path': eda_report_s3_path,
-            ':training_report_path': training_report_s3_path,
-            ':metrics': metrics_decimal,
-            ':feature_importance': feature_importance_decimal,
-            ':preprocessing_info': preprocessing_info if preprocessing_info else None
-        }
+        ExpressionAttributeValues=expr_attr_values
     )
 
 
