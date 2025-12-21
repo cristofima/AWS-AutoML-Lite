@@ -51,9 +51,10 @@ function ComparePageSkeleton() {
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 transition-colors">
       <Header title="Compare Models" showBackToUpload />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-6 mb-6">
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
+        <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-6 mb-6 transition-colors">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading jobs for comparison...</p>
           </div>
         </div>
       </main>
@@ -173,8 +174,9 @@ function ComparePageContent() {
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-400">Loading jobs for comparison...</p>
             </div>
           ) : allJobs.length === 0 ? (
             <div className="text-center py-8">
@@ -391,7 +393,7 @@ function ComparePageContent() {
   );
 }
 
-// Wrap with Suspense to handle useSearchParams() during SSR/static generation
+// Wrap with Suspense to handle useSearchParams() in Next.js 16 client components
 export default function ComparePage() {
   return (
     <Suspense fallback={<ComparePageSkeleton />}>
