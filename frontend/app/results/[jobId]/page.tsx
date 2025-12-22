@@ -6,6 +6,7 @@ import { getJobDetails, JobDetails, downloadWithFilename } from '@/lib/api';
 import { formatMetric, getProblemTypeIcon, formatDateTime } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Header from '@/components/Header';
+import JobMetadataEditor from '@/components/JobMetadataEditor';
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -152,6 +153,14 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
               <span className="text-gray-600 dark:text-gray-400">Job ID:</span>
               <p className="font-mono text-xs text-gray-900 dark:text-gray-100 mt-1">{job.job_id}</p>
             </div>
+          </div>
+          
+          {/* Tags & Notes Section */}
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-700">
+            <JobMetadataEditor 
+              job={job} 
+              onUpdate={(updatedJob) => setJob(updatedJob)} 
+            />
           </div>
         </div>
 

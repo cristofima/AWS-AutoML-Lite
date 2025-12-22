@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { listJobs, deleteJob, JobDetails } from '@/lib/api';
@@ -14,8 +14,18 @@ export default function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>('');  // New: filter by tag
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
+
+  // Get all unique tags from jobs
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    jobs.forEach(job => {
+      job.tags?.forEach(tag => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  }, [jobs]);
 
   useEffect(() => {
     fetchJobs();
@@ -55,9 +65,21 @@ export default function HistoryPage() {
     }
   };
 
-  const filteredJobs = filter === 'all' 
-    ? jobs 
-    : jobs.filter(job => job.status === filter);
+  const filteredJobs = useMemo(() => {
+    let result = jobs;
+    
+    // Filter by status
+    if (filter !== 'all') {
+      result = result.filter(job => job.status === filter);
+    }
+    
+    // Filter by tag
+    if (tagFilter) {
+      result = result.filter(job => job.tags?.includes(tagFilter));
+    }
+    
+    return result;
+  }, [jobs, filter, tagFilter]);
 
   const handleJobClick = (job: JobDetails) => {
     if (job.status === 'completed') {
@@ -75,22 +97,45 @@ export default function HistoryPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters */}
         <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-4 mb-6 transition-colors">
-          <div className="flex space-x-2 overflow-x-auto">
-            {['all', 'completed', 'running', 'pending', 'failed'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setFilter(status)}
-                className={`
-                  px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors cursor-pointer
-                  ${filter === status
-                    ? 'bg-indigo-600 dark:bg-indigo-500 text-white'
-                    : 'bg-gray-100 dark:bg-zinc-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-600'
-                  }
-                `}
-              >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </button>
-            ))}
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Status Filter */}
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Status</label>
+              <div className="flex space-x-2 overflow-x-auto">
+                {['all', 'completed', 'running', 'pending', 'failed'].map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setFilter(status)}
+                    className={`
+                      px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors cursor-pointer
+                      ${filter === status
+                        ? 'bg-indigo-600 dark:bg-indigo-500 text-white'
+                        : 'bg-gray-100 dark:bg-zinc-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-600'
+                      }
+                    `}
+                  >
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Tag Filter */}
+            {allTags.length > 0 && (
+              <div className="sm:w-48">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Filter by Tag</label>
+                <select
+                  value={tagFilter}
+                  onChange={(e) => setTagFilter(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent cursor-pointer"
+                >
+                  <option value="">All tags</option>
+                  {allTags.map(tag => (
+                    <option key={tag} value={tag}>{tag}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -149,6 +194,9 @@ export default function HistoryPage() {
                     Problem Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Tags
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -179,6 +227,25 @@ export default function HistoryPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-gray-100">
                         {job.problem_type ? job.problem_type.charAt(0).toUpperCase() + job.problem_type.slice(1) : 'N/A'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-1 max-w-[150px]">
+                        {job.tags && job.tags.length > 0 ? (
+                          job.tags.slice(0, 3).map(tag => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+                            >
+                              {tag}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+                        )}
+                        {job.tags && job.tags.length > 3 && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">+{job.tags.length - 3}</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
