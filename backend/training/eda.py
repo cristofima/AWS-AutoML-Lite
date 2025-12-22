@@ -3,7 +3,7 @@ import numpy as np
 from typing import List, Tuple
 
 # Import shared utilities
-from .utils import detect_problem_type, is_id_column
+from utils import detect_problem_type, is_id_column
 
 
 def generate_eda_report(df: pd.DataFrame, target_column: str, output_path: str):
