@@ -146,7 +146,7 @@ class JobResponse(BaseModel):
 class JobUpdateRequest(BaseModel):
     """Request schema for updating job metadata (tags, notes)"""
     tags: Optional[List[str]] = Field(default=None, max_length=10, description="Custom labels for filtering (max 10)")
-    notes: Optional[str] = Field(default=None, max_length=1000, description="User notes for experiment tracking")
+    notes: Optional[str] = Field(default=None, max_items=1000, description="User notes for experiment tracking")
 
 
 class JobListResponse(BaseModel):

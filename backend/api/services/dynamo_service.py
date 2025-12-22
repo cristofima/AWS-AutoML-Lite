@@ -189,7 +189,7 @@ class DynamoDBService:
             # Only update fields that are provided
             if tags is not None:
                 update_data['tags'] = tags
-            if notes is not None:
+            if notes is not None and notes.strip() != "":
                 update_data['notes'] = notes
             
             update_expr = "SET " + ", ".join([f"#{k} = :{k}" for k in update_data.keys()])

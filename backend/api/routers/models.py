@@ -197,6 +197,11 @@ async def update_job_metadata(job_id: str, request: JobUpdateRequest):
                 )
             # Validate individual tag length
             for tag in request.tags:
+                if not tag.strip():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Tags cannot be empty or whitespace"
+                    )
                 if len(tag) > 50:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
