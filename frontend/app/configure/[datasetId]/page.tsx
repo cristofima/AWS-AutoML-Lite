@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { DatasetMetadata, startTraining, getDatasetMetadata } from '@/lib/api';
 import { getProblemTypeIcon, getProblemTypeDescription } from '@/lib/utils';
 import Header from '@/components/Header';
+import ColumnStatsDisplay from '@/components/ColumnStatsDisplay';
 
 export default function ConfigurePage() {
   const router = useRouter();
@@ -139,33 +140,13 @@ export default function ConfigurePage() {
         <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-lg dark:shadow-zinc-900/50 p-8 space-y-8 transition-colors">
           {/* Dataset Info */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Dataset Information</h2>
-            <div className="bg-gray-50 dark:bg-zinc-900/50 rounded-lg p-4 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Dataset ID:</span>
-                <span className="font-mono text-gray-900 dark:text-gray-100">{datasetId}</span>
-              </div>
-              {metadata && (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Filename:</span>
-                    <span className="text-gray-900 dark:text-gray-100">{metadata.filename}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Rows:</span>
-                    <span className="text-gray-900 dark:text-gray-100">{metadata.row_count.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Columns:</span>
-                    <span className="text-gray-900 dark:text-gray-100">{columns.length}</span>
-                  </div>
-                </>
-              )}
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Status:</span>
-                <span className="text-green-600 dark:text-green-400">✓ Uploaded and analyzed</span>
-              </div>
-            </div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Dataset Overview</h2>
+            {metadata && (
+              <ColumnStatsDisplay 
+                metadata={metadata} 
+                selectedColumn={selectedTarget || undefined} 
+              />
+            )}
           </div>
 
           {/* Column Selection */}
