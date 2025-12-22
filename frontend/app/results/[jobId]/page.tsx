@@ -73,29 +73,64 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 flex items-center justify-center transition-colors">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading results...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 transition-colors">
+        <Header title="Training Results" showViewAllJobs />
+        <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 80px)' }}>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading results...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   if (error || !job || !job.metrics) {
+    const isNotFound = error?.toLowerCase().includes('not found') || error?.toLowerCase().includes('404');
+    
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 flex items-center justify-center transition-colors">
-        <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-lg dark:shadow-zinc-900/50 p-8 max-w-md transition-colors">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Error</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">{error || 'Results not available'}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="w-full py-2 px-4 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 cursor-pointer transition-colors"
-          >
-            Go Home
-          </button>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 transition-colors">
+        <Header title="Training Results" showViewAllJobs />
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-lg dark:shadow-zinc-900/50 p-8 text-center transition-colors">
+            <div className="text-6xl mb-4">{isNotFound ? '🔍' : '⚠️'}</div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              {isNotFound ? 'Job Not Found' : 'Unable to Load Results'}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-2">
+              {isNotFound 
+                ? 'The training job you\'re looking for doesn\'t exist or may have been deleted.'
+                : error || 'Results not available yet. The training may still be in progress.'}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mb-6 font-mono">
+              Job ID: {jobId}
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => router.push('/history')}
+                className="py-2 px-6 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 cursor-pointer transition-colors font-medium"
+              >
+                View All Jobs
+              </button>
+              <button
+                onClick={() => router.push('/')}
+                className="py-2 px-6 bg-gray-200 dark:bg-zinc-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-zinc-600 cursor-pointer transition-colors font-medium"
+              >
+                Start New Training
+              </button>
+            </div>
+            
+            {!isNotFound && (
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                ↻ Try Again
+              </button>
+            )}
+          </div>
+        </main>
       </div>
     );
   }
