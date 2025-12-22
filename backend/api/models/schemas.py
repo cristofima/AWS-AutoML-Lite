@@ -113,6 +113,8 @@ class JobDetails(BaseModel):
     metrics: Optional[TrainingMetrics] = None
     feature_importance: Optional[Dict[str, float]] = None
     error_message: Optional[str] = None
+    tags: Optional[List[str]] = None  # Custom labels for filtering
+    notes: Optional[str] = None  # User notes for experiment tracking
     
     model_config = {"protected_namespaces": ()}
 
@@ -135,8 +137,16 @@ class JobResponse(BaseModel):
     eda_report_download_url: Optional[str] = None
     training_report_download_url: Optional[str] = None
     error_message: Optional[str] = None
+    tags: Optional[List[str]] = None  # Custom labels for filtering
+    notes: Optional[str] = None  # User notes for experiment tracking
     
     model_config = {"protected_namespaces": ()}
+
+
+class JobUpdateRequest(BaseModel):
+    """Request schema for updating job metadata (tags, notes)"""
+    tags: Optional[List[str]] = Field(default=None, max_length=10, description="Custom labels for filtering (max 10)")
+    notes: Optional[str] = Field(default=None, max_length=1000, description="User notes for experiment tracking")
 
 
 class JobListResponse(BaseModel):

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Query
 from typing import Optional
-from ..models.schemas import JobListResponse, JobResponse, JobStatus, ProblemType
+from ..models.schemas import JobListResponse, JobResponse, JobStatus, ProblemType, JobUpdateRequest
 from ..services.dynamo_service import dynamodb_service
 from ..services.s3_service import s3_service
 from ..utils.helpers import get_settings
@@ -34,7 +34,9 @@ async def get_job_status(job_id: str):
             started_at=job.get('started_at'),
             completed_at=job.get('completed_at'),
             metrics=job.get('metrics'),
-            error_message=job.get('error_message')
+            error_message=job.get('error_message'),
+            tags=job.get('tags'),
+            notes=job.get('notes')
         )
         
         # Generate download URLs if job is completed
@@ -167,6 +169,56 @@ async def delete_job(job_id: str, delete_data: bool = True):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting job: {str(e)}"
+        )
+
+
+@router.patch("/{job_id}", response_model=JobResponse)
+async def update_job_metadata(job_id: str, request: JobUpdateRequest):
+    """
+    Update job metadata (tags and notes) for experiment tracking.
+    Tags can be used to categorize jobs (e.g., "experiment-1", "baseline", "production").
+    Notes can store observations or comments about the training run.
+    """
+    try:
+        # Verify job exists
+        job = dynamodb_service.get_job(job_id)
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job not found"
+            )
+        
+        # Validate tags if provided
+        if request.tags is not None:
+            if len(request.tags) > 10:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Maximum 10 tags allowed per job"
+                )
+            # Validate individual tag length
+            for tag in request.tags:
+                if len(tag) > 50:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Each tag must be 50 characters or less"
+                    )
+        
+        # Update job metadata
+        dynamodb_service.update_job_metadata(
+            job_id=job_id,
+            tags=request.tags,
+            notes=request.notes
+        )
+        
+        # Return updated job
+        return await get_job_status(job_id)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating job metadata: {str(e)}"
         )
 
 

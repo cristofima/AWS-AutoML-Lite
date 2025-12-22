@@ -174,6 +174,38 @@ class DynamoDBService:
         except ClientError as e:
             raise Exception(f"Error deleting job: {str(e)}")
     
+    def update_job_metadata(
+        self,
+        job_id: str,
+        tags: Optional[List[str]] = None,
+        notes: Optional[str] = None
+    ) -> bool:
+        """Update job metadata (tags, notes) for experiment tracking"""
+        try:
+            update_data = {
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Only update fields that are provided
+            if tags is not None:
+                update_data['tags'] = tags
+            if notes is not None:
+                update_data['notes'] = notes
+            
+            update_expr = "SET " + ", ".join([f"#{k} = :{k}" for k in update_data.keys()])
+            expr_attr_names = {f"#{k}": k for k in update_data.keys()}
+            expr_attr_values = {f":{k}": v for k, v in update_data.items()}
+            
+            self.jobs_table.update_item(
+                Key={'job_id': job_id},
+                UpdateExpression=update_expr,
+                ExpressionAttributeNames=expr_attr_names,
+                ExpressionAttributeValues=expr_attr_values
+            )
+            return True
+        except ClientError as e:
+            raise Exception(f"Error updating job metadata: {str(e)}")
+    
     def delete_dataset(self, dataset_id: str) -> bool:
         """Delete a dataset record"""
         try:
