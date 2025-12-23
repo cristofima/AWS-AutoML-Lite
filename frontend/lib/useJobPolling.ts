@@ -4,9 +4,9 @@
  * Polls the backend API for job status updates at a configurable interval.
  * Automatically stops polling when job reaches a terminal state (completed/failed).
  * 
- * Note: This hook was originally designed for SSE but SSE is not compatible
- * with AWS Amplify's Lambda@Edge (30s timeout). Polling is the reliable solution
- * for serverless platforms.
+ * Note: This hook is a polling-based replacement for an earlier SSE hook.
+ * SSE is not compatible with AWS Amplify's Lambda@Edge due to its 30s timeout,
+ * so polling was chosen as the reliable solution for this serverless platform.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
