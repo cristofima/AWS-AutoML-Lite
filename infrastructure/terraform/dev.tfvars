@@ -5,10 +5,8 @@ project_name = "automl-lite"
 # GitHub repository for Amplify (token is passed via TF_VAR_github_token in CI/CD)
 github_repository = "https://github.com/cristofima/AWS-AutoML-Lite"
 
-# CORS - localhost for local development (Amplify domain added automatically when amplify_enabled)
-cors_allowed_origins = [
-  "http://localhost:3000"
-]
+# CORS - additional origins for dev (localhost added automatically in Terraform for dev)
+cors_allowed_origins = []
 
 # Lambda configuration
 lambda_memory_size = 1024
