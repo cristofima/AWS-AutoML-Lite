@@ -1,18 +1,25 @@
 # =============================================================================
 # CORS Origins - Computed once and validated
 # =============================================================================
-# The cors_origins local calculates allowed origins based on:
-# 1. Manual override via var.cors_allowed_origins (highest priority)
-# 2. Amplify domain (if enabled via github_repository + github_token)
-# 3. localhost:3000 (only in dev environment)
+# The cors_origins local calculates allowed origins by combining:
+# 1. Manual origins from var.cors_allowed_origins (if any)
+# 2. Amplify branch domain (e.g., https://dev.xxx.amplifyapp.com) when enabled
+# 3. Amplify default domain (e.g., https://xxx.amplifyapp.com) when enabled
+# 4. localhost:3000 (only in dev environment)
 #
 # IMPORTANT: In production, either enable Amplify OR set cors_allowed_origins
 # =============================================================================
 locals {
-  cors_origins = length(var.cors_allowed_origins) > 0 ? var.cors_allowed_origins : concat(
+  cors_origins = distinct(concat(
+    # Manual origins (can be empty)
+    var.cors_allowed_origins,
+    # Amplify branch domain (e.g., https://dev.xxx.amplifyapp.com)
+    local.amplify_enabled ? ["https://${aws_amplify_branch.main[0].branch_name}.${aws_amplify_app.frontend[0].default_domain}"] : [],
+    # Amplify default domain (e.g., https://xxx.amplifyapp.com) - for main/production
     local.amplify_enabled ? ["https://${aws_amplify_app.frontend[0].default_domain}"] : [],
+    # localhost for dev
     var.environment == "dev" ? ["http://localhost:3000"] : []
-  )
+  ))
 }
 
 # S3 Bucket for Datasets

@@ -8,7 +8,7 @@ from typing import Tuple, List
 from feature_engine.selection import DropConstantFeatures, DropDuplicateFeatures
 
 # Import shared utilities
-from .utils import (
+from utils import (
     detect_problem_type,
     is_id_column,
     is_high_cardinality_categorical,

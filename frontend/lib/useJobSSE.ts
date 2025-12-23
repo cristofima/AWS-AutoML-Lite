@@ -107,7 +107,9 @@ export function useJobSSE(
           onErrorRef.current?.(jobData.error_message || 'Training failed');
         }
       } catch (err) {
+        setIsLoading(false);
         setError(err instanceof Error ? err.message : 'Failed to fetch job');
+        cleanup(); // Stop polling on persistent error
       }
     };
 

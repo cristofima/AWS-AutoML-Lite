@@ -71,6 +71,13 @@ export interface JobDetails {
   eda_report_download_url?: string;
   training_report_download_url?: string;
   error_message?: string;
+  tags?: string[];  // Custom labels for filtering
+  notes?: string;   // User notes for experiment tracking
+}
+
+export interface JobUpdateRequest {
+  tags?: string[];
+  notes?: string;
 }
 
 export interface JobListResponse {
@@ -206,6 +213,22 @@ export async function deleteJob(jobId: string, deleteData: boolean = true): Prom
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to delete job');
+  }
+  
+  return response.json();
+}
+
+// Update job metadata (tags and notes)
+export async function updateJobMetadata(jobId: string, updates: JobUpdateRequest): Promise<JobDetails> {
+  const response = await fetch(`${API_URL}/jobs/${jobId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to update job metadata');
   }
   
   return response.json();
