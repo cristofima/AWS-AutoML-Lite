@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prediction Playground UI with interactive feature input form
   - Real-time prediction results with confidence and probabilities
   - Cost comparison panel: Lambda ($0 idle) vs SageMaker (~$50-100/month)
-  - ONNX Runtime 1.20.1 for serverless inference (compatible with Docker local dev)
+  - ONNX Runtime >=1.16.3 for serverless inference (uses 1.16.3 on Lambda, 1.20.x locally)
 
 - **Dark Mode Support** - Full dark/light/system theme support across all pages
   - Integrated `next-themes` for flicker-free theme switching
