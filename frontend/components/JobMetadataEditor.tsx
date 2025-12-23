@@ -20,6 +20,12 @@ export default function JobMetadataEditor({ job, onUpdate, compact = false }: Jo
   const tagInputRef = useRef<HTMLInputElement>(null);
   const notesInputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Sync local state when job prop changes
+  useEffect(() => {
+    setTags(job.tags || []);
+    setNotes(job.notes || '');
+  }, [job.tags, job.notes]);
+
   // Focus input when editing starts
   useEffect(() => {
     if (isEditingTags && tagInputRef.current) {
@@ -35,10 +41,28 @@ export default function JobMetadataEditor({ job, onUpdate, compact = false }: Jo
 
   const handleAddTag = () => {
     const trimmedTag = newTag.trim().toLowerCase();
-    if (trimmedTag && !tags.includes(trimmedTag) && tags.length < 10) {
-      setTags([...tags, trimmedTag]);
-      setNewTag('');
+    if (trimmedTag.length === 0) {
+      return;
     }
+
+    if (trimmedTag.length > 50) {
+      setError('Tag must be 50 characters or less');
+      return;
+    }
+
+    if (tags.includes(trimmedTag)) {
+      setError('Tag already exists');
+      return;
+    }
+
+    if (tags.length >= 10) {
+      setError('Maximum 10 tags allowed');
+      return;
+    }
+    
+    setError(null);
+    setTags([...tags, trimmedTag]);
+    setNewTag('');
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
