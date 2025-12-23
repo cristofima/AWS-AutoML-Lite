@@ -188,7 +188,7 @@ class AutoPreprocessor:
                         # Check if all values are integers (no decimal part)
                         try:
                             is_integer = (series == series.astype(int)).all()
-                        except (ValueError, TypeError):
+                        except (ValueError, TypeError, OverflowError):
                             is_integer = False
                         
                         # Use Decimal for DynamoDB compatibility
@@ -198,7 +198,7 @@ class AutoPreprocessor:
                             'is_integer': bool(is_integer)
                         }
         
-        # Get target mapping if classification with non-numeric target
+        # Get target mapping for classification tasks (maps encoded indices back to original labels)
         target_mapping = None
         if '__target__' in self.label_encoders:
             le = self.label_encoders['__target__']
@@ -252,8 +252,8 @@ class AutoPreprocessor:
         # Encode categorical features
         X = self.encode_categorical(X, fit=True)
         
-        # Encode target if classification (always encode to ensure target_mapping is generated)
-        if problem_type == 'classification':
+        # Encode target if classification and non-numeric
+        if problem_type == 'classification' and not pd.api.types.is_numeric_dtype(y):
             le = LabelEncoder()
             y = pd.Series(le.fit_transform(y.astype(str)), index=y.index)
             self.label_encoders['__target__'] = le

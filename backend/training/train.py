@@ -168,8 +168,10 @@ def main():
         # Step 7: Update job status to COMPLETED
         print("Step 7: Updating job status...")
         update_job_completion(
-            jobs_table, job_id, 
-            problem_type, model_s3_path,
+            jobs_table, job_id,
+            target_column=target_column,
+            problem_type=problem_type,
+            model_path=model_s3_path,
             onnx_model_path=onnx_s3_path,
             eda_report_s3_path=report_s3_path,
             training_report_s3_path=training_report_s3_path,
@@ -227,7 +229,7 @@ def update_job_status(table, job_id, status, error_message=None):
     )
 
 
-def update_job_completion(table, job_id, problem_type, model_path, onnx_model_path, eda_report_s3_path, training_report_s3_path, metrics, feature_importance, dropped_columns=None, feature_columns=None, feature_metadata=None):
+def update_job_completion(table, job_id, target_column, problem_type, model_path, onnx_model_path, eda_report_s3_path, training_report_s3_path, metrics, feature_importance, dropped_columns=None, feature_columns=None, feature_metadata=None):
     """Update job with completion details"""
     from decimal import Decimal
     
@@ -279,9 +281,6 @@ def update_job_completion(table, job_id, problem_type, model_path, onnx_model_pa
             completed_at = :completed_at,
             preprocessing_info = :preprocessing_info
     """
-    
-    # Get target_column from environment
-    target_column = os.environ.get('TARGET_COLUMN', '')
     
     expr_attr_values = {
         ':status': 'completed',
