@@ -208,7 +208,14 @@ async def update_job_metadata(job_id: str, request: JobUpdateRequest):
                         detail="Each tag must be 50 characters or less"
                     )
         
-        # Update job metadata
+        # Validate notes length if provided (defense-in-depth, Pydantic also validates)
+        if request.notes is not None and len(request.notes) > 1000:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Notes must be 1000 characters or less"
+            )
+        
+        # Update job metadata in DynamoDB
         dynamodb_service.update_job_metadata(
             job_id=job_id,
             tags=request.tags,
