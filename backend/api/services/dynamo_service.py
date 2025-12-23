@@ -129,7 +129,7 @@ class DynamoDBService:
         limit: int = 20,
         last_evaluated_key: Optional[Dict] = None
     ) -> tuple[List[Dict], Optional[Dict]]:
-        """List training jobs for a user with pagination"""
+        """List training jobs for a user with pagination, ordered by created_at DESC"""
         try:
             scan_kwargs = {
                 'Limit': limit,
@@ -143,6 +143,9 @@ class DynamoDBService:
             response = self.jobs_table.scan(**scan_kwargs)
             items = self._convert_decimals(response.get('Items', []))
             next_key = response.get('LastEvaluatedKey')
+            
+            # Sort by created_at descending (newest first)
+            items.sort(key=lambda x: x.get('created_at', ''), reverse=True)
             
             return items, next_key
         except ClientError as e:
