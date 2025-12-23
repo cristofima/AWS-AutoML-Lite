@@ -79,9 +79,10 @@ def main():
         preprocessor = AutoPreprocessor(target_column)
         X_train, X_test, y_train, y_test, problem_type = preprocessor.preprocess(df)
         
-        # Capture dropped columns info for later
+        # Capture preprocessing info for inference
         dropped_columns = preprocessor.dropped_columns
         feature_columns = preprocessor.feature_columns
+        feature_metadata = preprocessor.get_feature_metadata(df)  # Pass original df for numeric stats
         
         print(f"Problem type detected: {problem_type}")
         print(f"Training set: {X_train.shape}")
@@ -175,7 +176,8 @@ def main():
             metrics=metrics, 
             feature_importance=feature_importance,
             dropped_columns=dropped_columns,
-            feature_columns=feature_columns
+            feature_columns=feature_columns,
+            feature_metadata=feature_metadata
         )
         
         print(f"Training job {job_id} completed successfully!")
@@ -225,7 +227,7 @@ def update_job_status(table, job_id, status, error_message=None):
     )
 
 
-def update_job_completion(table, job_id, problem_type, model_path, onnx_model_path, eda_report_s3_path, training_report_s3_path, metrics, feature_importance, dropped_columns=None, feature_columns=None):
+def update_job_completion(table, job_id, problem_type, model_path, onnx_model_path, eda_report_s3_path, training_report_s3_path, metrics, feature_importance, dropped_columns=None, feature_columns=None, feature_metadata=None):
     """Update job with completion details"""
     from decimal import Decimal
     
@@ -242,7 +244,7 @@ def update_job_completion(table, job_id, problem_type, model_path, onnx_model_pa
     feature_importance_decimal = {k: Decimal(str(v)) 
                                   for k, v in feature_importance.items()}
     
-    # Build preprocessing info
+    # Build preprocessing info with feature metadata for inference
     preprocessing_info = {}
     if dropped_columns:
         preprocessing_info['dropped_columns'] = dropped_columns
@@ -251,10 +253,22 @@ def update_job_completion(table, job_id, problem_type, model_path, onnx_model_pa
         preprocessing_info['feature_columns'] = feature_columns
         preprocessing_info['feature_count'] = len(feature_columns)
     
+    # Add feature metadata for inference (types and categorical mappings)
+    if feature_metadata:
+        preprocessing_info['feature_types'] = feature_metadata.get('feature_types', {})
+        preprocessing_info['categorical_mappings'] = feature_metadata.get('categorical_mappings', {})
+        preprocessing_info['numeric_stats'] = feature_metadata.get('numeric_stats', {})
+        preprocessing_info['numeric_columns'] = feature_metadata.get('numeric_columns', [])
+        preprocessing_info['categorical_columns'] = feature_metadata.get('categorical_columns', [])
+        # Add target mapping for displaying original labels in predictions
+        if feature_metadata.get('target_mapping'):
+            preprocessing_info['target_mapping'] = feature_metadata['target_mapping']
+    
     # Build update expression dynamically to handle optional ONNX path
     update_expr = """
         SET #status = :status,
             updated_at = :updated_at,
+            target_column = :target_column,
             problem_type = :problem_type,
             model_path = :model_path,
             report_path = :report_path,
@@ -266,10 +280,14 @@ def update_job_completion(table, job_id, problem_type, model_path, onnx_model_pa
             preprocessing_info = :preprocessing_info
     """
     
+    # Get target_column from environment
+    target_column = os.environ.get('TARGET_COLUMN', '')
+    
     expr_attr_values = {
         ':status': 'completed',
         ':updated_at': datetime.now(timezone.utc).isoformat(),
         ':completed_at': datetime.now(timezone.utc).isoformat(),
+        ':target_column': target_column,
         ':problem_type': problem_type,
         ':model_path': model_path,
         ':report_path': eda_report_s3_path,  # Keep for backward compatibility

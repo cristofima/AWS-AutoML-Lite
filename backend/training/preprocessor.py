@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from decimal import Decimal
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from typing import Tuple, List
@@ -153,6 +154,68 @@ class AutoPreprocessor:
         
         return df
     
+    def get_feature_metadata(self, df: pd.DataFrame = None) -> dict:
+        """
+        Get metadata about features for inference.
+        
+        Args:
+            df: Original DataFrame (before encoding) to extract numeric stats
+        
+        Returns a dictionary with:
+        - feature_columns: list of feature names in order
+        - feature_types: dict mapping column name to 'numeric' or 'categorical'
+        - categorical_mappings: dict mapping column name to {original_value: encoded_value}
+        - numeric_stats: dict with min, max, is_integer for numeric columns
+        """
+        feature_types = {}
+        categorical_mappings = {}
+        numeric_stats = {}
+        
+        for col in self.feature_columns:
+            if col in self.label_encoders:
+                feature_types[col] = 'categorical'
+                # Get the mapping: original value -> encoded integer
+                le = self.label_encoders[col]
+                categorical_mappings[col] = {
+                    str(cls): int(idx) for idx, cls in enumerate(le.classes_)
+                }
+            else:
+                feature_types[col] = 'numeric'
+                # Extract numeric stats if DataFrame is provided
+                if df is not None and col in df.columns:
+                    series = df[col].dropna()
+                    if len(series) > 0:
+                        # Check if all values are integers (no decimal part)
+                        try:
+                            is_integer = (series == series.astype(int)).all()
+                        except (ValueError, TypeError):
+                            is_integer = False
+                        
+                        # Use Decimal for DynamoDB compatibility
+                        numeric_stats[col] = {
+                            'min': Decimal(str(float(series.min()))),
+                            'max': Decimal(str(float(series.max()))),
+                            'is_integer': bool(is_integer)
+                        }
+        
+        # Get target mapping if classification with non-numeric target
+        target_mapping = None
+        if '__target__' in self.label_encoders:
+            le = self.label_encoders['__target__']
+            target_mapping = {
+                int(idx): str(cls) for idx, cls in enumerate(le.classes_)
+            }
+        
+        return {
+            'feature_columns': self.feature_columns,
+            'feature_types': feature_types,
+            'categorical_mappings': categorical_mappings,
+            'numeric_stats': numeric_stats,
+            'numeric_columns': self.numeric_columns,
+            'categorical_columns': self.categorical_columns,
+            'target_mapping': target_mapping,
+        }
+    
     def preprocess(
         self, 
         df: pd.DataFrame, 
@@ -189,12 +252,11 @@ class AutoPreprocessor:
         # Encode categorical features
         X = self.encode_categorical(X, fit=True)
         
-        # Encode target if classification
+        # Encode target if classification (always encode to ensure target_mapping is generated)
         if problem_type == 'classification':
-            if not pd.api.types.is_numeric_dtype(y):
-                le = LabelEncoder()
-                y = pd.Series(le.fit_transform(y.astype(str)), index=y.index)
-                self.label_encoders['__target__'] = le
+            le = LabelEncoder()
+            y = pd.Series(le.fit_transform(y.astype(str)), index=y.index)
+            self.label_encoders['__target__'] = le
         
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
