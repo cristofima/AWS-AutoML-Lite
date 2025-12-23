@@ -119,12 +119,23 @@ class JobDetails(BaseModel):
     model_config = {"protected_namespaces": ()}
 
 
+class NumericStats(BaseModel):
+    """Statistics for a numeric column"""
+    min: float
+    max: float
+    is_integer: bool
+
+
 class PreprocessingInfo(BaseModel):
     """Preprocessing information for inference"""
     feature_columns: Optional[List[str]] = None
     feature_count: Optional[int] = None
     dropped_columns: Optional[List[str]] = None
     dropped_count: Optional[int] = None
+    feature_types: Optional[Dict[str, str]] = None  # column -> 'numeric' | 'categorical'
+    categorical_mappings: Optional[Dict[str, Dict[str, int]]] = None  # column -> {value: code}
+    numeric_stats: Optional[Dict[str, NumericStats]] = None  # column -> {min, max, is_integer}
+    target_mapping: Optional[Dict[str, str]] = None  # encoded_value -> original_label
 
 
 class JobResponse(BaseModel):

@@ -32,14 +32,18 @@ async def get_job_status(job_id: str):
                 feature_columns=job['preprocessing_info'].get('feature_columns'),
                 feature_count=job['preprocessing_info'].get('feature_count'),
                 dropped_columns=job['preprocessing_info'].get('dropped_columns'),
-                dropped_count=job['preprocessing_info'].get('dropped_count')
+                dropped_count=job['preprocessing_info'].get('dropped_count'),
+                feature_types=job['preprocessing_info'].get('feature_types'),
+                categorical_mappings=job['preprocessing_info'].get('categorical_mappings'),
+                numeric_stats=job['preprocessing_info'].get('numeric_stats'),
+                target_mapping=job['preprocessing_info'].get('target_mapping')
             )
         
         response = JobResponse(
             job_id=job['job_id'],
-            dataset_id=job['dataset_id'],
+            dataset_id=job.get('dataset_id', ''),
             status=JobStatus(job['status']),
-            target_column=job['target_column'],
+            target_column=job.get('target_column', ''),
             dataset_name=job.get('dataset_name'),
             problem_type=ProblemType(job['problem_type']) if job.get('problem_type') else None,
             created_at=job.get('created_at'),

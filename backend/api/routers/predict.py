@@ -85,10 +85,42 @@ def _get_cached_model(job_id: str, onnx_path: str):
             os.unlink(tmp_path)
 
 
+def _encode_categorical_features(
+    features: Dict[str, Any],
+    categorical_mappings: Dict[str, Dict[str, int]]
+) -> Dict[str, Any]:
+    """
+    Encode categorical features using the stored mappings from training.
+    
+    Args:
+        features: Dictionary of feature name -> value (may be strings)
+        categorical_mappings: Dict of column -> {original_value: encoded_int}
+    
+    Returns:
+        Dictionary with categorical features encoded as integers
+    """
+    encoded = features.copy()
+    
+    for col, mapping in categorical_mappings.items():
+        if col in encoded:
+            original_value = str(encoded[col])
+            if original_value in mapping:
+                encoded[col] = mapping[original_value]
+            else:
+                # Unknown category - use -1 as fallback
+                raise ValueError(
+                    f"Unknown value '{original_value}' for categorical feature '{col}'. "
+                    f"Valid values are: {list(mapping.keys())}"
+                )
+    
+    return encoded
+
+
 def _prepare_input(
     features: Dict[str, Any],
     feature_columns: list,
-    session: Any
+    session: Any,
+    preprocessing_info: Dict[str, Any] = None
 ) -> np.ndarray:
     """
     Prepare input features for ONNX model inference.
@@ -97,10 +129,18 @@ def _prepare_input(
         features: Dictionary of feature name -> value
         feature_columns: Expected feature columns in order
         session: ONNX session (to get input type info)
+        preprocessing_info: Contains categorical_mappings for encoding
     
     Returns:
         Numpy array ready for inference
     """
+    # Encode categorical features if mappings are provided
+    if preprocessing_info and preprocessing_info.get('categorical_mappings'):
+        features = _encode_categorical_features(
+            features,
+            preprocessing_info['categorical_mappings']
+        )
+    
     # Get expected input shape and type
     input_info = session.get_inputs()[0]
     input_type = input_info.type
@@ -110,7 +150,14 @@ def _prepare_input(
     for col in feature_columns:
         if col not in features:
             raise ValueError(f"Missing required feature: {col}")
-        feature_vector.append(features[col])
+        value = features[col]
+        # Ensure numeric conversion for non-categorical columns
+        if not isinstance(value, (int, float)):
+            try:
+                value = float(value)
+            except (ValueError, TypeError):
+                raise ValueError(f"Cannot convert '{value}' to number for feature '{col}'")
+        feature_vector.append(value)
     
     # Convert to numpy array with appropriate type
     if 'float' in input_type:
@@ -175,9 +222,14 @@ async def make_prediction(job_id: str, request: PredictionInput):
         # Load model (from cache or S3)
         session = _get_cached_model(job_id, job['onnx_model_path'])
         
-        # Prepare input
+        # Prepare input (with categorical encoding)
         try:
-            input_data = _prepare_input(request.features, feature_columns, session)
+            input_data = _prepare_input(
+                request.features,
+                feature_columns,
+                session,
+                preprocessing_info
+            )
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -271,6 +323,20 @@ async def get_prediction_info(job_id: str):
         
         preprocessing_info = job.get('preprocessing_info', {})
         feature_columns = preprocessing_info.get('feature_columns', [])
+        feature_types = preprocessing_info.get('feature_types', {})
+        categorical_mappings = preprocessing_info.get('categorical_mappings', {})
+        
+        # Build feature info with type and allowed values
+        feature_info = {}
+        for col in feature_columns:
+            col_type = feature_types.get(col, 'numeric')
+            info = {
+                "type": col_type,
+                "input_type": "select" if col_type == "categorical" else "number"
+            }
+            if col_type == "categorical" and col in categorical_mappings:
+                info["allowed_values"] = list(categorical_mappings[col].keys())
+            feature_info[col] = info
         
         return {
             "job_id": job_id,
@@ -279,10 +345,18 @@ async def get_prediction_info(job_id: str):
             "dataset_name": job.get('dataset_name'),
             "feature_columns": feature_columns,
             "feature_count": len(feature_columns),
+            "feature_info": feature_info,
             "model_type": job.get('metrics', {}).get('best_estimator', 'unknown'),
             "deployed": True,
             "example_request": {
-                "features": {col: "<value>" for col in feature_columns}
+                "features": {
+                    col: (
+                        list(categorical_mappings[col].keys())[0] 
+                        if col in categorical_mappings 
+                        else 0
+                    )
+                    for col in feature_columns
+                }
             }
         }
     
