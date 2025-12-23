@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from .routers import upload, training, models, datasets
+from .routers import upload, training, models, datasets, predict
 from .utils.helpers import get_settings
 
 settings = get_settings()
@@ -30,6 +30,7 @@ app.include_router(upload.router)
 app.include_router(datasets.router)
 app.include_router(training.router)
 app.include_router(models.router)
+app.include_router(predict.router)
 
 
 @app.get("/")

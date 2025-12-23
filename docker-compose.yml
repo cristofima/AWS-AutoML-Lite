@@ -34,6 +34,9 @@ services:
     volumes:
       - ./backend/api:/app/api:ro
       - ~/.aws:/root/.aws:ro  # Mount AWS credentials
+    # Required for ONNX Runtime in Docker (development only)
+    # Lambda doesn't need this - works natively
+    privileged: true
     command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
   # Training Container - same image used by AWS Batch

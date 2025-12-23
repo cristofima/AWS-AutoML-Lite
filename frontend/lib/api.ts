@@ -73,11 +73,32 @@ export interface JobDetails {
   error_message?: string;
   tags?: string[];  // Custom labels for filtering
   notes?: string;   // User notes for experiment tracking
+  deployed?: boolean;  // Whether the model is deployed for inference
+  preprocessing_info?: PreprocessingInfo;  // Feature info for inference
 }
 
 export interface JobUpdateRequest {
   tags?: string[];
   notes?: string;
+}
+
+export interface NumericStats {
+  min: number;
+  max: number;
+  is_integer: boolean;
+}
+
+export interface PreprocessingInfo {
+  feature_columns?: string[];
+  feature_count?: number;
+  dropped_columns?: string[];
+  dropped_count?: number;
+  feature_types?: Record<string, 'numeric' | 'categorical'>;
+  categorical_mappings?: Record<string, Record<string, number>>;
+  numeric_stats?: Record<string, NumericStats>;
+  numeric_columns?: string[];
+  categorical_columns?: string[];
+  target_mapping?: Record<string, string>;  // encoded_value -> original_label
 }
 
 export interface JobListResponse {
@@ -255,4 +276,90 @@ export async function downloadWithFilename(url: string, filename: string): Promi
     // Fallback: open in new tab
     window.open(url, '_blank');
   }
+}
+
+// Deploy/Undeploy interfaces
+export interface DeployResponse {
+  job_id: string;
+  deployed: boolean;
+  message: string;
+}
+
+// Prediction interfaces
+export interface PredictionInput {
+  features: Record<string, number | string>;
+}
+
+export interface PredictionResponse {
+  job_id: string;
+  prediction: number | string;
+  probability?: number;
+  probabilities?: Record<string, number>;
+  inference_time_ms: number;
+  model_type: string;
+}
+
+export interface FeatureInfo {
+  type: 'numeric' | 'categorical';
+  input_type: 'number' | 'select';
+  allowed_values?: string[];
+}
+
+export interface PredictionInfo {
+  job_id: string;
+  problem_type: 'classification' | 'regression';
+  target_column: string;
+  dataset_name: string;
+  feature_columns: string[];
+  feature_count: number;
+  feature_info: Record<string, FeatureInfo>;
+  model_type: string;
+  deployed: boolean;
+  example_request: {
+    features: Record<string, string | number>;
+  };
+}
+
+// Deploy or undeploy a model
+export async function deployModel(jobId: string, deploy: boolean): Promise<DeployResponse> {
+  const response = await fetch(`${API_URL}/jobs/${jobId}/deploy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deploy }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to deploy model');
+  }
+  
+  return response.json();
+}
+
+// Make a prediction with a deployed model
+export async function makePrediction(jobId: string, features: Record<string, number | string>): Promise<PredictionResponse> {
+  const response = await fetch(`${API_URL}/predict/${jobId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ features }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Prediction failed');
+  }
+  
+  return response.json();
+}
+
+// Get prediction info for a deployed model
+export async function getPredictionInfo(jobId: string): Promise<PredictionInfo> {
+  const response = await fetch(`${API_URL}/predict/${jobId}/info`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to get prediction info');
+  }
+  
+  return response.json();
 }

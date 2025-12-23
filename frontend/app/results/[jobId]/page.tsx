@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getJobDetails, JobDetails, downloadWithFilename } from '@/lib/api';
+import { getJobDetails, JobDetails, downloadWithFilename, deployModel, makePrediction, PredictionResponse } from '@/lib/api';
 import { formatMetric, getProblemTypeIcon, formatDateTime } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Header from '@/components/Header';
@@ -18,6 +18,16 @@ export default function ResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [copiedDocker, setCopiedDocker] = useState(false);
   const [copiedPython, setCopiedPython] = useState(false);
+  
+  // Deploy state
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployError, setDeployError] = useState<string | null>(null);
+  
+  // Prediction playground state
+  const [featureInputs, setFeatureInputs] = useState<Record<string, string>>({});
+  const [predictionResult, setPredictionResult] = useState<PredictionResponse | null>(null);
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [predictionError, setPredictionError] = useState<string | null>(null);
 
   const handleCopyDocker = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -48,6 +58,80 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} --json /data/
 
 # Batch predictions from CSV
 docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test.csv -o /data/predictions.csv`;
+  };
+
+  // Handle deploy/undeploy
+  const handleDeploy = async (deploy: boolean) => {
+    setIsDeploying(true);
+    setDeployError(null);
+    
+    try {
+      await deployModel(jobId, deploy);
+      // Refresh job data
+      const updatedJob = await getJobDetails(jobId);
+      setJob(updatedJob);
+      
+      // Initialize feature inputs if deploying
+      if (deploy && updatedJob.preprocessing_info?.feature_columns) {
+        const initialInputs: Record<string, string> = {};
+        updatedJob.preprocessing_info.feature_columns.forEach(col => {
+          initialInputs[col] = '';
+        });
+        setFeatureInputs(initialInputs);
+      }
+    } catch (err) {
+      setDeployError(err instanceof Error ? err.message : 'Failed to deploy model');
+    } finally {
+      setIsDeploying(false);
+    }
+  };
+
+  // Handle prediction
+  const handlePredict = async () => {
+    if (!job?.preprocessing_info?.feature_columns) return;
+    
+    setIsPredicting(true);
+    setPredictionError(null);
+    setPredictionResult(null);
+    
+    try {
+      // Convert string inputs to numbers where possible, with stricter handling for integer features
+      const features: Record<string, number | string> = {};
+      for (const [key, value] of Object.entries(featureInputs)) {
+        const trimmed = value.trim();
+        // Safely read any column metadata that may indicate integer features
+        const columnMeta: { is_integer?: boolean } | undefined =
+          (job as any)?.preprocessing_info?.column_metadata?.[key];
+
+        if (columnMeta?.is_integer) {
+          // For integer features, reject decimal or scientific-notation inputs
+          if (
+            trimmed !== '' &&
+            (trimmed.includes('.') ||
+              trimmed.toLowerCase().includes('e'))
+          ) {
+            throw new Error(`Invalid integer value for feature "${key}": "${value}"`);
+          }
+
+          const intValue = parseInt(trimmed, 10);
+          if (trimmed !== '' && Number.isNaN(intValue)) {
+            throw new Error(`Invalid integer value for feature "${key}": "${value}"`);
+          }
+
+          features[key] = trimmed === '' ? value : intValue;
+        } else {
+          const numValue = parseFloat(value);
+          features[key] = Number.isNaN(numValue) ? value : numValue;
+        }
+      }
+      
+      const result = await makePrediction(jobId, features);
+      setPredictionResult(result);
+    } catch (err) {
+      setPredictionError(err instanceof Error ? err.message : 'Prediction failed');
+    } finally {
+      setIsPredicting(false);
+    }
   };
 
   useEffect(() => {
@@ -283,6 +367,330 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                   <Bar dataKey="importance" fill="#6366f1" name="Importance" />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Model Deployment & Prediction Playground */}
+        {job.onnx_model_download_url && (
+          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-6 transition-colors">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">🚀 Model Deployment & Predictions</h3>
+            
+            {/* Deploy/Undeploy Button */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-gray-800 dark:text-gray-200">Serverless Inference</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {job.deployed 
+                      ? 'Model is deployed and ready for predictions' 
+                      : 'Deploy your model to enable serverless predictions via API'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDeploy(!job.deployed)}
+                  disabled={isDeploying}
+                  className={`px-6 py-2 rounded-lg font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                    job.deployed
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-700'
+                      : 'bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600'
+                  }`}
+                >
+                  {isDeploying ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {job.deployed ? 'Undeploying...' : 'Deploying...'}
+                    </span>
+                  ) : (
+                    <span>{job.deployed ? '⏹️ Undeploy Model' : '🚀 Deploy Model'}</span>
+                  )}
+                </button>
+              </div>
+              
+              {deployError && (
+                <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-300">{deployError}</p>
+                </div>
+              )}
+              
+              {job.deployed && (
+                <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    <strong>✅ Model Deployed</strong> — API Endpoint: <code className="bg-green-100 dark:bg-green-900/50 px-1 rounded">POST /predict/{job.job_id}</code>
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {/* Prediction Playground - Only show when deployed */}
+            {job.deployed && job.preprocessing_info?.feature_columns && (
+              <div className="border-t dark:border-zinc-700 pt-6">
+                <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-4">🎮 Prediction Playground</h4>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Input Form */}
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      Enter values for each feature to test your model:
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mb-3 italic">
+                      💡 Ranges shown are from training data for reference only — you can enter any value.
+                    </p>
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-2 -mr-2 pl-1 -ml-1 py-1">
+                      {job.preprocessing_info.feature_columns.map((col) => {
+                        const featureType = job.preprocessing_info?.feature_types?.[col];
+                        const allowedValues = job.preprocessing_info?.categorical_mappings?.[col] 
+                          ? Object.keys(job.preprocessing_info.categorical_mappings[col])
+                          : null;
+                        const numericStats = job.preprocessing_info?.numeric_stats?.[col];
+                        const isCategorical = featureType === 'categorical' && allowedValues;
+                        const isInteger = numericStats?.is_integer ?? false;
+                        
+                        return (
+                          <div key={col}>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              {col}
+                              {isCategorical && (
+                                <span className="ml-2 text-xs font-normal text-indigo-600 dark:text-indigo-400">
+                                  (categorical)
+                                </span>
+                              )}
+                              {!isCategorical && numericStats && (
+                                <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                                  ({isInteger ? 'integer' : 'decimal'}, e.g. {numericStats.min.toLocaleString()} – {numericStats.max.toLocaleString()})
+                                </span>
+                              )}
+                            </label>
+                            {isCategorical ? (
+                              <select
+                                value={featureInputs[col] || ''}
+                                onChange={(e) => setFeatureInputs(prev => ({ ...prev, [col]: e.target.value }))}
+                                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-zinc-600 rounded-lg outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 dark:bg-zinc-700 dark:text-white transition-all"
+                              >
+                                <option value="">Select {col}...</option>
+                                {allowedValues.map((val) => (
+                                  <option key={val} value={val}>{val}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type="number"
+                                step={isInteger ? "1" : "any"}
+                                value={featureInputs[col] || ''}
+                                onChange={(e) => setFeatureInputs(prev => ({ ...prev, [col]: e.target.value }))}
+                                placeholder={numericStats ? `e.g., ${Math.round((numericStats.min + numericStats.max) / 2)}` : `Enter ${col}`}
+                                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-zinc-600 rounded-lg outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 dark:bg-zinc-700 dark:text-white transition-all"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={handlePredict}
+                      disabled={
+                        isPredicting ||
+                        !(
+                          Object.keys(featureInputs).length === job.preprocessing_info.feature_columns.length &&
+                          Object.values(featureInputs).every((v) => v !== '')
+                        )
+                      }
+                      className="mt-4 w-full py-2 px-4 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isPredicting ? (
+                        <span className="flex items-center justify-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Predicting...
+                        </span>
+                      ) : (
+                        '🔮 Make Prediction'
+                      )}
+                    </button>
+                  </div>
+                  
+                  {/* Results Panel */}
+                  <div className="bg-gray-50 dark:bg-zinc-900/50 rounded-lg p-4">
+                    <h5 className="font-medium text-gray-800 dark:text-gray-200 mb-2">Prediction Result</h5>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      Predicting: <span className="font-medium text-indigo-600 dark:text-indigo-400">{job.target_column}</span>
+                    </p>
+                    
+                    {predictionError && (
+                      <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                        <p className="text-sm text-red-700 dark:text-red-300">{predictionError}</p>
+                      </div>
+                    )}
+                    
+                    {predictionResult && (
+                      <div className="space-y-4">
+                        <div className="text-center py-4">
+                          <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400">
+                            {(() => {
+                              const pred = predictionResult.prediction;
+                              const targetMapping = job.preprocessing_info?.target_mapping;
+                              
+                              // Classification with target_mapping
+                              if (job.problem_type === 'classification' && typeof pred === 'number') {
+                                const encodedClass = Math.round(pred);
+                                
+                                if (targetMapping) {
+                                  const originalValue = targetMapping[String(encodedClass)];
+                                  // If we have an original label (including 0 or empty string), show it directly
+                                  if (originalValue !== undefined && originalValue !== null) {
+                                    return String(originalValue);
+                                  }
+                                }
+                                // No mapping or missing label - show encoded class index directly (0-indexed)
+                                return `Class ${encodedClass}`;
+                              }
+                              
+                              // Regression - smart number formatting with error margin
+                              if (typeof pred === 'number') {
+                                const formatNumber = (n: number) => {
+                                  if (Math.abs(n - Math.round(n)) < 0.0001) {
+                                    return Math.round(n).toLocaleString();
+                                  }
+                                  return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+                                };
+                                
+                                const rmse = job.metrics?.rmse;
+                                if (rmse !== undefined && rmse > 0) {
+                                  return (
+                                    <>
+                                      {formatNumber(pred)}
+                                      <span className="text-base font-normal text-gray-500 dark:text-gray-400 ml-1">
+                                        ± {formatNumber(rmse)}
+                                      </span>
+                                    </>
+                                  );
+                                }
+                                return formatNumber(pred);
+                              }
+                              return String(pred);
+                            })()}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            {job.problem_type === 'classification' ? 'Predicted Class' : 'Predicted Value'}
+                          </div>
+                          {job.problem_type === 'regression' && job.metrics?.rmse !== undefined && (
+                            <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
+                              (± RMSE expected error)
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Classification: Show confidence */}
+                        {predictionResult.probability != null && predictionResult.probability > 0 && (
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                              {(predictionResult.probability * 100).toFixed(1)}%
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-500">Confidence</div>
+                          </div>
+                        )}
+                        
+                        {/* Regression: Show R² as model fit indicator (0-1 scale per ML standards) */}
+                        {job.problem_type === 'regression' && job.metrics?.r2_score !== undefined && (
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                              {job.metrics.r2_score.toFixed(4)}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-500">R² Score</div>
+                          </div>
+                        )}
+                        
+                        {predictionResult.probabilities && Object.keys(predictionResult.probabilities).length > 0 && (
+                          <div className="border-t dark:border-zinc-700 pt-3">
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mb-2">Class Probabilities:</p>
+                            <div className="space-y-1">
+                              {Object.entries(predictionResult.probabilities)
+                                .sort(([, a], [, b]) => b - a)
+                                .map(([cls, prob]) => {
+                                  const targetMapping = job.preprocessing_info?.target_mapping;
+                                  const encodedClass = parseInt(cls, 10);
+                                  const classNum = encodedClass + 1; // 1-indexed
+                                  
+                                  let label: string;
+                                  if (targetMapping?.[cls]) {
+                                    const originalValue = targetMapping[cls];
+                                    const isNumericLabel = !isNaN(Number(originalValue));
+                                    if (isNumericLabel) {
+                                      label = `Class ${classNum} (${originalValue})`;
+                                    } else {
+                                      label = originalValue;
+                                    }
+                                  } else {
+                                    label = `Class ${classNum}`;
+                                  }
+                                  
+                                  return (
+                                    <div key={cls} className="flex justify-between text-sm">
+                                      <span className="text-gray-700 dark:text-gray-300">{label}</span>
+                                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                                        {(prob * 100).toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="border-t dark:border-zinc-700 pt-3 text-xs text-gray-500 dark:text-gray-500">
+                          <div className="flex justify-between">
+                            <span>Inference Time:</span>
+                            <span>{predictionResult.inference_time_ms.toFixed(1)} ms</span>
+                          </div>
+                          <div className="flex justify-between mt-1">
+                            <span>Model Type:</span>
+                            <span>{predictionResult.model_type}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!predictionResult && !predictionError && (
+                      <div className="text-center py-6 text-gray-500 dark:text-gray-500">
+                        <div className="text-3xl mb-2">🔮</div>
+                        <p className="text-sm">Enter feature values and click &quot;Make Prediction&quot;</p>
+                        <p className="text-xs mt-1">
+                          to predict <span className="font-medium text-indigo-600 dark:text-indigo-400">{job.target_column}</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Cost comparison info */}
+            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <h5 className="font-medium text-blue-800 dark:text-blue-300 mb-2">💡 Serverless vs SageMaker</h5>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="font-medium text-blue-700 dark:text-blue-400">Lambda Inference (this)</p>
+                  <ul className="text-blue-600 dark:text-blue-400 mt-1 space-y-1">
+                    <li>• $0 idle cost</li>
+                    <li>• ~$0.0001 per prediction</li>
+                    <li>• 1-3s cold start</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-medium text-blue-700 dark:text-blue-400">SageMaker Endpoint</p>
+                  <ul className="text-blue-600 dark:text-blue-400 mt-1 space-y-1">
+                    <li>• ~$50-100/month idle</li>
+                    <li>• ~$0.0001 per prediction</li>
+                    <li>• No cold start</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         )}
