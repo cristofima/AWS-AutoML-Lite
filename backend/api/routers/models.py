@@ -28,6 +28,18 @@ async def get_job_status(job_id: str):
         # Build preprocessing_info if available
         preprocessing_info = None
         if job.get('preprocessing_info'):
+            # Convert Decimal to float for numeric_stats (DynamoDB returns Decimal types)
+            raw_numeric_stats = job['preprocessing_info'].get('numeric_stats')
+            numeric_stats = None
+            if raw_numeric_stats:
+                numeric_stats = {
+                    col: {
+                        key: float(val) if val is not None else None
+                        for key, val in stats.items()
+                    }
+                    for col, stats in raw_numeric_stats.items()
+                }
+            
             preprocessing_info = PreprocessingInfo(
                 feature_columns=job['preprocessing_info'].get('feature_columns'),
                 feature_count=job['preprocessing_info'].get('feature_count'),
@@ -35,7 +47,7 @@ async def get_job_status(job_id: str):
                 dropped_count=job['preprocessing_info'].get('dropped_count'),
                 feature_types=job['preprocessing_info'].get('feature_types'),
                 categorical_mappings=job['preprocessing_info'].get('categorical_mappings'),
-                numeric_stats=job['preprocessing_info'].get('numeric_stats'),
+                numeric_stats=numeric_stats,
                 target_mapping=job['preprocessing_info'].get('target_mapping')
             )
         

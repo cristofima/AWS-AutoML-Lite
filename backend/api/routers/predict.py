@@ -11,21 +11,26 @@ Key features:
 """
 
 from fastapi import APIRouter, HTTPException, status
+import logging
 import time
 from typing import Dict, Any
 import numpy as np
 import tempfile
 import os
 
-from ..models.schemas import PredictionInput, PredictionResponse, JobStatus
+from ..models.schemas import PredictionInput, PredictionResponse
 from ..services.dynamo_service import dynamodb_service
 from ..services.s3_service import s3_service
 from ..utils.helpers import get_settings
 
 router = APIRouter(prefix="/predict", tags=["predict"])
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
-# In-memory cache for loaded ONNX models
+# In-memory LRU cache for loaded ONNX models
+# Limits cache to MAX_CACHED_MODELS to prevent unbounded memory growth
+# in long-lived Lambda containers that may predict against many different models
+MAX_CACHED_MODELS = 3
 # Key: job_id, Value: (ort.InferenceSession, model_metadata)
 _model_cache: Dict[str, tuple] = {}
 
@@ -81,8 +86,14 @@ def _get_cached_model(job_id: str, onnx_path: str):
         return session
     finally:
         # Clean up temp file
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+        try:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+        except OSError as e:
+            logger.warning(
+                f"Failed to clean up temp file {tmp_path}: {e}. "
+                "This may cause /tmp pollution in Lambda."
+            )
 
 
 def _encode_categorical_features(
@@ -107,11 +118,8 @@ def _encode_categorical_features(
             if original_value in mapping:
                 encoded[col] = mapping[original_value]
             else:
-                # Unknown category - use -1 as fallback
-                raise ValueError(
-                    f"Unknown value '{original_value}' for categorical feature '{col}'. "
-                    f"Valid values are: {list(mapping.keys())}"
-                )
+                # Unknown category - use -1 as fallback to avoid failing the entire prediction
+                encoded[col] = -1
     
     return encoded
 
