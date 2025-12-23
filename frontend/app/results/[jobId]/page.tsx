@@ -488,7 +488,10 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                   
                   {/* Results Panel */}
                   <div className="bg-gray-50 dark:bg-zinc-900/50 rounded-lg p-4">
-                    <h5 className="font-medium text-gray-800 dark:text-gray-200 mb-3">Prediction Result</h5>
+                    <h5 className="font-medium text-gray-800 dark:text-gray-200 mb-2">Prediction Result</h5>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      Predicting: <span className="font-medium text-indigo-600 dark:text-indigo-400">{job.target_column}</span>
+                    </p>
                     
                     {predictionError && (
                       <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
@@ -526,13 +529,27 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                                 return `Class ${classNum}`;
                               }
                               
-                              // Regression - smart number formatting
+                              // Regression - smart number formatting with error margin
                               if (typeof pred === 'number') {
-                                // Check if it's effectively an integer
-                                if (Math.abs(pred - Math.round(pred)) < 0.0001) {
-                                  return String(Math.round(pred));
+                                const formatNumber = (n: number) => {
+                                  if (Math.abs(n - Math.round(n)) < 0.0001) {
+                                    return Math.round(n).toLocaleString();
+                                  }
+                                  return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+                                };
+                                
+                                const rmse = job.metrics?.rmse;
+                                if (rmse !== undefined && rmse > 0) {
+                                  return (
+                                    <>
+                                      {formatNumber(pred)}
+                                      <span className="text-base font-normal text-gray-500 dark:text-gray-400 ml-1">
+                                        ± {formatNumber(rmse)}
+                                      </span>
+                                    </>
+                                  );
                                 }
-                                return pred.toFixed(4);
+                                return formatNumber(pred);
                               }
                               return String(pred);
                             })()}
@@ -540,14 +557,30 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                           <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {job.problem_type === 'classification' ? 'Predicted Class' : 'Predicted Value'}
                           </div>
+                          {job.problem_type === 'regression' && job.metrics?.rmse !== undefined && (
+                            <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
+                              (± RMSE expected error)
+                            </div>
+                          )}
                         </div>
                         
-                        {predictionResult.probability !== undefined && (
+                        {/* Classification: Show confidence */}
+                        {predictionResult.probability != null && predictionResult.probability > 0 && (
                           <div className="text-center">
                             <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                               {(predictionResult.probability * 100).toFixed(1)}%
                             </div>
                             <div className="text-xs text-gray-500 dark:text-gray-500">Confidence</div>
+                          </div>
+                        )}
+                        
+                        {/* Regression: Show R² as model fit indicator (0-1 scale per ML standards) */}
+                        {job.problem_type === 'regression' && job.metrics?.r2_score !== undefined && (
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                              {job.metrics.r2_score.toFixed(4)}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-500">R² Score</div>
                           </div>
                         )}
                         
@@ -602,9 +635,12 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                     )}
                     
                     {!predictionResult && !predictionError && (
-                      <div className="text-center py-8 text-gray-500 dark:text-gray-500">
+                      <div className="text-center py-6 text-gray-500 dark:text-gray-500">
                         <div className="text-3xl mb-2">🔮</div>
                         <p className="text-sm">Enter feature values and click &quot;Make Prediction&quot;</p>
+                        <p className="text-xs mt-1">
+                          to predict <span className="font-medium text-indigo-600 dark:text-indigo-400">{job.target_column}</span>
+                        </p>
                       </div>
                     )}
                   </div>
