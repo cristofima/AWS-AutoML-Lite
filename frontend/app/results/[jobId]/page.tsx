@@ -410,24 +410,61 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Input Form */}
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                       Enter values for each feature to test your model:
                     </p>
-                    <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-                      {job.preprocessing_info.feature_columns.map((col) => (
-                        <div key={col}>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {col}
-                          </label>
-                          <input
-                            type="text"
-                            value={featureInputs[col] || ''}
-                            onChange={(e) => setFeatureInputs(prev => ({ ...prev, [col]: e.target.value }))}
-                            placeholder={`Enter ${col}`}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-zinc-700 dark:text-white transition-colors"
-                          />
-                        </div>
-                      ))}
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mb-3 italic">
+                      💡 Ranges shown are from training data for reference only — you can enter any value.
+                    </p>
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-2 -mr-2 pl-1 -ml-1 py-1">
+                      {job.preprocessing_info.feature_columns.map((col) => {
+                        const featureType = job.preprocessing_info?.feature_types?.[col];
+                        const allowedValues = job.preprocessing_info?.categorical_mappings?.[col] 
+                          ? Object.keys(job.preprocessing_info.categorical_mappings[col])
+                          : null;
+                        const numericStats = job.preprocessing_info?.numeric_stats?.[col];
+                        const isCategorical = featureType === 'categorical' && allowedValues;
+                        const isInteger = numericStats?.is_integer ?? false;
+                        
+                        return (
+                          <div key={col}>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              {col}
+                              {isCategorical && (
+                                <span className="ml-2 text-xs font-normal text-indigo-600 dark:text-indigo-400">
+                                  (categorical)
+                                </span>
+                              )}
+                              {!isCategorical && numericStats && (
+                                <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                                  ({isInteger ? 'integer' : 'decimal'}, e.g. {numericStats.min.toLocaleString()} – {numericStats.max.toLocaleString()})
+                                </span>
+                              )}
+                            </label>
+                            {isCategorical ? (
+                              <select
+                                value={featureInputs[col] || ''}
+                                onChange={(e) => setFeatureInputs(prev => ({ ...prev, [col]: e.target.value }))}
+                                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-zinc-600 rounded-lg outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 dark:bg-zinc-700 dark:text-white transition-all"
+                              >
+                                <option value="">Select {col}...</option>
+                                {allowedValues.map((val) => (
+                                  <option key={val} value={val}>{val}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type="number"
+                                step={isInteger ? "1" : "any"}
+                                value={featureInputs[col] || ''}
+                                onChange={(e) => setFeatureInputs(prev => ({ ...prev, [col]: e.target.value }))}
+                                placeholder={numericStats ? `e.g., ${Math.round((numericStats.min + numericStats.max) / 2)}` : `Enter ${col}`}
+                                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-zinc-600 rounded-lg outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 dark:bg-zinc-700 dark:text-white transition-all"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                     
                     <button
@@ -463,9 +500,42 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                       <div className="space-y-4">
                         <div className="text-center py-4">
                           <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400">
-                            {typeof predictionResult.prediction === 'number' 
-                              ? predictionResult.prediction.toFixed(4)
-                              : predictionResult.prediction}
+                            {(() => {
+                              const pred = predictionResult.prediction;
+                              const targetMapping = job.preprocessing_info?.target_mapping;
+                              
+                              // Classification with target_mapping
+                              if (job.problem_type === 'classification' && typeof pred === 'number') {
+                                const encodedClass = Math.round(pred);
+                                const classNum = encodedClass + 1; // 1-indexed for users
+                                
+                                if (targetMapping) {
+                                  const originalValue = targetMapping[String(encodedClass)];
+                                  if (originalValue) {
+                                    // Check if original value is numeric
+                                    const isNumericLabel = !isNaN(Number(originalValue));
+                                    if (isNumericLabel) {
+                                      // Show "Class X (value: Y)" for numeric non-obvious values
+                                      return `Class ${classNum} (value: ${originalValue})`;
+                                    }
+                                    // String labels - show directly
+                                    return originalValue;
+                                  }
+                                }
+                                // No mapping - just show "Class X" (1-indexed)
+                                return `Class ${classNum}`;
+                              }
+                              
+                              // Regression - smart number formatting
+                              if (typeof pred === 'number') {
+                                // Check if it's effectively an integer
+                                if (Math.abs(pred - Math.round(pred)) < 0.0001) {
+                                  return String(Math.round(pred));
+                                }
+                                return pred.toFixed(4);
+                              }
+                              return String(pred);
+                            })()}
                           </div>
                           <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {job.problem_type === 'classification' ? 'Predicted Class' : 'Predicted Value'}
@@ -487,14 +557,33 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                             <div className="space-y-1">
                               {Object.entries(predictionResult.probabilities)
                                 .sort(([, a], [, b]) => b - a)
-                                .map(([cls, prob]) => (
-                                  <div key={cls} className="flex justify-between text-sm">
-                                    <span className="text-gray-700 dark:text-gray-300">{cls}</span>
-                                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                                      {(prob * 100).toFixed(1)}%
-                                    </span>
-                                  </div>
-                                ))}
+                                .map(([cls, prob]) => {
+                                  const targetMapping = job.preprocessing_info?.target_mapping;
+                                  const encodedClass = parseInt(cls, 10);
+                                  const classNum = encodedClass + 1; // 1-indexed
+                                  
+                                  let label: string;
+                                  if (targetMapping?.[cls]) {
+                                    const originalValue = targetMapping[cls];
+                                    const isNumericLabel = !isNaN(Number(originalValue));
+                                    if (isNumericLabel) {
+                                      label = `Class ${classNum} (${originalValue})`;
+                                    } else {
+                                      label = originalValue;
+                                    }
+                                  } else {
+                                    label = `Class ${classNum}`;
+                                  }
+                                  
+                                  return (
+                                    <div key={cls} className="flex justify-between text-sm">
+                                      <span className="text-gray-700 dark:text-gray-300">{label}</span>
+                                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                                        {(prob * 100).toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                             </div>
                           </div>
                         )}

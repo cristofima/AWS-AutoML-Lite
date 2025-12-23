@@ -82,11 +82,23 @@ export interface JobUpdateRequest {
   notes?: string;
 }
 
+export interface NumericStats {
+  min: number;
+  max: number;
+  is_integer: boolean;
+}
+
 export interface PreprocessingInfo {
   feature_columns?: string[];
   feature_count?: number;
   dropped_columns?: string[];
   dropped_count?: number;
+  feature_types?: Record<string, 'numeric' | 'categorical'>;
+  categorical_mappings?: Record<string, Record<string, number>>;
+  numeric_stats?: Record<string, NumericStats>;
+  numeric_columns?: string[];
+  categorical_columns?: string[];
+  target_mapping?: Record<string, string>;  // encoded_value -> original_label
 }
 
 export interface JobListResponse {
@@ -287,6 +299,12 @@ export interface PredictionResponse {
   model_type: string;
 }
 
+export interface FeatureInfo {
+  type: 'numeric' | 'categorical';
+  input_type: 'number' | 'select';
+  allowed_values?: string[];
+}
+
 export interface PredictionInfo {
   job_id: string;
   problem_type: 'classification' | 'regression';
@@ -294,10 +312,11 @@ export interface PredictionInfo {
   dataset_name: string;
   feature_columns: string[];
   feature_count: number;
+  feature_info: Record<string, FeatureInfo>;
   model_type: string;
   deployed: boolean;
   example_request: {
-    features: Record<string, string>;
+    features: Record<string, string | number>;
   };
 }
 
