@@ -49,8 +49,7 @@ frontend/
 │   ├── training/[jobId]/             # Training status page
 │   ├── results/[jobId]/              # Results & download page
 │   ├── compare/                      # Model comparison page (v1.1.0)
-│   ├── history/                      # Training history list
-│   └── api/jobs/[jobId]/stream/      # SSE endpoint for real-time updates
+│   └── history/                      # Training history list
 ├── components/
 │   ├── FileUpload.tsx                # Drag & drop upload component
 │   ├── Header.tsx                    # Navigation header with theme toggle
@@ -58,7 +57,7 @@ frontend/
 ├── lib/
 │   ├── api.ts                        # API client functions
 │   ├── utils.ts                      # Utility functions
-│   └── useJobSSE.ts                  # SSE hook with polling fallback
+│   └── useJobPolling.ts              # Job status polling hook
 ├── public/                           # Static assets
 └── package.json
 ```
