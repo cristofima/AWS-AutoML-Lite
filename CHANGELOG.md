@@ -23,19 +23,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Supports: sklearn models (Random Forest, Extra Trees) and LightGBM
   - Verification step ensures exported ONNX model is valid
 
-- **Real-time Training Updates (SSE)** - Server-Sent Events for live status updates
-  - New `/api/jobs/[jobId]/stream` SSE endpoint in Next.js
-  - Custom `useJobSSE` hook with automatic fallback to polling
-  - Visual SSE connection status indicator on training page
-  - Updates every 3 seconds instead of 5 seconds polling
-  - Graceful handling of connection errors and timeouts
-
 - **Model Comparison** - Side-by-side comparison of training runs
   - New `/compare` page for comparing up to 4 models
   - Metrics comparison table with best model highlighting
   - Feature importance comparison with visual bars
   - Quick job selection from completed training history
   - Link to compare from history page header
+
+- **Training Run Tags & Notes** - Organize and annotate your training experiments
+  - Add custom tags (up to 10) and notes (up to 1000 chars) to any training job
+  - `JobMetadataEditor` component with edit/save workflow
+  - New `PATCH /jobs/{job_id}` API endpoint for metadata updates
+  - History page displays tags and supports filtering by tag
+  - Compact tag display mode in tables
+
+- **Enhanced Error Handling** - Comprehensive error boundaries for better UX
+  - Global `error.tsx` with network error detection and troubleshooting tips
+  - Custom `not-found.tsx` (404) page with quick navigation links
+  - `global-error.tsx` for critical root layout failures
+  - Route-specific error boundaries for `/training/[jobId]` and `/results/[jobId]`
+  - Development mode error details display
+  - Root `loading.tsx` with animated spinner
+
+- **Dataset Preview Enhancements** - Rich dataset visualization on configure page
+  - `ColumnStatsDisplay` component with dataset overview stats
+  - Visual column type distribution (numeric vs categorical)
+  - Missing values warning with affected columns list
+  - Selected column details with unique ratio visualization
 
 ### Fixed
 - **Problem Type Detection** - Regression datasets were incorrectly classified as classification

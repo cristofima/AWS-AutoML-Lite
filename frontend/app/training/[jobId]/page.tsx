@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { JobDetails } from '@/lib/api';
-import { useJobSSE } from '@/lib/useJobSSE';
+import { useJobPolling } from '@/lib/useJobPolling';
 import { getStatusColor, getStatusIcon, formatDuration, formatDateTime } from '@/lib/utils';
 import Header from '@/components/Header';
 
@@ -12,10 +12,9 @@ export default function TrainingPage() {
   const params = useParams();
   const jobId = params.jobId as string;
 
-  // Use SSE for real-time updates
-  const { job, isLoading, error, sseStatus, isUsingSSE } = useJobSSE(jobId, {
+  // Use polling for real-time updates
+  const { job, isLoading, error } = useJobPolling(jobId, {
     enabled: true,
-    fallbackToPolling: true,
     pollingInterval: 5000,
     onComplete: (completedJob: JobDetails) => {
       // Redirect to results when job completes
@@ -137,17 +136,9 @@ export default function TrainingPage() {
             <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-2">
               This may take a few minutes depending on dataset size and time budget
             </p>
-            {/* SSE Status Indicator */}
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <span className={`inline-block w-2 h-2 rounded-full ${
-                sseStatus === 'connected' ? 'bg-green-500 animate-pulse' :
-                sseStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
-                sseStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'
-              }`}></span>
-              <span className="text-xs text-gray-500 dark:text-gray-500">
-                {isUsingSSE ? 'Real-time updates' : 'Polling for updates'} • {sseStatus}
-              </span>
-            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-500 text-center mt-1">
+              Updating every 5 seconds
+            </p>
           </div>
 
           {/* Job Info */}
