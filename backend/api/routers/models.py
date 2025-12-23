@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Query
 from typing import Optional
-from ..models.schemas import JobListResponse, JobResponse, JobStatus, ProblemType, JobUpdateRequest
+from ..models.schemas import (
+    JobListResponse, JobResponse, JobStatus, ProblemType, JobUpdateRequest,
+    DeployRequest, DeployResponse, PreprocessingInfo
+)
 from ..services.dynamo_service import dynamodb_service
 from ..services.s3_service import s3_service
 from ..utils.helpers import get_settings
@@ -22,6 +25,16 @@ async def get_job_status(job_id: str):
                 detail="Job not found"
             )
         
+        # Build preprocessing_info if available
+        preprocessing_info = None
+        if job.get('preprocessing_info'):
+            preprocessing_info = PreprocessingInfo(
+                feature_columns=job['preprocessing_info'].get('feature_columns'),
+                feature_count=job['preprocessing_info'].get('feature_count'),
+                dropped_columns=job['preprocessing_info'].get('dropped_columns'),
+                dropped_count=job['preprocessing_info'].get('dropped_count')
+            )
+        
         response = JobResponse(
             job_id=job['job_id'],
             dataset_id=job['dataset_id'],
@@ -36,7 +49,9 @@ async def get_job_status(job_id: str):
             metrics=job.get('metrics'),
             error_message=job.get('error_message'),
             tags=job.get('tags'),
-            notes=job.get('notes')
+            notes=job.get('notes'),
+            deployed=job.get('deployed', False),
+            preprocessing_info=preprocessing_info
         )
         
         # Generate download URLs if job is completed
@@ -231,6 +246,54 @@ async def update_job_metadata(job_id: str, request: JobUpdateRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating job metadata: {str(e)}"
+        )
+
+
+@router.post("/{job_id}/deploy", response_model=DeployResponse)
+async def deploy_model(job_id: str, request: DeployRequest):
+    """
+    Deploy or undeploy a trained model for inference.
+    Only completed jobs with ONNX models can be deployed.
+    """
+    try:
+        # Verify job exists
+        job = dynamodb_service.get_job(job_id)
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job not found"
+            )
+        
+        # Check if job is completed
+        if job['status'] != JobStatus.COMPLETED.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot deploy job with status '{job['status']}'. Only completed jobs can be deployed."
+            )
+        
+        # Check if ONNX model exists
+        if request.deploy and not job.get('onnx_model_path'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No ONNX model available for this job. Only jobs with ONNX export can be deployed."
+            )
+        
+        # Update deployed status
+        dynamodb_service.update_job_deployed(job_id, request.deploy)
+        
+        action = "deployed" if request.deploy else "undeployed"
+        return DeployResponse(
+            job_id=job_id,
+            deployed=request.deploy,
+            message=f"Model successfully {action}"
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deploying model: {str(e)}"
         )
 
 

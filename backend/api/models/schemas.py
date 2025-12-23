@@ -119,6 +119,14 @@ class JobDetails(BaseModel):
     model_config = {"protected_namespaces": ()}
 
 
+class PreprocessingInfo(BaseModel):
+    """Preprocessing information for inference"""
+    feature_columns: Optional[List[str]] = None
+    feature_count: Optional[int] = None
+    dropped_columns: Optional[List[str]] = None
+    dropped_count: Optional[int] = None
+
+
 class JobResponse(BaseModel):
     job_id: str
     dataset_id: str
@@ -139,6 +147,8 @@ class JobResponse(BaseModel):
     error_message: Optional[str] = None
     tags: Optional[List[str]] = None  # Custom labels for filtering
     notes: Optional[str] = None  # User notes for experiment tracking
+    deployed: bool = False  # Whether the model is deployed for inference
+    preprocessing_info: Optional[PreprocessingInfo] = None  # Feature info for inference
     
     model_config = {"protected_namespaces": ()}
 
@@ -147,6 +157,35 @@ class JobUpdateRequest(BaseModel):
     """Request schema for updating job metadata (tags, notes)"""
     tags: Optional[List[str]] = Field(default=None, max_items=10, description="Custom labels for filtering (max 10)")
     notes: Optional[str] = Field(default=None, max_length=1000, description="User notes for experiment tracking")
+
+
+class DeployRequest(BaseModel):
+    """Request schema for deploying/undeploying a model"""
+    deploy: bool = Field(..., description="True to deploy, False to undeploy")
+
+
+class DeployResponse(BaseModel):
+    """Response schema for deploy/undeploy operations"""
+    job_id: str
+    deployed: bool
+    message: str
+
+
+class PredictionInput(BaseModel):
+    """Request schema for making predictions"""
+    features: Dict[str, float | int | str] = Field(..., description="Input features for prediction")
+
+
+class PredictionResponse(BaseModel):
+    """Response schema for predictions"""
+    job_id: str
+    prediction: float | int | str
+    probability: Optional[float] = None
+    probabilities: Optional[Dict[str, float]] = None
+    inference_time_ms: float
+    model_type: str
+    
+    model_config = {"protected_namespaces": ()}
 
 
 class JobListResponse(BaseModel):

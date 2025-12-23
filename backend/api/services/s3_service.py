@@ -92,6 +92,13 @@ class S3Service:
         except ClientError as e:
             raise Exception(f"Error downloading file: {str(e)}")
     
+    def download_file(self, bucket: str, key: str, local_path: str) -> None:
+        """Download file from S3 to local path"""
+        try:
+            self.s3_client.download_file(bucket, key, local_path)
+        except ClientError as e:
+            raise Exception(f"Error downloading file: {str(e)}")
+    
     def delete_folder(self, bucket: str, prefix: str) -> int:
         """Delete all objects with a given prefix (folder) from S3"""
         try:

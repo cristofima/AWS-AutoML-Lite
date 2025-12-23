@@ -216,6 +216,28 @@ class DynamoDBService:
             return True
         except ClientError as e:
             raise Exception(f"Error deleting dataset: {str(e)}")
+    
+    def update_job_deployed(self, job_id: str, deployed: bool) -> bool:
+        """Update job deployed status for inference"""
+        try:
+            update_data = {
+                'deployed': deployed,
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            update_expr = "SET " + ", ".join([f"#{k} = :{k}" for k in update_data.keys()])
+            expr_attr_names = {f"#{k}": k for k in update_data.keys()}
+            expr_attr_values = {f":{k}": v for k, v in update_data.items()}
+            
+            self.jobs_table.update_item(
+                Key={'job_id': job_id},
+                UpdateExpression=update_expr,
+                ExpressionAttributeNames=expr_attr_names,
+                ExpressionAttributeValues=expr_attr_values
+            )
+            return True
+        except ClientError as e:
+            raise Exception(f"Error updating job deployed status: {str(e)}")
 
 
 # Singleton instance

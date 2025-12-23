@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Serverless Model Inference** - Deploy and make predictions without SageMaker
+  - One-click model deploy button on results page
+  - `POST /jobs/{job_id}/deploy` endpoint to deploy/undeploy models
+  - `POST /predict/{job_id}` endpoint for making predictions with ONNX Runtime
+  - `GET /predict/{job_id}/info` endpoint for model metadata
+  - ONNX model caching in Lambda memory for fast subsequent predictions
+  - Prediction Playground UI with interactive feature input form
+  - Real-time prediction results with confidence and probabilities
+  - Cost comparison panel: Lambda ($0 idle) vs SageMaker (~$50-100/month)
+  - ONNX Runtime 1.20.1 for serverless inference (compatible with Docker local dev)
+
 - **Dark Mode Support** - Full dark/light/system theme support across all pages
   - Integrated `next-themes` for flicker-free theme switching
   - `ThemeToggle` component with 3-way cycling (Light → Dark → System)

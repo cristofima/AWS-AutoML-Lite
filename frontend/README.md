@@ -78,9 +78,7 @@ frontend/
    - Optional time budget configuration (auto-calculated if empty)
 
 3. **Training Status (`/training/[jobId]`)**
-   - ✨ **Real-time SSE updates** (v1.1.0) - no more 5s polling!
-   - SSE connection status indicator (green/yellow/red)
-   - Automatic fallback to polling if SSE unavailable
+   - Real-time status polling every 5 seconds
    - Progress visualization with stage indicators
    - Auto-redirect to results when complete
 
@@ -89,6 +87,8 @@ frontend/
    - Feature importance chart
    - Download model (.pkl and .onnx)
    - Download EDA report (.html)
+   - 🚀 **One-click Model Deploy** (v1.1.0) - serverless inference
+   - 🎮 **Prediction Playground** (v1.1.0) - test predictions in-browser
 
 5. **Compare Models (`/compare`)** (v1.1.0)
    - Side-by-side comparison of up to 4 training runs
@@ -104,7 +104,8 @@ frontend/
 ### UI Features (v1.1.0)
 
 - 🌙 **Dark Mode**: System preference detection with manual toggle
-- 🟢 **SSE Status Indicator**: Visual feedback on connection status
+- 🚀 **Model Deployment**: Deploy/undeploy models for serverless inference
+- 🎮 **Prediction Playground**: Interactive UI to test predictions
 - 📈 **Compare Link**: Quick access from history page
 
 ## 🔧 Tech Stack
