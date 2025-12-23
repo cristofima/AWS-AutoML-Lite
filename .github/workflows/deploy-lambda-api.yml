@@ -54,13 +54,65 @@ jobs:
           docker rm $CONTAINER_ID
           ls -lh lambda_function.zip
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+
+      - name: Get S3 Bucket for Large Packages
+        id: s3
+        run: |
+          cd infrastructure/terraform
+          terraform init -input=false
+          
+          # Select workspace
+          if terraform workspace select ${{ env.ENVIRONMENT }} 2>/dev/null; then
+            # Get reports bucket for deploy artifacts
+            S3_BUCKET=$(terraform output -raw reports_bucket_name 2>/dev/null || echo "")
+            if [ -n "$S3_BUCKET" ]; then
+              echo "deploy_bucket=$S3_BUCKET" >> $GITHUB_OUTPUT
+              echo "✅ Using S3 bucket for large packages: $S3_BUCKET"
+            fi
+          fi
+
       - name: Update Lambda Function
         run: |
           FUNCTION_NAME="automl-lite-${{ env.ENVIRONMENT }}-api"
-          aws lambda update-function-code \
-            --function-name $FUNCTION_NAME \
-            --zip-file fileb://infrastructure/terraform/lambda_function.zip \
-            --region ${{ env.AWS_REGION }}
+          ZIP_FILE="infrastructure/terraform/lambda_function.zip"
+          ZIP_SIZE=$(stat -c%s "$ZIP_FILE")
+          S3_BUCKET="${{ steps.s3.outputs.deploy_bucket }}"
+          
+          # Lambda direct upload limit is 50MB (52428800 bytes)
+          if [ "$ZIP_SIZE" -gt 52428800 ]; then
+            echo "📦 Package size $(numfmt --to=iec $ZIP_SIZE) exceeds 50MB, using S3 upload..."
+            
+            if [ -z "$S3_BUCKET" ]; then
+              echo "❌ No S3 bucket available for large package upload"
+              echo "Run deploy-infrastructure first or reduce package size"
+              exit 1
+            fi
+            
+            S3_KEY="lambda-deploy/api-$(date +%Y%m%d-%H%M%S).zip"
+            
+            # Upload to S3
+            aws s3 cp "$ZIP_FILE" "s3://${S3_BUCKET}/${S3_KEY}"
+            echo "📤 Uploaded to s3://${S3_BUCKET}/${S3_KEY}"
+            
+            # Update Lambda from S3
+            aws lambda update-function-code \
+              --function-name $FUNCTION_NAME \
+              --s3-bucket "$S3_BUCKET" \
+              --s3-key "$S3_KEY" \
+              --region ${{ env.AWS_REGION }}
+          else
+            echo "📦 Package size $(numfmt --to=iec $ZIP_SIZE), using direct upload..."
+            aws lambda update-function-code \
+              --function-name $FUNCTION_NAME \
+              --zip-file fileb://$ZIP_FILE \
+              --region ${{ env.AWS_REGION }}
+          fi
+          
           echo "✅ Lambda function $FUNCTION_NAME updated"
 
       - name: Wait for Lambda Update
@@ -69,36 +121,14 @@ jobs:
           aws lambda wait function-updated-v2 --function-name $FUNCTION_NAME
           echo "✅ Lambda update complete"
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.8
-          terraform_wrapper: false
-
       - name: Get API URL
         id: api
         run: |
           cd infrastructure/terraform
           
-          # lambda_function.zip is already created by Build Lambda Package step
-          # Verify it exists for Terraform
-          if [ ! -f lambda_function.zip ]; then
-            echo "❌ lambda_function.zip not found" >> $GITHUB_STEP_SUMMARY
-            echo "api_url=" >> $GITHUB_OUTPUT
-            exit 0
-          fi
+          # Terraform already initialized, just select workspace and get output
+          terraform workspace select ${{ env.ENVIRONMENT }} 2>/dev/null || true
           
-          terraform init
-          
-          # Try to select workspace (don't create automatically)
-          if ! terraform workspace select ${{ env.ENVIRONMENT }} 2>/dev/null; then
-            echo "⚠️ Workspace '${{ env.ENVIRONMENT }}' does not exist." >> $GITHUB_STEP_SUMMARY
-            echo "api_url=" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          # Check if infrastructure exists by trying to get output
-          # Store exit code properly before $() loses it
           set +e
           API_URL=$(terraform output -raw api_gateway_url 2>&1)
           OUTPUT_EXIT_CODE=$?
