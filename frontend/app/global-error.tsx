@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+
 export default function GlobalError({
   error,
   reset,
@@ -7,6 +9,11 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    // Log the error to console (in production, send to error reporting service)
+    console.error('Critical application error:', error);
+  }, [error]);
+
   return (
     <html lang="en">
       <body className="bg-gray-50 dark:bg-zinc-900">
