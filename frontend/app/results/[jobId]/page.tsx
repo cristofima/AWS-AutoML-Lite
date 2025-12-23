@@ -95,11 +95,34 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
     setPredictionResult(null);
     
     try {
-      // Convert string inputs to numbers where possible
+      // Convert string inputs to numbers where possible, with stricter handling for integer features
       const features: Record<string, number | string> = {};
       for (const [key, value] of Object.entries(featureInputs)) {
-        const numValue = parseFloat(value);
-        features[key] = isNaN(numValue) ? value : numValue;
+        const trimmed = value.trim();
+        // Safely read any column metadata that may indicate integer features
+        const columnMeta: { is_integer?: boolean } | undefined =
+          (job as any)?.preprocessing_info?.column_metadata?.[key];
+
+        if (columnMeta?.is_integer) {
+          // For integer features, reject decimal or scientific-notation inputs
+          if (
+            trimmed !== '' &&
+            (trimmed.includes('.') ||
+              trimmed.toLowerCase().includes('e'))
+          ) {
+            throw new Error(`Invalid integer value for feature "${key}": "${value}"`);
+          }
+
+          const intValue = parseInt(trimmed, 10);
+          if (trimmed !== '' && Number.isNaN(intValue)) {
+            throw new Error(`Invalid integer value for feature "${key}": "${value}"`);
+          }
+
+          features[key] = trimmed === '' ? value : intValue;
+        } else {
+          const numValue = parseFloat(value);
+          features[key] = Number.isNaN(numValue) ? value : numValue;
+        }
       }
       
       const result = await makePrediction(jobId, features);
@@ -469,7 +492,13 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                     
                     <button
                       onClick={handlePredict}
-                      disabled={isPredicting || Object.values(featureInputs).every(v => v === '')}
+                      disabled={
+                        isPredicting ||
+                        !(
+                          Object.keys(featureInputs).length === job.preprocessing_info.feature_columns.length &&
+                          Object.values(featureInputs).every((v) => v !== '')
+                        )
+                      }
                       className="mt-4 w-full py-2 px-4 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isPredicting ? (
@@ -510,23 +539,16 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                               // Classification with target_mapping
                               if (job.problem_type === 'classification' && typeof pred === 'number') {
                                 const encodedClass = Math.round(pred);
-                                const classNum = encodedClass + 1; // 1-indexed for users
                                 
                                 if (targetMapping) {
                                   const originalValue = targetMapping[String(encodedClass)];
-                                  if (originalValue) {
-                                    // Check if original value is numeric
-                                    const isNumericLabel = !isNaN(Number(originalValue));
-                                    if (isNumericLabel) {
-                                      // Show "Class X (value: Y)" for numeric non-obvious values
-                                      return `Class ${classNum} (value: ${originalValue})`;
-                                    }
-                                    // String labels - show directly
-                                    return originalValue;
+                                  // If we have an original label (including 0 or empty string), show it directly
+                                  if (originalValue !== undefined && originalValue !== null) {
+                                    return String(originalValue);
                                   }
                                 }
-                                // No mapping - just show "Class X" (1-indexed)
-                                return `Class ${classNum}`;
+                                // No mapping or missing label - show encoded class index directly (0-indexed)
+                                return `Class ${encodedClass}`;
                               }
                               
                               // Regression - smart number formatting with error margin
