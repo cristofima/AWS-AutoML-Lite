@@ -9,11 +9,13 @@
 - [Data Flow](#-data-flow)
 - [API Endpoints](#-api-endpoints)
 - [Training Pipeline](#️-training-pipeline)
-- [Frontend Pages](#-frontend-pages)
-- [Infrastructure](#-infrastructure)
 - [Cost Analysis](#-cost-analysis)
 - [Development Status](#-development-status)
-- [Next Steps](#-next-steps)
+- [Future Enhancements](#-future-enhancements)
+- [Success Criteria](#-v100-success-criteria)
+- [Technologies & Libraries](#-key-technologies--libraries)
+- [Security Considerations](#-security-considerations)
+- [References](#-references)
 
 ---
 
@@ -23,7 +25,9 @@
 
 **Target Audience:** AWS Community Builder article (Year 5 - Intermediate/Advanced level)
 
-**Timeline:** 1 week MVP
+**Current Version:** v1.1.0 (December 2025)
+
+**Timeline:** 1 week MVP ✅ Completed
 
 **Key Differentiators from SageMaker Autopilot:**
 - Lightweight and cost-effective
@@ -79,7 +83,6 @@ User → AWS Amplify (Next.js SSR Frontend)
 - **SageMaker Feature Store**: Store processed features
 - **AWS Glue**: ETL for large datasets
 - **SNS/SQS**: Async notifications
-- **API Gateway WebSocket**: Real-time updates
 
 ---
 
@@ -143,10 +146,12 @@ aws-automl-lite/
 │   │   ├── routers/
 │   │   │   ├── upload.py           # Upload endpoint
 │   │   │   ├── training.py         # Start/status training
-│   │   │   └── datasets.py         # Dataset operations
+│   │   │   ├── datasets.py         # Dataset operations
+│   │   │   ├── models.py           # Job management (CRUD, deploy)
+│   │   │   └── predict.py          # Prediction endpoints (v1.1.0)
 │   │   ├── services/
 │   │   │   ├── s3_service.py       # S3 operations
-│   │   │   ├── dynamodb_service.py # DynamoDB operations
+│   │   │   ├── dynamo_service.py   # DynamoDB operations
 │   │   │   └── batch_service.py    # Batch job trigger
 │   │   ├── models/
 │   │   │   └── schemas.py          # Pydantic models
@@ -158,21 +163,47 @@ aws-automl-lite/
 │   │   ├── eda.py                  # Auto EDA generation
 │   │   ├── model_trainer.py        # FLAML training logic
 │   │   ├── preprocessor.py         # Data preprocessing
+│   │   ├── onnx_exporter.py        # ONNX model export (v1.1.0)
+│   │   ├── training_report.py      # Report generation
+│   │   ├── utils.py                # Shared utilities (DRY)
 │   │   └── requirements.txt        # Training dependencies
-│   └── requirements.txt            # API dependencies
+│   ├── tests/                      # 👈 Unit & Integration Tests
+│   │   ├── pytest.ini              # Pytest configuration
+│   │   ├── api/                    # API tests (104 tests)
+│   │   │   ├── conftest.py         # API test fixtures
+│   │   │   ├── test_endpoints.py   # Endpoint tests
+│   │   │   ├── test_schemas.py     # Pydantic schema tests
+│   │   │   ├── test_dynamo_service.py
+│   │   │   ├── test_s3_service.py
+│   │   │   └── test_services_integration.py  # moto-based tests
+│   │   └── training/               # Training tests (93 tests)
+│   │       ├── conftest.py         # Training test fixtures
+│   │       ├── unit/               # Pure unit tests
+│   │       │   ├── test_preprocessor.py
+│   │       │   ├── test_utils.py
+│   │       │   └── test_model_trainer.py
+│   │       └── integration/        # Integration tests
+│   ├── requirements.txt            # API dependencies
+│   └── requirements-dev.txt        # Testing dependencies
 │
 ├── frontend/
 │   ├── app/                        # Next.js 16 App Router
 │   │   ├── page.tsx                # Home/upload page
 │   │   ├── configure/[datasetId]/  # Column selection
 │   │   ├── training/[jobId]/       # Training status
-│   │   ├── results/[jobId]/        # Results & download
+│   │   ├── results/[jobId]/        # Results, deploy, playground
+│   │   ├── compare/                # Model comparison (v1.1.0)
 │   │   └── history/                # Training history
 │   ├── components/
 │   │   ├── FileUpload.tsx          # Drag & drop upload
-│   │   └── ...                     # Other components
+│   │   ├── Header.tsx              # Navigation with theme toggle
+│   │   ├── ThemeToggle.tsx         # Dark/light mode
+│   │   ├── JobMetadataEditor.tsx   # Tags & notes (v1.1.0)
+│   │   └── ColumnStatsDisplay.tsx  # Dataset stats (v1.1.0)
 │   ├── lib/
-│   │   └── api.ts                  # API client
+│   │   ├── api.ts                  # API client
+│   │   ├── useJobPolling.ts        # Job status polling
+│   │   └── utils.ts                # Utility functions
 │   └── package.json
 │
 ├── infrastructure/
@@ -180,13 +211,29 @@ aws-automl-lite/
 │       ├── main.tf                 # Provider & backend config
 │       ├── variables.tf            # Input variables
 │       ├── outputs.tf              # Output values
-│       ├── *.tf                    # Resource definitions
-│       ├── terraform.tfvars        # Dev environment
+│       ├── lambda.tf               # Lambda function
+│       ├── api_gateway.tf          # API Gateway
+│       ├── s3.tf                   # S3 buckets
+│       ├── dynamodb.tf             # DynamoDB tables
+│       ├── batch.tf                # AWS Batch
+│       ├── ecr.tf                  # ECR repository
+│       ├── iam.tf                  # IAM roles & policies
+│       ├── amplify.tf              # Amplify hosting
+│       ├── dev.tfvars              # Dev environment
 │       ├── prod.tfvars             # Prod environment
 │       ├── ARCHITECTURE_DECISIONS.md
 │       ├── README.md
 │       └── scripts/
 │           └── Dockerfile.lambda   # Lambda build artifact
+│
+├── docs/
+│   ├── QUICKSTART.md               # Deployment guide
+│   ├── PROJECT_REFERENCE.md        # This file
+│   ├── ROADMAP.md                  # Product roadmap
+│   ├── TECHNICAL_ANALYSIS.md       # Breaking changes analysis
+│   ├── LESSONS_LEARNED.md          # Challenges & solutions
+│   ├── UNIT_TESTING_ANALYSIS.md    # Testing strategy
+│   └── diagrams/                   # Architecture diagrams
 │
 ├── .github/
 │   ├── copilot-instructions.md     # AI coding guidelines
@@ -194,13 +241,14 @@ aws-automl-lite/
 │   └── workflows/
 │       ├── ci-terraform.yml        # Terraform validation
 │       ├── deploy-infrastructure.yml
-│       ├── deploy-lambda-api.yml
-│       ├── deploy-training-container.yml
+│       ├── deploy-lambda-api.yml   # Includes API tests
+│       ├── deploy-training-container.yml  # Includes training tests
+│       ├── deploy-frontend.yml
 │       └── destroy-environment.yml
 │
 ├── README.md
-├── QUICKSTART.md                   # Deployment guide
-├── PROJECT_REFERENCE.md            # This file
+├── CHANGELOG.md
+├── CONTRIBUTING.md
 └── .gitignore
 ```
 
@@ -467,41 +515,23 @@ Total: ~$10-25/month
 
 ---
 
-## 📈 Future Enhancements (v2)
+## 📈 Future Enhancements
 
-### Step Functions Integration
-Orchestrate multi-step pipeline:
-1. Validate dataset
-2. EDA generation
-3. Feature engineering
-4. Model training
-5. Model evaluation
-6. (Optional) Model deployment
+> 📋 **Full roadmap:** See [ROADMAP.md](./ROADMAP.md) for detailed feature planning and timelines.
 
-### Real-time Updates
-- API Gateway WebSocket
-- Push notifications to frontend
-- Live training progress
-
-### Advanced Features
-- Hyperparameter tuning UI
-- Custom preprocessing rules
+### v1.1.0 - Enhanced UX (Phase 2) ✅ Completed
+- Serverless model inference (Lambda + ONNX Runtime)
 - Model comparison dashboard
-- A/B testing support
-- Model versioning
-- Automated retraining
+- Dark mode support
+- ONNX model export
+- Improved error handling
 
-### Multi-user Support
+### v2.0.0 - Multi-user Platform (Phase 3)
 - Cognito authentication
+- Email notifications (SES)
 - User workspaces
-- Team collaboration
-- Role-based access
-
-### Production Deployment
-- Multi-region deployment
-- Disaster recovery
-- Automated backups
-- Custom domain with SSL
+- Step Functions orchestration
+- Advanced preprocessing options
 
 ---
 
@@ -542,9 +572,11 @@ Orchestrate multi-step pipeline:
 
 ---
 
-## 🛠️ MVP Development Status
+## 🛠️ Development Status
 
-### ✅ Backend Infrastructure (Complete)
+### ✅ v1.0.0 - MVP Complete (December 3, 2025)
+
+#### Backend Infrastructure ✅
 - [x] Terraform infrastructure (44 AWS resources)
 - [x] S3 buckets with lifecycle policies
 - [x] DynamoDB tables with GSI
@@ -557,25 +589,31 @@ Orchestrate multi-step pipeline:
 - [x] S3 backend for Terraform state
 - [x] Granular deployment workflows
 
-### 🚧 Frontend (In Progress - ~60%)
-**MVP Scope:** Upload CSV → Train model → Download model + view history
-
-- [x] Next.js 16 project structure
-- [x] API client library
+#### Frontend ✅
+- [x] Next.js 16 project structure with App Router
+- [x] Typed API client library
 - [x] Upload page with drag & drop
 - [x] Column selection & configuration
 - [x] Training status page (polling)
 - [x] Results page (metrics + download)
-- [x] Training history table
+- [x] Training history table with pagination
+- [x] Job deletion functionality
 - [x] Deploy to AWS Amplify
 
-### 📋 Future Enhancements (Post-MVP)
-- [ ] Real-time updates (WebSocket/SSE)
-- [ ] Model comparison
-- [ ] ONNX export
-- [ ] Email notifications
-- [ ] Advanced visualizations
-- [ ] Multi-user authentication (Cognito)
+#### Documentation ✅
+- [x] Complete project reference
+- [x] Quick start deployment guide
+- [x] Architecture decision records
+- [x] Lessons learned document
+- [x] CI/CD setup guide
+- [x] Contributing guidelines
+- [x] Changelog
+
+### 📋 Future Releases
+
+See [ROADMAP.md](./ROADMAP.md) for detailed feature planning:
+- **v1.1.0** - Enhanced UX & Serverless Inference (Phase 2) ✅
+- **v2.0.0** - Authentication & Notifications (Phase 3)
 
 ---
 
@@ -604,11 +642,9 @@ joblib==1.3.2
 ### Frontend
 ```json
 {
-  "next": "14.1.0",
-  "react": "18.2.0",
-  "aws-sdk": "^2.1.0",
-  "recharts": "^2.10.0",
-  "tailwindcss": "^3.4.0"
+  "next": "16.x",
+  "react": "19.x",
+  "tailwindcss": "^4.x"
 }
 ```
 
@@ -637,7 +673,7 @@ joblib==1.3.2
 
 ---
 
-## 🎯 MVP Success Criteria
+## 🎯 v1.0.0 Success Criteria
 
 **Technical:**
 - Backend infrastructure deployed ✅
@@ -645,16 +681,17 @@ joblib==1.3.2
 - CI/CD with GitHub Actions ✅
 - Lambda cold start < 2s ✅
 - Component-specific deployments ✅
-- Complete upload → train → download flow ⏳ (frontend pending)
-- Training time < 5 minutes for small datasets ⏳
+- Complete upload → train → download flow ✅
+- Training time < 5 minutes for small datasets ✅
 
 **Business:**
-- Article published with working demo 📝
-- GitHub repo with 50+ stars 🎯
-- Production-ready deployment 🎯
+- Article published with working demo ✅
+- GitHub repo publicly available ✅
+- Production-ready deployment ✅
 
 ---
 
-**Last Updated:** 2025-12-02  
-**Author:** Cristofima  
-**Status:** MVP Complete (Backend ✅ | Frontend ✅)
+**Last Updated:** 2025-12-24  
+**Author:** Cristopher Coronado  
+**Version:** v1.1.0  
+**Status:** Released ✅
