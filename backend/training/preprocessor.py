@@ -154,7 +154,7 @@ class AutoPreprocessor:
         
         return df
     
-    def get_feature_metadata(self, df: pd.DataFrame = None) -> dict:
+    def get_feature_metadata(self, df: pd.DataFrame | None = None) -> dict:
         """
         Get metadata about features for inference.
         

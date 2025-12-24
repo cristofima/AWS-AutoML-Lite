@@ -35,7 +35,7 @@ def generate_eda_report(df: pd.DataFrame, target_column: str, output_path: str):
 class EDAReportGenerator:
     """Generate comprehensive EDA report with CSS-only visualizations"""
     
-    def __init__(self, df: pd.DataFrame, target_column: str):
+    def __init__(self, df: pd.DataFrame, target_column: str) -> None:
         self.df = df
         self.target_column = target_column
         self.target = df[target_column]
@@ -55,7 +55,7 @@ class EDAReportGenerator:
         """Check if column is likely an ID using shared utility."""
         return is_id_column(col_name, series)
     
-    def _analyze_columns(self):
+    def _analyze_columns(self) -> None:
         """Analyze and categorize columns"""
         for col in self.features.columns:
             series = self.features[col]

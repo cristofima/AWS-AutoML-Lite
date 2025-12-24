@@ -49,7 +49,7 @@ class BatchService:
         except ClientError as e:
             raise Exception(f"Error submitting batch job: {str(e)}")
     
-    def get_job_status(self, batch_job_id: str) -> Dict[str, Any]:
+    def get_job_status(self, batch_job_id: str) -> Dict[str, Any] | None:
         """Get the status of a batch job"""
         try:
             response = self.batch_client.describe_jobs(jobs=[batch_job_id])

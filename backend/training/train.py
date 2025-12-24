@@ -4,6 +4,7 @@ import boto3
 import pandas as pd
 from datetime import datetime, timezone
 import traceback
+from typing import Any, Dict, List
 
 from preprocessor import AutoPreprocessor
 from eda import generate_eda_report
@@ -12,7 +13,7 @@ from training_report import generate_training_report
 from onnx_exporter import export_model_to_onnx
 
 
-def main():
+def main() -> None:
     """Main training script executed by AWS Batch"""
     
     # Get environment variables
@@ -197,7 +198,12 @@ def main():
         sys.exit(1)
 
 
-def update_job_status(table, job_id, status, error_message=None):
+def update_job_status(
+    table: Any,
+    job_id: str,
+    status: str,
+    error_message: str | None = None
+) -> None:
     """Update job status in DynamoDB"""
     now = datetime.now(timezone.utc).isoformat()
     update_expr = "SET #status = :status, updated_at = :updated_at"
@@ -229,7 +235,21 @@ def update_job_status(table, job_id, status, error_message=None):
     )
 
 
-def update_job_completion(table, job_id, target_column, problem_type, model_path, onnx_model_path, eda_report_s3_path, training_report_s3_path, metrics, feature_importance, dropped_columns=None, feature_columns=None, feature_metadata=None):
+def update_job_completion(
+    table: Any,
+    job_id: str,
+    target_column: str,
+    problem_type: str,
+    model_path: str,
+    onnx_model_path: str | None,
+    eda_report_s3_path: str,
+    training_report_s3_path: str,
+    metrics: Dict[str, Any],
+    feature_importance: Dict[str, float],
+    dropped_columns: List[str] | None = None,
+    feature_columns: List[str] | None = None,
+    feature_metadata: Dict[str, Any] | None = None
+) -> None:
     """Update job with completion details"""
     from decimal import Decimal
     

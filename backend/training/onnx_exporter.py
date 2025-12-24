@@ -27,7 +27,7 @@ except ImportError:
 
 def _is_lightgbm_model(model: Any) -> bool:
     """Check if the model is a LightGBM model."""
-    model_type = type(model).__name__
+    model_type: str = type(model).__name__
     return model_type in ('LGBMClassifier', 'LGBMRegressor', 'LGBMRanker')
 
 
@@ -86,6 +86,7 @@ def _extract_sklearn_model(model: Any) -> Any:
         The underlying sklearn/lightgbm model
     """
     # If it's a FLAML AutoML instance, get the best model
+    inner_model: Any
     if hasattr(model, 'model'):
         inner_model = model.model
     else:

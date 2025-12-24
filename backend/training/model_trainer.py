@@ -97,7 +97,7 @@ def train_automl_model(
     return automl, metrics, feature_importance
 
 
-def calculate_classification_metrics(y_true, y_pred) -> Dict[str, float]:
+def calculate_classification_metrics(y_true: pd.Series, y_pred: np.ndarray) -> Dict[str, float]:
     """Calculate classification metrics"""
     metrics = {
         'accuracy': accuracy_score(y_true, y_pred),
@@ -113,7 +113,7 @@ def calculate_classification_metrics(y_true, y_pred) -> Dict[str, float]:
     return metrics
 
 
-def calculate_regression_metrics(y_true, y_pred) -> Dict[str, float]:
+def calculate_regression_metrics(y_true: pd.Series, y_pred: np.ndarray) -> Dict[str, float]:
     """Calculate regression metrics"""
     mse = mean_squared_error(y_true, y_pred)
     metrics = {
@@ -129,7 +129,7 @@ def calculate_regression_metrics(y_true, y_pred) -> Dict[str, float]:
     return metrics
 
 
-def get_feature_importance(model: AutoML, feature_names) -> Dict[str, float]:
+def get_feature_importance(model: AutoML, feature_names: pd.Index) -> Dict[str, float]:
     """Extract feature importance from the model"""
     try:
         # Try to get feature importances from the underlying model

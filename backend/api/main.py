@@ -34,7 +34,7 @@ app.include_router(predict.router)
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     """Health check endpoint"""
     return {
         "message": "AWS AutoML Lite API",
@@ -44,7 +44,7 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Detailed health check"""
     return {
         "status": "healthy",
