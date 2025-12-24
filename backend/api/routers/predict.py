@@ -13,7 +13,7 @@ Key features:
 from fastapi import APIRouter, HTTPException, status
 import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import numpy as np
 import tempfile
 import os
@@ -35,7 +35,7 @@ MAX_CACHED_MODELS = 3
 _model_cache: Dict[str, tuple] = {}
 
 
-def _get_onnx_runtime():
+def _get_onnx_runtime() -> Any:
     """Lazy load ONNX Runtime to avoid import errors at startup."""
     try:
         import onnxruntime as ort
@@ -47,7 +47,7 @@ def _get_onnx_runtime():
         )
 
 
-def _get_cached_model(job_id: str, onnx_path: str):
+def _get_cached_model(job_id: str, onnx_path: str) -> Any:
     """
     Get ONNX model from cache or load from S3.
     
@@ -128,7 +128,7 @@ def _prepare_input(
     features: Dict[str, Any],
     feature_columns: list,
     session: Any,
-    preprocessing_info: Dict[str, Any] = None
+    preprocessing_info: Optional[Dict[str, Any]]
 ) -> np.ndarray:
     """
     Prepare input features for ONNX model inference.
@@ -175,7 +175,7 @@ def _prepare_input(
 
 
 @router.post("/{job_id}", response_model=PredictionResponse)
-async def make_prediction(job_id: str, request: PredictionInput):
+async def make_prediction(job_id: str, request: PredictionInput) -> PredictionResponse:
     """
     Make a prediction using a deployed ONNX model.
     
@@ -306,7 +306,7 @@ async def make_prediction(job_id: str, request: PredictionInput):
 
 
 @router.get("/{job_id}/info")
-async def get_prediction_info(job_id: str):
+async def get_prediction_info(job_id: str) -> Dict[str, Any]:
     """
     Get information about a deployed model for making predictions.
     

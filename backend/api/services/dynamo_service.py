@@ -46,7 +46,7 @@ class DynamoDBService:
         except ClientError as e:
             raise Exception(f"Error creating dataset: {str(e)}")
     
-    def get_dataset(self, dataset_id: str) -> Optional[Dict]:
+    def get_dataset(self, dataset_id: str) -> Optional[Dict[str, Any]]:
         """Get a dataset by ID"""
         try:
             response = self.datasets_table.get_item(Key={'dataset_id': dataset_id})
@@ -54,7 +54,7 @@ class DynamoDBService:
         except ClientError as e:
             raise Exception(f"Error getting dataset: {str(e)}")
     
-    def update_dataset(self, dataset_id: str, updates: Dict) -> bool:
+    def update_dataset(self, dataset_id: str, updates: Dict[str, Any]) -> bool:
         """Update a dataset record"""
         try:
             update_expr = "SET " + ", ".join([f"#{k} = :{k}" for k in updates.keys()])
@@ -86,7 +86,7 @@ class DynamoDBService:
         except ClientError as e:
             raise Exception(f"Error creating job: {str(e)}")
     
-    def get_job(self, job_id: str) -> Optional[Dict]:
+    def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Get a training job by ID"""
         try:
             response = self.jobs_table.get_item(Key={'job_id': job_id})
@@ -98,7 +98,7 @@ class DynamoDBService:
         self, 
         job_id: str, 
         status: JobStatus, 
-        updates: Optional[Dict] = None
+        updates: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Update job status and optional additional fields"""
         try:
@@ -127,8 +127,8 @@ class DynamoDBService:
         self, 
         user_id: str = "default", 
         limit: int = 20,
-        last_evaluated_key: Optional[Dict] = None
-    ) -> tuple[List[Dict], Optional[Dict]]:
+        last_evaluated_key: Optional[Dict[str, Any]] = None
+    ) -> tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
         """List training jobs for a user with pagination, ordered by created_at DESC"""
         try:
             scan_kwargs = {
@@ -151,7 +151,7 @@ class DynamoDBService:
         except ClientError as e:
             raise Exception(f"Error listing jobs: {str(e)}")
     
-    def save_dataset_metadata(self, metadata: Dict) -> bool:
+    def save_dataset_metadata(self, metadata: Dict[str, Any]) -> bool:
         """Save dataset metadata to DynamoDB"""
         try:
             # Convert floats to Decimal for DynamoDB compatibility
@@ -161,7 +161,7 @@ class DynamoDBService:
         except ClientError as e:
             raise Exception(f"Error saving dataset metadata: {str(e)}")
     
-    def get_dataset_metadata(self, dataset_id: str) -> Optional[Dict]:
+    def get_dataset_metadata(self, dataset_id: str) -> Optional[Dict[str, Any]]:
         """Get dataset metadata by ID"""
         try:
             response = self.datasets_table.get_item(Key={'dataset_id': dataset_id})

@@ -11,7 +11,7 @@ def generate_training_report(
     training_config: Dict[str, Any],
     preprocessing_info: Dict[str, Any],
     dataset_info: Dict[str, Any]
-):
+) -> None:
     """
     Generate training results report after model training.
     
@@ -61,7 +61,7 @@ class TrainingReportGenerator:
         training_config: Dict[str, Any],
         preprocessing_info: Dict[str, Any],
         dataset_info: Dict[str, Any]
-    ):
+    ) -> None:
         self.job_id = job_id
         self.problem_type = problem_type
         self.metrics = metrics

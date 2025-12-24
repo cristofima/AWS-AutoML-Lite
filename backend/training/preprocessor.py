@@ -3,7 +3,7 @@ import numpy as np
 from decimal import Decimal
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from typing import Tuple, List
+from typing import Dict, Any, Optional, Tuple, List
 
 # Feature-engine for robust feature selection
 from feature_engine.selection import DropConstantFeatures, DropDuplicateFeatures
@@ -154,7 +154,7 @@ class AutoPreprocessor:
         
         return df
     
-    def get_feature_metadata(self, df: pd.DataFrame = None) -> dict:
+    def get_feature_metadata(self, df: Optional[pd.DataFrame]) -> Dict[str, Any]:
         """
         Get metadata about features for inference.
         

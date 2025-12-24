@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Query
-from typing import Optional
+from typing import Dict, Optional, Any
 from ..models.schemas import (
     JobListResponse, JobResponse, JobStatus, ProblemType, JobUpdateRequest,
     DeployRequest, DeployResponse, PreprocessingInfo
@@ -13,7 +13,7 @@ settings = get_settings()
 
 
 @router.get("/{job_id}", response_model=JobResponse)
-async def get_job_status(job_id: str):
+async def get_job_status(job_id: str) -> JobResponse:
     """
     Get the status and results of a training job
     """
@@ -120,7 +120,7 @@ async def get_job_status(job_id: str):
 
 
 @router.delete("/{job_id}")
-async def delete_job(job_id: str, delete_data: bool = True):
+async def delete_job(job_id: str, delete_data: bool = True) -> Dict[str, Any]:
     """
     Delete a training job and optionally all associated data (model, report, dataset)
     """
@@ -204,7 +204,7 @@ async def delete_job(job_id: str, delete_data: bool = True):
 
 
 @router.patch("/{job_id}", response_model=JobResponse)
-async def update_job_metadata(job_id: str, request: JobUpdateRequest):
+async def update_job_metadata(job_id: str, request: JobUpdateRequest) -> JobResponse:
     """
     Update job metadata (tags and notes) for experiment tracking.
     Tags can be used to categorize jobs (e.g., "experiment-1", "baseline", "production").
@@ -266,7 +266,7 @@ async def update_job_metadata(job_id: str, request: JobUpdateRequest):
 
 
 @router.post("/{job_id}/deploy", response_model=DeployResponse)
-async def deploy_model(job_id: str, request: DeployRequest):
+async def deploy_model(job_id: str, request: DeployRequest) -> DeployResponse:
     """
     Deploy or undeploy a trained model for inference.
     Only completed jobs with ONNX models can be deployed.
@@ -318,7 +318,7 @@ async def list_jobs(
     limit: int = Query(default=20, ge=1, le=100),
     next_token: Optional[str] = None,
     user_id: str = "default"
-):
+) -> JobListResponse:
     """
     List all training jobs with pagination
     """

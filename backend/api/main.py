@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
+from typing import Dict
 from .routers import upload, training, models, datasets, predict
 from .utils.helpers import get_settings
 
@@ -34,7 +35,7 @@ app.include_router(predict.router)
 
 
 @app.get("/")
-async def root():
+async def root() -> Dict[str, str]:
     """Health check endpoint"""
     return {
         "message": "AWS AutoML Lite API",
@@ -44,7 +45,7 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, str]:
     """Detailed health check"""
     return {
         "status": "healthy",

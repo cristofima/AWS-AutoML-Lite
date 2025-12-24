@@ -7,7 +7,6 @@ from ..models.schemas import (
 )
 from ..services.dynamo_service import dynamodb_service
 from ..services.batch_service import batch_service
-from ..services.s3_service import s3_service
 from ..utils.helpers import get_settings
 
 router = APIRouter(prefix="/train", tags=["training"])
@@ -15,7 +14,7 @@ settings = get_settings()
 
 
 @router.post("", response_model=TrainResponse)
-async def start_training(request: TrainRequest):
+async def start_training(request: TrainRequest) -> TrainResponse:
     """
     Start a training job for a dataset
     """

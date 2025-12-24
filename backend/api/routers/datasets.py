@@ -12,7 +12,7 @@ settings = get_settings()
 
 
 @router.post("/{dataset_id}/confirm", response_model=DatasetMetadata)
-async def confirm_upload(dataset_id: str):
+async def confirm_upload(dataset_id: str) -> DatasetMetadata:
     """
     Confirm upload and analyze the dataset.
     Reads the CSV from S3, extracts metadata, and saves to DynamoDB.
@@ -96,7 +96,7 @@ async def confirm_upload(dataset_id: str):
 
 
 @router.get("/{dataset_id}", response_model=DatasetMetadata)
-async def get_dataset(dataset_id: str):
+async def get_dataset(dataset_id: str) -> DatasetMetadata:
     """
     Get dataset metadata by ID
     """

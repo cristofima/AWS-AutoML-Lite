@@ -249,12 +249,82 @@ Or mount `~/.aws` when using Docker (already configured in docker-compose.yml).
 
 4. **CORS Errors**: The API includes CORS middleware. Check `api/main.py` if issues persist.
 
-## Running Tests
+## 🧪 Testing
+
+The backend includes comprehensive unit and integration tests for both API and Training modules. Tests run automatically in CI/CD pipelines before deployment.
+
+### Test Structure
+
+```
+backend/tests/
+├── pytest.ini              # Pytest configuration
+├── api/                    # API tests (104 tests, 69% coverage)
+│   ├── conftest.py         # Shared fixtures
+│   ├── test_endpoints.py   # Endpoint tests (39 tests)
+│   ├── test_schemas.py     # Pydantic validation tests (23 tests)
+│   ├── test_dynamo_service.py   # DynamoDB service tests
+│   ├── test_s3_service.py       # S3 service tests
+│   └── test_services_integration.py  # moto-based integration tests (21 tests)
+└── training/               # Training tests (93 tests, 85%+ coverage)
+    ├── conftest.py         # Shared fixtures
+    ├── unit/               # Pure unit tests
+    │   ├── test_preprocessor.py
+    │   ├── test_utils.py
+    │   └── test_model_trainer.py
+    └── integration/        # Training integration tests
+```
+
+### Running Tests Locally
 
 ```bash
-pip install pytest pytest-asyncio httpx
-pytest --cov=api
+# Install test dependencies
+pip install -r requirements-dev.txt
+
+# Run all tests
+pytest
+
+# Run API tests only (with coverage)
+pytest tests/api --cov=api --cov-report=term-missing
+
+# Run training tests only (with coverage)
+pytest tests/training --cov=training --cov-report=term-missing
+
+# Run specific test file
+pytest tests/api/test_endpoints.py -v
+
+# Run with verbose output and stop on first failure
+pytest -v -x
 ```
+
+### Testing Dependencies
+
+All testing dependencies are in `requirements-dev.txt`:
+
+```txt
+pytest==8.3.4
+pytest-cov==6.0.0
+httpx==0.27.2          # Compatible with Starlette 0.35.1
+moto[s3,dynamodb]==5.0.26  # AWS service mocking
+```
+
+> ⚠️ **Note:** Use `httpx==0.27.2` (not 0.28.0) for compatibility with FastAPI's TestClient.
+
+### Test Categories
+
+| Category | Description | Example |
+|----------|-------------|---------|
+| **Unit Tests** | Pure logic, no external dependencies | Schema validation, problem type detection |
+| **Endpoint Tests** | API endpoints with mocked services | `GET /jobs/{id}`, `POST /train` |
+| **Integration Tests** | AWS services with moto mocking | S3 presigned URLs, DynamoDB CRUD |
+
+### CI/CD Integration
+
+Tests run automatically before deployments:
+
+- **API Tests** → `deploy-lambda-api.yml` (blocks deployment if tests fail)
+- **Training Tests** → `deploy-training-container.yml` (blocks deployment if tests fail)
+
+Coverage reports are uploaded to GitHub Actions artifacts and displayed in PR comments.
 
 ## Smart Features
 

@@ -1,9 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
-from datetime import datetime
 import uuid
 from ..models.schemas import UploadRequest, UploadResponse
 from ..services.s3_service import s3_service
-from ..services.dynamo_service import dynamodb_service
 from ..utils.helpers import get_settings
 
 router = APIRouter(prefix="/upload", tags=["upload"])
@@ -11,7 +9,7 @@ settings = get_settings()
 
 
 @router.post("", response_model=UploadResponse)
-async def request_upload_url(request: UploadRequest):
+async def request_upload_url(request: UploadRequest) -> UploadResponse:
     """
     Request a presigned URL for uploading a CSV file to S3
     """

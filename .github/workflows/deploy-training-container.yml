@@ -22,14 +22,111 @@ on:
 permissions:
   id-token: write
   contents: read
+  checks: write
+  pull-requests: write
 
 env:
   AWS_REGION: us-east-1
 
 jobs:
+  # =============================================================================
+  # Test - Run training tests before deployment
+  # =============================================================================
+  test:
+    name: Run Training Tests
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: testing
+      AWS_SECRET_ACCESS_KEY: testing
+      S3_BUCKET_DATASETS: test-datasets-bucket
+      S3_BUCKET_MODELS: test-models-bucket
+      S3_BUCKET_REPORTS: test-reports-bucket
+      DYNAMODB_JOBS_TABLE: test-jobs-table
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/training/requirements.txt
+            backend/requirements-dev.txt
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r training/requirements.txt
+          pip install -r requirements-dev.txt
+      
+      - name: Run training unit tests
+        run: |
+          cd backend
+          pytest tests/training \
+            -v \
+            --tb=short \
+            --junitxml=test-results/training-tests.xml \
+            --cov=training \
+            --cov-report=xml:coverage/training-coverage.xml \
+            --cov-report=term-missing
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: training-test-results
+          path: backend/test-results/training-tests.xml
+          retention-days: 30
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: training-coverage
+          path: backend/coverage/training-coverage.xml
+          retention-days: 30
+      
+      - name: Publish Test Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Training Tests
+          path: backend/test-results/training-tests.xml
+          reporter: java-junit
+          fail-on-error: true
+      
+      - name: Code Coverage Summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        if: always()
+        with:
+          filename: backend/coverage/training-coverage.xml
+          badge: true
+          format: markdown
+          output: both
+          thresholds: '30 50'
+      
+      - name: Write Coverage to Step Summary
+        if: always()
+        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+      
+      - name: Add Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          header: training-coverage
+          path: code-coverage-results.md
+
+  # =============================================================================
+  # Deploy - Only runs after tests pass
+  # =============================================================================
   deploy:
     name: Build & Push to ${{ github.ref == 'refs/heads/main' && 'prod' || github.event.inputs.environment || 'dev' }}
     runs-on: ubuntu-latest
+    needs: test
     environment: ${{ github.ref == 'refs/heads/main' && 'prod' || '' }}
     
     env:

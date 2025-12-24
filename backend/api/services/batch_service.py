@@ -1,5 +1,5 @@
 import boto3
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from botocore.exceptions import ClientError
 from ..utils.helpers import get_settings
 
@@ -49,7 +49,7 @@ class BatchService:
         except ClientError as e:
             raise Exception(f"Error submitting batch job: {str(e)}")
     
-    def get_job_status(self, batch_job_id: str) -> Dict[str, Any]:
+    def get_job_status(self, batch_job_id: str) -> Optional[Dict[str, Any]]:
         """Get the status of a batch job"""
         try:
             response = self.batch_client.describe_jobs(jobs=[batch_job_id])
