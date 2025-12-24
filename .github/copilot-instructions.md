@@ -5,6 +5,10 @@ applyTo: "**"
 
 # AWS AutoML Lite - Coding Guidelines
 
+## Important Note
+
+**DO NOT create `.md` documentation files with every prompt unless explicitly requested.**
+
 ## Architecture Overview
 
 Serverless AutoML platform with **split architecture**:
@@ -22,6 +26,7 @@ Serverless AutoML platform with **split architecture**:
 - Never calls the backend API
 - Receives ALL context via environment variables only
 - Writes results directly to DynamoDB and S3
+- Outputs both `.pkl` (scikit-learn) and `.onnx` (cross-platform) model formats
 - Can be tested locally with `docker-compose --profile training run training`
 
 ## Critical: Environment Variable Cascade
@@ -40,7 +45,9 @@ Required env vars in training container: `DATASET_ID`, `TARGET_COLUMN`, `JOB_ID`
 
 **Upload:** Frontend → `POST /upload` → presigned URL → S3 PUT → `POST /datasets/{id}/confirm` → DynamoDB
 
-**Training:** `POST /train` → DynamoDB job → Batch job → container writes directly to DynamoDB → frontend polls `GET /jobs/{id}`
+**Training:** `POST /train` → DynamoDB job → Batch job → container writes directly to DynamoDB → frontend polls `GET /jobs/{id}` every 5 seconds until complete/failed
+
+**Prediction (v1.1.0):** `POST /predict/{job_id}` → Lambda loads ONNX from S3 → returns prediction + probability + inference time
 
 ## Code Patterns
 
@@ -59,18 +66,24 @@ Required env vars in training container: `DATASET_ID`, `TARGET_COLUMN`, `JOB_ID`
 
 Located in `backend/training/`, runs as Docker container in AWS Batch:
 
-- **Entry point** (`train.py`): Orchestrates 7-step pipeline (download → EDA → preprocess → train → reports → save → update status)
-- **Preprocessing** (`preprocessor.py`): Auto-detects ID columns using regex patterns, uses `feature-engine` for constant/duplicate detection
-- **Problem type detection**: `<20 unique values OR <5% unique ratio` = classification
+- **Entry point** (`train.py`): Orchestrates 7-step pipeline (download → EDA → preprocess → train → ONNX export → reports → save → update status)
+- **Shared utilities** (`utils.py`): Centralized `detect_problem_type()`, `is_id_column()`, `is_constant_column()` - imported by both `preprocessor.py` and `eda.py`
+- **Preprocessing** (`preprocessor.py`): Auto-detects ID columns using regex patterns in `utils.py`, uses `feature-engine` for constant/duplicate detection
+- **Problem type detection**: Uses BOTH conditions: integer-like values AND (<20 unique values OR <5% unique ratio) = classification. Floats with decimal values = regression.
 - **Model training** (`model_trainer.py`): FLAML with `['lgbm', 'rf', 'extra_tree']` - xgboost excluded due to `best_iteration` bugs
 - **Multiclass**: Explicitly set `metric='accuracy'` (FLAML's auto-detection unreliable)
+- **ONNX export** (`onnx_exporter.py`): Exports `.onnx` alongside `.pkl` for cross-platform deployment
 - **Reports**: Generates both EDA (`sweetviz`) and training reports with feature importance charts
 
 ### Frontend (TypeScript)
 
 - **API client** (`frontend/lib/api.ts`): Centralized, typed interfaces matching backend Pydantic schemas
-- **Client components**: Use `'use client'` ONLY for file uploads, polling, forms - server components by default
+- **Polling hook** (`frontend/lib/useJobPolling.ts`): Job status polling with 5-second interval. Stops when job completes/fails. SSE won't work on Amplify (Lambda@Edge 30s timeout).
+- **Client components**: Use `'use client'` ONLY for file uploads, polling, forms, theme toggle - server components by default
 - **Dynamic routes**: Cast `useParams()` results: `const datasetId = params.datasetId as string`
+- **Theming**: Uses `next-themes` with `ThemeToggle` component. Dark mode via Tailwind `dark:` variants.
+- **Compare page** (`/compare`): Side-by-side comparison of up to 4 training jobs
+- **Prediction playground** (`/results/[jobId]`): Interactive form to test deployed models
 
 ### Infrastructure (Terraform)
 
@@ -161,12 +174,15 @@ docker run --rm -v ${PWD}:/data automl-predict /data/model.pkl --info
 | Frontend CORS errors | Wrong API URL | Get from `terraform output api_gateway_url` |
 | Low model accuracy | ID columns in training | Check `preprocessor.py` ID detection patterns |
 | DynamoDB Decimal errors | Floats in metrics dict | Convert to `Decimal(str(v))` before saving |
+| "least populated class has 1 member" | Regression misdetected as classification | Problem type detection in `utils.py` - check if float values have decimals |
 
 ## File Reference by Task
 
 **Adding an API endpoint:** `routers/*.py` → `schemas.py` → `services/*.py` → `frontend/lib/api.ts`
 
 **Modifying training:** `train.py` → `preprocessor.py` → `model_trainer.py` → **ALSO update** `batch_service.py` containerOverrides
+
+**Modifying detection logic:** `backend/training/utils.py` is single source of truth for `detect_problem_type()`, `is_id_column()`, etc.
 
 **Adding AWS resources:** `<service>.tf` → `variables.tf` → `outputs.tf` → `iam.tf` for permissions
 
@@ -192,6 +208,7 @@ Backend Pydantic and Frontend TypeScript schemas must match. When adding fields:
 | `scripts/run-training-local.py` | Test training in local Docker container |
 | `scripts/predict.py` | Make predictions with trained models (Docker) |
 | `scripts/generate_architecture_diagram.py` | Generate AWS architecture diagrams |
+| `scripts/test_onnx_export.py` | Verify ONNX model export functionality |
 
 ## Testing & Validation
 
@@ -244,6 +261,29 @@ terraform fmt  # Format files
 terraform validate  # Syntax check
 terraform plan  # Preview changes
 ```
+
+## Testing (v1.1.0)
+
+**197 total tests** (104 API + 93 Training) with coverage reports in CI.
+
+### Test Commands
+
+```powershell
+cd backend
+
+# API tests (before Lambda deploy)
+pytest tests/api --cov=api --cov-report=xml
+
+# Training tests (before container deploy)
+pytest tests/training --cov=training --cov-report=xml
+```
+
+### Key Testing Patterns
+
+- **Mocking services in routers**: Use `patch.object(router.service_instance, 'method')` not `patch('path.to.module')`
+- **AWS mocking**: Use `moto` library for S3/DynamoDB integration tests
+- **Pydantic validation**: Returns 422 (not 400) for schema violations
+- **DynamoDB Decimals**: Convert to int/float before JSON serialization
 
 ## CI/CD Workflows (`.github/workflows/`)
 
