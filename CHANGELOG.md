@@ -15,7 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `GET /predict/{job_id}/info` endpoint for model metadata
   - ONNX model caching in Lambda memory for fast subsequent predictions
   - Prediction Playground UI with interactive feature input form
-  - Real-time prediction results with confidence and probabilities
+  - Real-time prediction results with confidence (classification) and R² score (regression)
+  - Regression predictions show value with ± RMSE error margin (e.g., 0.0991 ± 0.002)
+  - R² displayed as coefficient (0-1) per ML standards, not percentage
+  - Target column name shown in prediction results panel
   - Cost comparison panel: Lambda ($0 idle) vs SageMaker (~$50-100/month)
   - ONNX Runtime >=1.16.3 for serverless inference (uses 1.16.3 on Lambda, 1.20.x locally)
 
@@ -78,8 +81,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated all pages with dark mode styling (`dark:` Tailwind variants)
 - Updated status badge colors for dark mode compatibility
 - Training container now outputs both .pkl and .onnx model formats
-- Training page now uses SSE for real-time updates instead of polling
+- Training page uses optimized polling hook (SSE not viable on Amplify)
 - Header component supports `showCompare` prop for compare page link
+
+### Testing
+- **Comprehensive Test Suite** - Unit and integration tests for backend (v1.1.0)
+  - 197 total tests (104 API + 93 Training)
+  - API coverage: 69%, Training coverage: 85%+
+  - Tests run automatically in CI/CD before deployment
+  - Coverage reports published to GitHub Actions
+
+- **API Tests** (`backend/tests/api/`)
+  - Endpoint tests for all routers (datasets, training, models, predict)
+  - Pydantic schema validation tests (23 tests)
+  - S3 and DynamoDB service integration tests using `moto`
+  - Deploy/undeploy endpoint tests
+  - Job CRUD operation tests
+
+- **Training Tests** (`backend/tests/training/`)
+  - Preprocessor unit tests (ID detection, constant columns, cardinality)
+  - Problem type detection tests (classification vs regression)
+  - Model trainer tests with mock datasets
+  - Utils module tests
+
+- **CI/CD Integration**
+  - `deploy-lambda-api.yml` runs API tests before deployment
+  - `deploy-training-container.yml` runs training tests before deployment
+  - `dorny/test-reporter` for test result visualization
+  - `irongut/CodeCoverageSummary` for coverage reports in PRs
 
 ## [1.0.0] - 2025-12-03
 

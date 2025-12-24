@@ -89,6 +89,8 @@ frontend/
    - Download EDA report (.html)
    - 🚀 **One-click Model Deploy** (v1.1.0) - serverless inference
    - 🎮 **Prediction Playground** (v1.1.0) - test predictions in-browser
+     - Classification: shows predicted class with confidence percentage
+     - Regression: shows predicted value with ± RMSE error margin and R² score
 
 5. **Compare Models (`/compare`)** (v1.1.0)
    - Side-by-side comparison of up to 4 training runs

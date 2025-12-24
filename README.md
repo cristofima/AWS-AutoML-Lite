@@ -29,7 +29,7 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 - **Portable Models**: Download trained models (.pkl and .onnx) for local use with Docker
 
 ### ✨ New in v1.1.0
-- **Real-time SSE Updates**: Live training status via Server-Sent Events (no more polling!)
+- **Serverless Model Inference**: Deploy models and make predictions via Lambda (no SageMaker needed!)
 - **Model Comparison**: Side-by-side comparison of multiple training runs
 - **Dark Mode**: System preference detection with manual toggle
 - **ONNX Export**: Cross-platform model deployment format
