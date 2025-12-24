@@ -1,5 +1,7 @@
 # Lessons Learned
 
+**Last updated:** December 24, 2025 (v1.1.0)
+
 ## 📑 Table of Contents
 
 - [Overview](#overview)
@@ -8,9 +10,12 @@
 - [3. Machine Learning & Feature Engineering](#3-machine-learning--feature-engineering)
 - [4. AWS Services Integration](#4-aws-services-integration)
 - [5. Frontend Deployment Architecture](#5-frontend-deployment-architecture)
-- [6. CI/CD & Automation](#6-cicd--automation)
-- [7. Cost Optimization](#7-cost-optimization)
-- [8. Development Workflow](#8-development-workflow)
+- [6. Frontend & API Integration](#6-frontend--api-integration)
+- [7. Local Development & Testing](#7-local-development--testing)
+- [8. Unit & Integration Testing](#8-unit--integration-testing)
+- [9. Architecture Decisions](#9-architecture-decisions)
+- [10. Best Practices Summary](#10-best-practices-summary)
+- [11. Common Pitfalls](#11-common-pitfalls)
 - [Key Takeaways](#key-takeaways)
 
 ---
@@ -438,6 +443,88 @@ resource "aws_amplify_branch" "main" {
 
 ## 6. Frontend & API Integration
 
+### Challenge: CORS with Externally-Created Amplify Apps (v1.1.0)
+**Problem:** S3 CORS blocked uploads from Amplify frontend with error:
+```
+Access to XMLHttpRequest blocked by CORS policy: 
+No 'Access-Control-Allow-Origin' header
+```
+
+**Root Cause:** Amplify app was created manually in AWS Console, not by Terraform. The Terraform CORS logic depends on `amplify_enabled = true`, which requires `github_repository` AND `github_token` variables. Without these, CORS only included `localhost:3000`.
+
+**Solution:** Two options:
+1. Add `github_repository` to tfvars (token comes from CI/CD via `TF_VAR_github_token`)
+2. Add explicit `cors_allowed_origins` to tfvars with Amplify domain
+
+```hcl
+# Option 1: Let Terraform manage Amplify (recommended)
+github_repository = "https://github.com/owner/repo"
+
+# Option 2: Manual CORS for external Amplify
+cors_allowed_origins = [
+  "https://branch.xxx.amplifyapp.com",
+  "http://localhost:3000"
+]
+```
+
+**Key Insight:** When Amplify is created outside Terraform, you must manually configure CORS. The `cors_origins` local should **combine** sources (not override) to allow both manual and automatic origins.
+
+### Challenge: Terraform Destroyed Amplify App Unexpectedly (v1.1.0)
+**Problem:** Running `terraform apply` locally destroyed the existing Amplify app, breaking the production frontend.
+
+**Root Cause:** 
+- Amplify resources use `count = local.amplify_enabled ? 1 : 0`
+- `amplify_enabled` requires both `github_repository` AND `github_token`
+- Local execution didn't have `TF_VAR_github_token` set
+- Terraform saw count change from 1 to 0 → destroyed the resource
+
+**Solution:** 
+1. Always set `github_repository` in tfvars files
+2. CI/CD pipeline passes `TF_VAR_github_token` from secrets
+3. For local Terraform, either set the env var or use `-target` to avoid Amplify resources
+
+**Key Insight:** Resources with conditional `count` are dangerous when variables are missing. Consider using `lifecycle { prevent_destroy = true }` for critical resources.
+
+### Challenge: SSE Doesn't Work on AWS Amplify (v1.1.0)
+**Problem:** Server-Sent Events endpoint returned 500 error when accessed from Amplify:
+```
+GET https://xxx.amplifyapp.com/api/jobs/xxx/stream/ 500 (Internal Server Error)
+SSE failed, falling back to polling
+```
+
+**Root Cause:** AWS Amplify uses Lambda@Edge for Next.js SSR, which has:
+- 30 second timeout (configurable up to 30s max)
+- Stateless invocations - can't maintain long-lived connections
+- Each request = new Lambda invocation
+
+SSE requires the server to keep the connection open indefinitely, which is fundamentally incompatible with Lambda's execution model.
+
+**Solution:** Removed SSE implementation entirely and use polling directly. For training jobs that take 5-15 minutes, a 5-second polling delay is imperceptible to users. Polling is:
+- Simple and reliable
+- Works on all serverless platforms
+- No complex connection management
+
+**Key Insight:** This is the fundamental **trade-off of serverless**: you sacrifice long-lived connections for scalability and cost efficiency. Don't over-engineer with SSE/WebSocket when polling works perfectly for long-running operations.
+
+### Challenge: Python Relative Imports in Container (v1.1.0)
+**Problem:** Training container failed immediately with:
+```
+ImportError: attempted relative import with no known parent package
+```
+
+**Root Cause:** Files used relative imports (`from .utils import ...`) but `train.py` was executed directly with `python train.py`, not as part of a package.
+
+**Solution:** Change relative imports to absolute imports:
+```python
+# ❌ WRONG - Fails when run directly
+from .utils import detect_problem_type, is_id_column
+
+# ✅ CORRECT - Works when run directly
+from utils import detect_problem_type, is_id_column
+```
+
+**Key Insight:** In Docker containers where scripts are executed directly (not as modules), always use absolute imports. Relative imports only work when the file is imported as part of a package (`python -m package.module`).
+
 ### Challenge: CORS and API URL Configuration
 **Problem:** Frontend couldn't connect to local API due to wrong endpoint.
 
@@ -509,7 +596,172 @@ param(
 
 ---
 
-## 8. Architecture Decisions
+## 8. Unit & Integration Testing
+
+### Challenge: FastAPI TestClient HTTP Version Incompatibility
+**Problem:** Tests failed with `TypeError: Client.__init__() got an unexpected keyword argument 'app'` when using Starlette TestClient with httpx 0.28.0.
+
+**Root Cause:** Starlette 0.35.1 (bundled with FastAPI 0.109.0) is incompatible with httpx 0.28.0. The internal transport API changed between versions.
+
+**Solution:** Pinned httpx to compatible version in `requirements-dev.txt`:
+```txt
+httpx==0.27.2  # Last version compatible with Starlette 0.35.1
+```
+
+**Key Insight:** When adding testing libraries, check compatibility with existing framework versions. FastAPI version dictates Starlette version, which constrains httpx version.
+
+### Challenge: Low Initial Test Coverage
+**Problem:** Initial API coverage was 39% with routers at 18% and services at 25%. Tests mocked AWS services but didn't execute router/service code paths.
+
+**Root Cause:** Unit tests mocked service methods at a high level, bypassing actual router logic. For example:
+```python
+# ❌ This mocks too high - router code isn't executed
+@patch('api.services.dynamo_service.DynamoDBService.get_job')
+def test_get_job(self, mock_get):
+    mock_get.return_value = {...}
+    response = client.get("/jobs/123")
+```
+
+**Solution:** Added comprehensive endpoint tests that exercise full router logic, and integration tests using `moto` for AWS service mocking:
+```python
+# ✅ Endpoint tests - exercise router logic with targeted mocks
+from api.routers import models
+@patch.object(models.dynamodb_service, 'get_job')
+def test_get_job(self, mock_get):
+    mock_get.return_value = {...}
+    response = client.get("/jobs/123")  # Router code executes
+
+# ✅ Integration tests - real service code with moto
+from moto import mock_aws
+@mock_aws
+def test_s3_presigned_url_generation(self):
+    s3 = boto3.client('s3', region_name='us-east-1')
+    s3.create_bucket(Bucket='test-bucket')
+    
+    service = S3Service()
+    url = service.generate_presigned_upload_url('test-bucket', 'file.csv')
+    assert 'X-Amz-Signature' in url
+```
+
+**Result:** Coverage improved from 39% to 69%.
+
+**Key Insight:** For FastAPI testing:
+- **Endpoint tests** → Mock at the service instance level (`patch.object(router.service, 'method')`)
+- **Integration tests** → Use `moto` to mock AWS services, execute real service code
+- **Unit tests** → Pure logic with no external dependencies
+
+### Challenge: Mocking Service Dependencies in Routers
+**Problem:** Routers import services at module level. Patching the wrong module path causes mocks to not apply.
+
+**Evidence:**
+```python
+# ❌ WRONG - patches the service module, not the router's reference
+@patch('api.services.dynamo_service.DynamoDBService.get_job')
+
+# Router imports like this:
+# from api.services.dynamo_service import dynamodb_service
+# dynamodb_service = DynamoDBService()  # Instance created at import time
+```
+
+**Solution:** Import the router module and patch the service instance:
+```python
+from api.routers import models  # Router that uses dynamodb_service
+
+@patch.object(models.dynamodb_service, 'get_job')
+def test_get_job_success(self, mock_get):
+    mock_get.return_value = {...}
+    response = client.get("/jobs/123")
+```
+
+**Key Insight:** In Python, you must patch where the object is **used**, not where it's **defined**. For singleton services instantiated at import time, use `patch.object()` on the router's imported instance.
+
+### Challenge: Pydantic Validation vs Endpoint Validation
+**Problem:** Test expected HTTP 400 for invalid tags (>10 items), but received HTTP 422.
+
+**Root Cause:** Pydantic validates request schemas **before** the endpoint code runs. Schema violations return 422 (Unprocessable Entity), not 400 (Bad Request).
+
+```python
+class UpdateJobRequest(BaseModel):
+    tags: Optional[List[str]] = Field(None, max_length=10)  # Pydantic validates this
+```
+
+**Solution:** Updated tests to expect correct status codes:
+```python
+def test_update_job_too_many_tags(self):
+    response = client.patch(
+        "/jobs/123",
+        json={"tags": ["tag1"]*11}  # 11 tags exceeds max_length=10
+    )
+    assert response.status_code == 422  # Pydantic validation, not 400
+```
+
+**Key Insight:** 
+- **422** = Pydantic schema validation errors (type mismatch, constraints)
+- **400** = Endpoint-level business logic errors (raised manually)
+- **404** = Resource not found (raised in router after lookup)
+
+### Challenge: DynamoDB Decimal Conversion in Tests
+**Problem:** Moto creates real DynamoDB tables that store floats as `Decimal`. Tests failed when comparing returned values.
+
+**Solution:** Added decimal conversion utility and used it in service code:
+```python
+def convert_decimals(obj: Any) -> Any:
+    """Recursively convert Decimal to int/float for JSON serialization."""
+    if isinstance(obj, Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    if isinstance(obj, dict):
+        return {k: convert_decimals(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [convert_decimals(i) for i in obj]
+    return obj
+```
+
+**Key Insight:** DynamoDB returns `Decimal` types for numbers. Always convert before JSON serialization or comparison in tests.
+
+### Challenge: Test Organization for CI/CD
+**Problem:** Needed separate test runs for API and Training modules with independent coverage reports.
+
+**Solution:** Organized tests into separate directories with component-specific pipelines:
+```
+backend/tests/
+├── api/                    # API endpoint & service tests
+│   ├── test_endpoints.py   # 39 endpoint tests
+│   ├── test_schemas.py     # 23 schema tests
+│   ├── test_services_integration.py  # 21 integration tests
+│   └── ...
+└── training/               # Training module tests
+    ├── unit/               # 93 unit tests
+    │   ├── test_preprocessor.py
+    │   ├── test_utils.py
+    │   └── ...
+    └── integration/        # Training integration tests
+```
+
+**CI/CD Integration:**
+```yaml
+# deploy-lambda-api.yml - runs API tests only
+pytest tests/api --cov=api --cov-report=xml
+
+# deploy-training-container.yml - runs training tests only
+pytest tests/training --cov=training --cov-report=xml
+```
+
+**Key Insight:** Separate test directories enable:
+- **Faster CI** - only run relevant tests per component
+- **Independent coverage** - track coverage per module
+- **Clear ownership** - developers know which tests to update
+
+### Final Test Coverage Summary
+
+| Component | Tests | Coverage | CI Pipeline |
+|-----------|-------|----------|-------------|
+| API | 104 | 69% | `deploy-lambda-api.yml` |
+| Training | 93 | 85%+ | `deploy-training-container.yml` |
+| **Total** | **197** | - | - |
+
+---
+
+## 9. Architecture Decisions
 
 ### Why Split Backend and Training?
 **Decision:** API in Lambda (FastAPI + Mangum), training in Batch containers.
@@ -544,9 +796,34 @@ param(
 
 **Trade-off:** Less accurate than AutoGluon on complex problems.
 
+### Why Polling Instead of WebSocket for Job Updates? (v1.1.0)
+**Decision:** Use polling (5-second interval) instead of WebSocket API Gateway for real-time training updates.
+
+**Context:**
+- SSE (Server-Sent Events) failed on Amplify due to Lambda@Edge 30s timeout
+- Considered implementing WebSocket API Gateway as alternative
+- Training jobs run 5-15 minutes typically
+
+**Analysis:**
+| Factor | Polling | WebSocket |
+|--------|---------|-----------|
+| Implementation time | 0 hours (done) | 5-6 hours |
+| Latency | 5 seconds max | Real-time |
+| Infrastructure | None additional | API Gateway, Lambda, DynamoDB |
+| Maintenance | Simple | Connection management |
+| Cost | Low (periodic requests) | Low but more complex |
+
+**Decision Rationale (KISS & YAGNI):**
+- For 10-minute training jobs, 5-second delay is **imperceptible** to users
+- WebSocket adds **significant complexity** (connection management, reconnection logic, Lambda handlers)
+- No user-facing benefit for multi-minute jobs
+- Polling is **battle-tested** and works everywhere (including Amplify)
+
+**Key Insight:** Don't over-engineer for perceived technical elegance. The right solution is the simplest one that solves the user's problem. Real-time is overkill when the underlying operation takes minutes.
+
 ---
 
-## 9. Best Practices Summary
+## 10. Best Practices Summary
 
 ### Container Development
 1. ✅ Always pass configuration via environment variables, never API calls
@@ -595,7 +872,7 @@ param(
 
 ---
 
-## 10. Common Pitfalls to Avoid
+## 11. Common Pitfalls to Avoid
 
 | ❌ Don't | ✅ Do |
 |---------|------|
@@ -612,16 +889,20 @@ param(
 | Use App Runner for Next.js SSR | Use AWS Amplify for Next.js SSR |
 | Start health checks immediately | Configure 60s grace period |
 | Hardcode deployment architecture | Research industry best practices first |
+| Use relative imports in container | Use absolute imports (`from utils import`) |
+| Run `terraform apply` without all vars | Ensure `github_token` env var for Amplify |
+| Expect SSE to work on Amplify | Use polling for serverless real-time |
+| Build WebSocket for multi-minute ops | Use polling (KISS principle) |
 
 ---
 
-## 11. Future Improvements
+## 12. Future Improvements
 
 ### Short Term
-- [ ] Add support for regression problems (currently classification-only)
 - [ ] Implement feature engineering (polynomial features, interactions)
-- [ ] Add hyperparameter tuning for top models
+- [ ] Add hyperparameter tuning UI for FLAML settings
 - [ ] Support for time series datasets
+- [ ] Batch predictions on validation datasets (v1.2.0 planned)
 
 ### Medium Term
 - [ ] GPU support for deep learning models
@@ -636,9 +917,16 @@ param(
 - [ ] MLOps pipeline with CI/CD
 - [ ] Multi-region deployment with failover
 
+### ✅ Completed (v1.1.0)
+- [x] ONNX model export for cross-platform deployment
+- [x] Serverless model inference (Lambda + ONNX Runtime)
+- [x] Model comparison dashboard
+- [x] Dark mode support
+- [x] Improved problem type detection (regression vs classification)
+
 ---
 
-## 12. Conclusion
+## 13. Conclusion
 
 The most critical lessons learned:
 
@@ -651,11 +939,13 @@ The most critical lessons learned:
 7. **Health Check Configuration:** Configure 60s grace periods for frameworks with non-trivial startup times
 8. **Problem Type Detection (v1.1.0):** Use AND not OR for classification heuristics - float values with decimals should be regression
 9. **DRY Principle (v1.1.0):** Shared ML logic must live in a single utility module to prevent inconsistencies
+10. **SSE Limitations (v1.1.0):** Amplify uses Lambda@Edge with 30s timeout - SSE won't work; use polling
+11. **Terraform State Management (v1.1.0):** Resources with conditional `count` can be destroyed when variables are missing
+12. **KISS over Over-Engineering (v1.1.0):** For multi-minute operations, polling is simpler and equally effective as WebSocket
+13. **Testing Strategy (v1.1.0):** Use `patch.object()` for router service mocks, `moto` for AWS integration tests, and separate test directories per component for CI/CD efficiency
 
 These lessons transformed the development process from trial-and-error to predictable, efficient workflows. The frontend deployment challenges alone saved future iterations from 80+ minutes of debugging by identifying architectural mismatches early.
 
 ---
 
-**Last Updated:** December 20, 2025  
-**Contributors:** Development team working on AWS AutoML Lite  
-**Related Docs:** [PROJECT_REFERENCE.md](./PROJECT_REFERENCE.md), [QUICKSTART.md](./QUICKSTART.md)
+**Last Updated:** December 24, 2025 (v1.1.0)  
