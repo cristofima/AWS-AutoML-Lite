@@ -13,14 +13,18 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Add training module to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend" / "training"))
+# Add training module to path - must be done before importing from training
+_training_path = Path(__file__).parent.parent / "backend" / "training"
+if str(_training_path) not in sys.path:
+    sys.path.insert(0, str(_training_path))
 
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.datasets import make_classification, make_regression
 
+# Import from training module after path setup
+from onnx_exporter import export_model_to_onnx
 
 def test_classifier_export():
     """Test ONNX export for a classification model."""
@@ -48,9 +52,6 @@ def test_classifier_export():
     print(f"✓ Model trained: {type(model).__name__}")
     print(f"  - Features: {X_df.shape[1]}")
     print(f"  - Classes: {len(np.unique(y))}")
-    
-    # Test ONNX export
-    from onnx_exporter import export_model_to_onnx
     
     with tempfile.TemporaryDirectory() as tmpdir:
         onnx_path = Path(tmpdir) / "classifier_model.onnx"
@@ -99,9 +100,6 @@ def test_regressor_export():
     print(f"✓ Model trained: {type(model).__name__}")
     print(f"  - Features: {X_df.shape[1]}")
     
-    # Test ONNX export
-    from onnx_exporter import export_model_to_onnx
-    
     with tempfile.TemporaryDirectory() as tmpdir:
         onnx_path = Path(tmpdir) / "regressor_model.onnx"
         
@@ -127,31 +125,36 @@ def test_regressor_export():
 def test_onnx_inference(onnx_path: Path, X_sample: pd.DataFrame):
     """Test that the ONNX model can make predictions."""
     print("\nTesting ONNX inference...")
-    
+
+    # Import onnxruntime with specific error handling
     try:
         import onnxruntime as rt
-        
-        # Create inference session
+    except ImportError as e:
+        print(f"✗ ONNX inference failed: onnxruntime is not installed or cannot be imported: {e}")
+        return
+
+    # Create inference session with specific error handling
+    try:
         sess = rt.InferenceSession(
             str(onnx_path),
             providers=["CPUExecutionProvider"]
         )
-        
-        # Prepare input
-        input_name = sess.get_inputs()[0].name
-        X_array = X_sample.values.astype(np.float32)
-        
-        # Run inference
-        outputs = sess.run(None, {input_name: X_array})
-        
-        print(f"✓ ONNX inference successful!")
-        print(f"  - Input shape: {X_array.shape}")
-        print(f"  - Output shapes: {[o.shape for o in outputs]}")
-        print(f"  - Sample predictions: {outputs[0][:3]}")
-        
     except Exception as e:
-        print(f"✗ ONNX inference failed: {e}")
+        print(f"✗ ONNX inference failed: could not create ONNX Runtime InferenceSession: {e}")
+        print(f"  - Model path: {onnx_path}")
+        return
 
+    # Prepare input
+    input_name = sess.get_inputs()[0].name
+    X_array = X_sample.values.astype(np.float32)
+
+    # Run inference
+    outputs = sess.run(None, {input_name: X_array})
+
+    print(f"✓ ONNX inference successful!")
+    print(f"  - Input shape: {X_array.shape}")
+    print(f"  - Output shapes: {[o.shape for o in outputs]}")
+    print(f"  - Sample predictions: {outputs[0][:3]}")
 
 def main():
     """Run all ONNX export tests."""
