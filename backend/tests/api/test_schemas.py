@@ -6,7 +6,6 @@ catching invalid data at the API boundary before processing.
 """
 import pytest
 from pydantic import ValidationError
-from datetime import datetime
 import sys
 from pathlib import Path
 
@@ -20,14 +19,10 @@ from models.schemas import (
     DatasetMetadata,
     ColumnStats,
     JobStatus,
-    JobDetails,
-    JobResponse,
     PredictionInput,
     PredictionResponse,
-    UploadRequest,
     UploadResponse,
     ProblemType,
-    TrainingMetrics,
 )
 
 

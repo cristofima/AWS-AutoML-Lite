@@ -13,7 +13,7 @@ Key features:
 from fastapi import APIRouter, HTTPException, status
 import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import numpy as np
 import tempfile
 import os
@@ -128,7 +128,7 @@ def _prepare_input(
     features: Dict[str, Any],
     feature_columns: list,
     session: Any,
-    preprocessing_info: Dict[str, Any] | None = None
+    preprocessing_info: Optional[Dict[str, Any]]
 ) -> np.ndarray:
     """
     Prepare input features for ONNX model inference.
@@ -306,7 +306,7 @@ async def make_prediction(job_id: str, request: PredictionInput) -> PredictionRe
 
 
 @router.get("/{job_id}/info")
-async def get_prediction_info(job_id: str) -> dict:
+async def get_prediction_info(job_id: str) -> Dict[str, Any]:
     """
     Get information about a deployed model for making predictions.
     

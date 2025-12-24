@@ -4,7 +4,7 @@ import boto3
 import pandas as pd
 from datetime import datetime, timezone
 import traceback
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from preprocessor import AutoPreprocessor
 from eda import generate_eda_report
@@ -202,7 +202,7 @@ def update_job_status(
     table: Any,
     job_id: str,
     status: str,
-    error_message: str | None = None
+    error_message: Optional[str]
 ) -> None:
     """Update job status in DynamoDB"""
     now = datetime.now(timezone.utc).isoformat()
@@ -241,14 +241,14 @@ def update_job_completion(
     target_column: str,
     problem_type: str,
     model_path: str,
-    onnx_model_path: str | None,
+    onnx_model_path: Optional[str],
     eda_report_s3_path: str,
     training_report_s3_path: str,
     metrics: Dict[str, Any],
     feature_importance: Dict[str, float],
-    dropped_columns: List[str] | None = None,
-    feature_columns: List[str] | None = None,
-    feature_metadata: Dict[str, Any] | None = None
+    dropped_columns: Optional[List[str]],
+    feature_columns: Optional[List[str]],
+    feature_metadata: Optional[Dict[str, Any]]
 ) -> None:
     """Update job with completion details"""
     from decimal import Decimal

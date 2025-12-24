@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Query
-from typing import Optional
+from typing import Dict, Optional, Any
 from ..models.schemas import (
     JobListResponse, JobResponse, JobStatus, ProblemType, JobUpdateRequest,
     DeployRequest, DeployResponse, PreprocessingInfo
@@ -120,7 +120,7 @@ async def get_job_status(job_id: str) -> JobResponse:
 
 
 @router.delete("/{job_id}")
-async def delete_job(job_id: str, delete_data: bool = True) -> dict:
+async def delete_job(job_id: str, delete_data: bool = True) -> Dict[str, Any]:
     """
     Delete a training job and optionally all associated data (model, report, dataset)
     """

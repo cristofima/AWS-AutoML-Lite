@@ -5,7 +5,7 @@ These tests verify that API endpoints respond correctly
 without requiring actual AWS services.
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 from pathlib import Path
 

@@ -287,7 +287,7 @@ class TestS3MetadataOperations:
         try:
             s3.head_object(Bucket=bucket, Key="not-exists.csv")
             not_exists = True
-        except:
+        except s3.exceptions.ClientError:
             not_exists = False
         
         assert not_exists == False
