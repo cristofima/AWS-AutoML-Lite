@@ -38,8 +38,8 @@ Complete documentation for AWS AutoML Lite platform.
 
 ### Testing
 - **[UNIT_TESTING_ANALYSIS.md](./UNIT_TESTING_ANALYSIS.md)** - Testing strategy & implementation ✅
-  - 197 total tests (104 API + 93 Training)
-  - Coverage reports (69% API, 85%+ Training)
+  - 263 total tests (104 API + 159 Training)
+  - Coverage reports (69% API, 53%+ Training)
   - CI/CD integration
   - Lessons learned
 
@@ -112,7 +112,7 @@ infrastructure/terraform/
 
 backend/
 ├── README.md                    # Backend setup & testing
-└── tests/                       # 197 tests (API + Training)
+└── tests/                       # 263 tests (API + Training)
 
 frontend/
 └── README.md                    # Frontend setup

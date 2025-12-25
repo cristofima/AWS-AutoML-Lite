@@ -157,16 +157,20 @@ aws-automl-lite/
 │   │   │   └── schemas.py          # Pydantic models
 │   │   └── utils/
 │   │       └── helpers.py          # Common utilities
-│   ├── training/
+│   ├── training/                   # 👈 Modular ML Package
+│   │   ├── __init__.py             # Package root
+│   │   ├── main.py                 # Entry point (AWS Batch)
 │   │   ├── Dockerfile              # Training container
-│   │   ├── train.py                # Main training script
-│   │   ├── eda.py                  # Auto EDA generation
-│   │   ├── model_trainer.py        # FLAML training logic
-│   │   ├── preprocessor.py         # Data preprocessing
-│   │   ├── onnx_exporter.py        # ONNX model export (v1.1.0)
-│   │   ├── training_report.py      # Report generation
-│   │   ├── utils.py                # Shared utilities (DRY)
-│   │   └── requirements.txt        # Training dependencies
+│   │   ├── requirements.txt        # Training dependencies
+│   │   ├── core/                   # Core ML components
+│   │   │   ├── preprocessor.py     # Data preprocessing
+│   │   │   ├── trainer.py          # FLAML training logic
+│   │   │   └── exporter.py         # ONNX model export
+│   │   ├── reports/                # Report generation
+│   │   │   ├── eda.py              # Auto EDA generation
+│   │   │   └── training.py         # Training results report
+│   │   └── utils/                  # Shared utilities (DRY)
+│   │       └── detection.py        # Problem type detection
 │   ├── tests/                      # 👈 Unit & Integration Tests
 │   │   ├── pytest.ini              # Pytest configuration
 │   │   ├── api/                    # API tests (104 tests)
@@ -176,12 +180,14 @@ aws-automl-lite/
 │   │   │   ├── test_dynamo_service.py
 │   │   │   ├── test_s3_service.py
 │   │   │   └── test_services_integration.py  # moto-based tests
-│   │   └── training/               # Training tests (93 tests)
+│   │   └── training/               # Training tests (159 tests)
 │   │       ├── conftest.py         # Training test fixtures
 │   │       ├── unit/               # Pure unit tests
 │   │       │   ├── test_preprocessor.py
-│   │       │   ├── test_utils.py
-│   │       │   └── test_model_trainer.py
+│   │       │   ├── test_column_detection.py
+│   │       │   ├── test_detect_problem_type.py
+│   │       │   ├── test_eda.py
+│   │       │   └── test_training_report.py
 │   │       └── integration/        # Integration tests
 │   ├── requirements.txt            # API dependencies
 │   └── requirements-dev.txt        # Testing dependencies

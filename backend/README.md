@@ -275,12 +275,14 @@ backend/tests/
 │   ├── test_dynamo_service.py   # DynamoDB service tests
 │   ├── test_s3_service.py       # S3 service tests
 │   └── test_services_integration.py  # moto-based integration tests (21 tests)
-└── training/               # Training tests (93 tests, 85%+ coverage)
+└── training/               # Training tests (159 tests, 53% coverage)
     ├── conftest.py         # Shared fixtures
     ├── unit/               # Pure unit tests
     │   ├── test_preprocessor.py
-    │   ├── test_utils.py
-    │   └── test_model_trainer.py
+    │   ├── test_column_detection.py
+    │   ├── test_detect_problem_type.py
+    │   ├── test_eda.py
+    │   └── test_training_report.py
     └── integration/        # Training integration tests
 ```
 
