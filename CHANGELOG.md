@@ -66,14 +66,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Selected column details with unique ratio visualization
 
 ### Dependencies
-- **Dependency Audit & Version Updates** - Production-stable versions with lock files
+- **Dependency Audit & Version Updates** - Production-stable versions with flexible ranges
   - FastAPI upgraded from 0.109.0 to >=0.115.0 (fixes ReDoc CDN issue with `redoc@next`)
   - scikit-learn pinned to <1.6.0 (skl2onnx compatibility, avoids breaking API changes)
   - LightGBM 4.6.0 with improved memory efficiency and faster training
   - Pydantic 2.x with better validation performance and error messages
   - ONNX Runtime 1.19+ for training, 1.23+ for API (latest optimizations)
-  - Added `pip-tools` workflow with lock files for reproducible builds
-  - Dockerfiles updated to use `requirements.lock` when available
   - All 197 tests passing with updated dependencies
 
 ### Fixed

@@ -9,9 +9,7 @@ on:
     paths:
       - 'backend/api/**'
       - 'backend/requirements.txt'
-      - 'backend/requirements.lock'
       - 'backend/requirements-dev.txt'
-      - 'backend/requirements-dev.lock'
       - '!backend/api/**/*.md'
       - '.github/workflows/deploy-lambda-api.yml'
   workflow_dispatch:
@@ -60,8 +58,6 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
           cache-dependency-path: |
-            backend/requirements.lock
-            backend/requirements-dev.lock
             backend/requirements.txt
             backend/requirements-dev.txt
       
@@ -69,17 +65,8 @@ jobs:
         run: |
           cd backend
           pip install --upgrade pip
-          # Use lock files for reproducible builds, fallback to .txt
-          if [ -f requirements.lock ]; then
-            pip install -r requirements.lock
-          else
-            pip install -r requirements.txt
-          fi
-          if [ -f requirements-dev.lock ]; then
-            pip install -r requirements-dev.lock
-          else
-            pip install -r requirements-dev.txt
-          fi
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
       
       - name: Run API tests
         run: |

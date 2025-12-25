@@ -9,7 +9,6 @@ on:
     paths:
       - 'backend/training/**'
       - 'backend/requirements-dev.txt'
-      - 'backend/requirements-dev.lock'
       - '!backend/training/**/*.md'
       - '.github/workflows/deploy-training-container.yml'
   workflow_dispatch:
@@ -54,8 +53,6 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
           cache-dependency-path: |
-            backend/training/requirements.lock
-            backend/requirements-dev.lock
             backend/training/requirements.txt
             backend/requirements-dev.txt
       
@@ -63,17 +60,8 @@ jobs:
         run: |
           cd backend
           pip install --upgrade pip
-          # Use lock files for reproducible builds, fallback to .txt
-          if [ -f training/requirements.lock ]; then
-            pip install -r training/requirements.lock
-          else
-            pip install -r training/requirements.txt
-          fi
-          if [ -f requirements-dev.lock ]; then
-            pip install -r requirements-dev.lock
-          else
-            pip install -r requirements-dev.txt
-          fi
+          pip install -r training/requirements.txt
+          pip install -r requirements-dev.txt
       
       - name: Run training unit tests
         run: |
