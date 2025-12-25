@@ -7,15 +7,9 @@ Wrong detection leads to training the wrong model type (classification vs regres
 import pytest
 import pandas as pd
 import numpy as np
-import sys
-from pathlib import Path
 
-# Add training module to path
-# Path: tests/training/unit/test_file.py -> backend/training
-training_path = Path(__file__).parent.parent.parent.parent / "training"
-sys.path.insert(0, str(training_path))
-
-from utils import detect_problem_type
+# Import from new package structure (path setup in conftest.py)
+from training.utils.detection import detect_problem_type
 
 
 class TestDetectProblemTypeClassification:

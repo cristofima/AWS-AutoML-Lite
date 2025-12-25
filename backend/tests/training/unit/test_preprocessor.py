@@ -6,7 +6,9 @@ AWS services or ML model training.
 
 import pandas as pd
 import numpy as np
-from training.preprocessor import AutoPreprocessor
+
+# Import from new package structure (path setup in conftest.py)
+from training.core.preprocessor import AutoPreprocessor
 
 
 class TestHandleMissingValues:

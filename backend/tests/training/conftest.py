@@ -10,12 +10,11 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-# Add backend/training to path for imports
-# Path: tests/training/conftest.py -> backend/training
+# Add backend to path for package imports
+# The training module is now a proper package: backend/training/
+# Tests import using: from training.core.preprocessor import AutoPreprocessor
 backend_path = Path(__file__).parent.parent.parent
-training_path = backend_path / "training"
 sys.path.insert(0, str(backend_path))
-sys.path.insert(0, str(training_path))
 
 
 # =============================================================================

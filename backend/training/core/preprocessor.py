@@ -1,3 +1,5 @@
+"""Automatic data preprocessing for AutoML."""
+
 import pandas as pd
 import numpy as np
 from decimal import Decimal
@@ -9,7 +11,7 @@ from typing import Dict, Any, Optional, Tuple, List
 from feature_engine.selection import DropConstantFeatures, DropDuplicateFeatures
 
 # Import shared utilities
-from utils import (
+from training.utils.detection import (
     detect_problem_type,
     is_id_column,
     is_high_cardinality_categorical,

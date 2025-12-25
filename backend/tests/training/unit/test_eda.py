@@ -7,14 +7,9 @@ import pytest
 import pandas as pd
 import numpy as np
 from unittest.mock import mock_open, patch
-import sys
-from pathlib import Path
 
-# Add training directory to path
-training_path = Path(__file__).parent.parent.parent.parent / "training"
-sys.path.insert(0, str(training_path))
-
-from eda import (
+# Import from new package structure (path setup in conftest.py)
+from training.reports.eda import (
     generate_eda_report,
     generate_minimal_report,
     EDAReportGenerator
@@ -253,7 +248,7 @@ class TestGenerateEDAReport:
     
     def test_handles_exception_with_fallback(self, classification_df):
         """Function falls back to minimal report on error"""
-        with patch("eda.EDAReportGenerator") as mock_generator:
+        with patch("training.reports.eda.EDAReportGenerator") as mock_generator:
             mock_generator.side_effect = Exception("Test error")
             
             m = mock_open()

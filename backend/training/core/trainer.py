@@ -1,3 +1,5 @@
+"""AutoML model training using FLAML."""
+
 import pandas as pd
 import numpy as np
 from flaml import AutoML

@@ -11,11 +11,12 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy training scripts
-COPY *.py ./
+# Copy training package (new modular structure)
+COPY . ./training/
 
-# Set environment variables
+# Set Python path to find the training package
+ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Entry point
-CMD ["python", "train.py"]
+# Entry point (now uses package structure)
+CMD ["python", "-m", "training.main"]

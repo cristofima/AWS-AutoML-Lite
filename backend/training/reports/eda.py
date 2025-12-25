@@ -1,9 +1,16 @@
+"""
+EDA (Exploratory Data Analysis) Report Generator.
+
+This module generates comprehensive HTML reports for dataset exploration,
+including target analysis, feature distributions, correlations, and warnings.
+"""
+
 import pandas as pd
 import numpy as np
 from typing import List, Tuple
 
-# Import shared utilities
-from utils import detect_problem_type, is_id_column
+# Import shared utilities from new package structure
+from training.utils.detection import detect_problem_type, is_id_column
 
 
 def generate_eda_report(df: pd.DataFrame, target_column: str, output_path: str):

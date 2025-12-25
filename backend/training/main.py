@@ -1,3 +1,16 @@
+"""
+Training Container Entry Point.
+
+This is the main script executed by AWS Batch to run the full training pipeline:
+1. Download dataset from S3
+2. Generate EDA report
+3. Preprocess data
+4. Train model with FLAML
+5. Generate training report
+6. Save model (PKL + ONNX)
+7. Update job status in DynamoDB
+"""
+
 import os
 import sys
 import boto3
@@ -6,11 +19,12 @@ from datetime import datetime, timezone
 import traceback
 from typing import Any, Dict, List, Optional
 
-from preprocessor import AutoPreprocessor
-from eda import generate_eda_report
-from model_trainer import train_automl_model
-from training_report import generate_training_report
-from onnx_exporter import export_model_to_onnx
+# Import from new package structure
+from training.core.preprocessor import AutoPreprocessor
+from training.core.trainer import train_automl_model
+from training.core.exporter import export_model_to_onnx
+from training.reports.eda import generate_eda_report
+from training.reports.training import generate_training_report
 
 
 def main() -> None:
@@ -202,7 +216,7 @@ def update_job_status(
     table: Any,
     job_id: str,
     status: str,
-    error_message: Optional[str]
+    error_message: Optional[str] = None
 ) -> None:
     """Update job status in DynamoDB"""
     now = datetime.now(timezone.utc).isoformat()

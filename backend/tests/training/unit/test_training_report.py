@@ -5,14 +5,9 @@ Uses mocks to verify file writing without actual I/O.
 """
 import pytest
 from unittest.mock import mock_open, patch
-import sys
-from pathlib import Path
 
-# Add training directory to path
-training_path = Path(__file__).parent.parent.parent.parent / "training"
-sys.path.insert(0, str(training_path))
-
-from training_report import (
+# Import from new package structure (path setup in conftest.py)
+from training.reports.training import (
     generate_training_report,
     generate_minimal_training_report,
     TrainingReportGenerator
@@ -294,7 +289,7 @@ class TestGenerateTrainingReport:
     ):
         """Function falls back to minimal report on error"""
         # Mock TrainingReportGenerator to raise an exception
-        with patch("training_report.TrainingReportGenerator") as mock_generator:
+        with patch("training.reports.training.TrainingReportGenerator") as mock_generator:
             mock_generator.side_effect = Exception("Test error")
             
             m = mock_open()
