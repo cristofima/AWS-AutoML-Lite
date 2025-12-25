@@ -1,4 +1,5 @@
-# Backend API Dockerfile for local development
+# Backend API Dockerfile
+# Uses lock file for reproducible production builds
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -8,9 +9,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirements files
+# Lock file provides reproducible builds with exact versions
+# Fallback to requirements.txt if lock doesn't exist (dev flexibility)
+COPY requirements.txt requirements.lock* ./
+RUN if [ -f requirements.lock ]; then \
+        pip install --no-cache-dir -r requirements.lock; \
+    else \
+        pip install --no-cache-dir -r requirements.txt; \
+    fi
 
 # Copy application code
 COPY . .

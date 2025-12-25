@@ -12,7 +12,7 @@ settings = get_settings()
 app = FastAPI(
     title="AWS AutoML Lite API",
     description="Lightweight AutoML platform on AWS",
-    version="1.0.0",
+    version="1.1.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -39,7 +39,7 @@ async def root() -> Dict[str, str]:
     """Health check endpoint"""
     return {
         "message": "AWS AutoML Lite API",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "status": "healthy"
     }
 
