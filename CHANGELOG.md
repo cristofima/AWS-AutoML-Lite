@@ -72,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - LightGBM 4.6.0 with improved memory efficiency and faster training
   - Pydantic 2.x with better validation performance and error messages
   - ONNX Runtime 1.19+ for training, 1.23+ for API (latest optimizations)
-  - All 197 tests passing with updated dependencies
+  - All 263 tests passing with updated dependencies
 
 ### Fixed
 - **Problem Type Detection** - Regression datasets were incorrectly classified as classification
@@ -95,8 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Testing
 - **Comprehensive Test Suite** - Unit and integration tests for backend (v1.1.0)
-  - 197 total tests (104 API + 93 Training)
-  - API coverage: 69%, Training coverage: 85%+
+  - 263 total tests (104 API + 159 Training)
+  - API coverage: 69%, Training coverage: 53%+
   - Tests run automatically in CI/CD before deployment
   - Coverage reports published to GitHub Actions
 
