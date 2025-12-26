@@ -8,8 +8,8 @@ on:
     branches: [dev, main]
     paths:
       - 'backend/training/**'
+      - 'backend/requirements.txt'
       - '!backend/training/**/*.md'
-      - '!backend/training/**/*.txt'
       - '.github/workflows/deploy-training-container.yml'
   workflow_dispatch:
     inputs:

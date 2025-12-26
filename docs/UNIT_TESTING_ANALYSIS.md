@@ -24,11 +24,11 @@ This document outlines the unit testing strategy for the AWS AutoML Lite project
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests** | 197 |
+| **Total Tests** | 263 |
 | **API Tests** | 104 |
-| **Training Tests** | 93 |
+| **Training Tests** | 159 |
 | **API Coverage** | 69% |
-| **Training Coverage** | 85%+ |
+| **Training Coverage** | 53% |
 | **CI/CD Integration** | ✅ Both pipelines |
 
 All tests run automatically before deployment in the respective CI/CD pipelines.
@@ -78,12 +78,18 @@ backend/
 │   ├── routers/
 │   ├── services/
 │   └── utils/
-├── training/
-│   ├── train.py
-│   ├── preprocessor.py
-│   ├── model_trainer.py
-│   ├── utils.py
-│   └── ...
+├── training/                   # Modular ML package
+│   ├── __init__.py
+│   ├── main.py                 # Entry point
+│   ├── core/                   # Core ML components
+│   │   ├── preprocessor.py
+│   │   ├── trainer.py
+│   │   └── exporter.py
+│   ├── reports/                # Report generation
+│   │   ├── eda.py
+│   │   └── training.py
+│   └── utils/                  # Shared utilities
+│       └── detection.py
 ├── tests/                      # ✅ Implemented
 │   ├── __init__.py
 │   ├── pytest.ini              # Pytest configuration
@@ -97,13 +103,15 @@ backend/
 │   │   ├── test_s3_service.py               # 12 S3 tests
 │   │   └── test_services_integration.py     # 21 moto integration tests
 │   │
-│   └── training/               # Training tests (93 tests)
+│   └── training/               # Training tests (159 tests)
 │       ├── __init__.py
 │       ├── conftest.py                      # Training test fixtures
 │       ├── unit/                            # Pure unit tests
 │       │   ├── test_preprocessor.py         # Preprocessing tests
-│       │   ├── test_utils.py                # Utils tests
-│       │   └── test_model_trainer.py        # Model trainer tests
+│       │   ├── test_column_detection.py     # Column detection tests
+│       │   ├── test_detect_problem_type.py  # Problem type detection
+│       │   ├── test_eda.py                  # EDA report tests
+│       │   └── test_training_report.py      # Training report tests
 │       └── integration/                     # Training integration tests
 │
 ├── requirements.txt
@@ -651,13 +659,18 @@ Current test coverage as of December 2025:
 | `services/s3_service.py` | 67 | 73% | S3 operations |
 | `services/dynamo_service.py` | 143 | 64% | DynamoDB operations |
 
-### Training Module (85%+ coverage)
+### Training Module (53% coverage)
 
 | File | Coverage | Notes |
 |------|----------|-------|
-| `utils.py` | 95% | Detection functions |
-| `preprocessor.py` | 88% | Data preprocessing |
-| `model_trainer.py` | 80% | FLAML training |
+| `utils/detection.py` | 94% | Detection functions |
+| `reports/eda.py` | 94% | EDA report generation |
+| `reports/training.py` | 91% | Training report |
+| `core/preprocessor.py` | 63% | Data preprocessing |
+| `core/trainer.py` | 28% | FLAML training (requires mocking) |
+| `core/exporter.py` | 0% | ONNX export (requires FLAML) |
+
+> ⚠️ **Note:** The 53% overall coverage is weighted across all training files. Critical core modules (`trainer.py` at 28%, `exporter.py` at 0%) have significant gaps due to FLAML dependency complexity. These modules require additional mocking infrastructure to improve coverage.
 
 ---
 
@@ -763,7 +776,7 @@ See [LESSONS_LEARNED.md](./LESSONS_LEARNED.md#8-unit--integration-testing) for d
 The testing implementation covers:
 
 1. ✅ **104 API tests** - Endpoints, schemas, services
-2. ✅ **93 Training tests** - Preprocessing, utils, model training
+2. ✅ **159 Training tests** - Preprocessing, utils, EDA, training reports
 3. ✅ **CI/CD integration** - Tests run before every deployment
 4. ✅ **Coverage reporting** - Published to GitHub Actions
 

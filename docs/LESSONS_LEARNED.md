@@ -92,15 +92,15 @@ container_overrides = {
 
 **Key Insight:** Treat containers as autonomous units. The cascade is:
 ```
-Terraform (lambda.tf) → Lambda env vars → batch_service.py containerOverrides → train.py os.getenv()
+Terraform (lambda.tf) → Lambda env vars → batch_service.py containerOverrides → main.py os.getenv()
 ```
 
-**Critical Rule:** If you add a parameter to `train.py`, you MUST add it to `containerOverrides` in `batch_service.py`.
+**Critical Rule:** If you add a parameter to `main.py`, you MUST add it to `containerOverrides` in `batch_service.py`.
 
 ### Challenge: Missing Environment Variables
 **Problem:** Training jobs silently failed because the container couldn't find required AWS resource names.
 
-**Solution:** Added validation in `train.py`:
+**Solution:** Added validation in `main.py`:
 ```python
 required_vars = ["JOB_ID", "DATASET_ID", "TARGET_COLUMN", "S3_BUCKET_DATASETS"]
 missing = [var for var in required_vars if not os.getenv(var)]
@@ -164,6 +164,59 @@ def detect_useless_columns_with_feature_engine(self, df):
 **Solution:** Updated to `pandas==2.2.3` in `requirements.txt`.
 
 **Key Insight:** When adding new ML libraries, check their dependency requirements. Use `pip install --dry-run` to preview conflicts before committing.
+
+### Challenge: ReDoc CDN Breaking in FastAPI (v1.1.0)
+**Problem:** The `/redoc` endpoint displayed a blank page with console errors. Users couldn't access API documentation through ReDoc.
+
+**Root Cause:** FastAPI versions < 0.115.0 used a CDN URL for ReDoc that was deprecated:
+```
+# Old broken CDN (used by FastAPI < 0.115.0)
+https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js
+```
+
+The `@next` tag pointed to unstable builds that eventually broke.
+
+**Solution:** Upgraded FastAPI to >= 0.115.0 in `requirements.txt`:
+```txt
+fastapi>=0.115.0  # Fixes ReDoc CDN issue (uses stable redoc version)
+```
+
+FastAPI 0.115.0+ uses:
+```
+https://cdn.jsdelivr.net/npm/redoc@2.1.5/bundles/redoc.standalone.js
+```
+
+**Key Insight:** Always use stable tagged versions in CDN URLs. The `@next` tag is inherently unstable. When third-party documentation tools break, check the framework's CDN references first.
+
+### Challenge: Cross-Platform Lock Files in CI/CD (v1.1.0)
+**Problem:** CI/CD pipeline failed on Linux after generating `requirements.lock` on Windows.
+
+```
+ERROR: Could not find a version that satisfies the requirement pywin32==310
+ERROR: Could not find a version that satisfies the requirement pyreadline3==3.5.4
+```
+
+**Root Cause:** Lock files generated on Windows included platform-specific packages:
+- `pywin32` - Windows-only COM automation
+- `pyreadline3` - Windows-only readline replacement
+
+These packages don't exist on Linux PyPI and can't be installed.
+
+**Solution:** Removed lock files entirely and kept only `requirements.txt` with flexible version ranges:
+```txt
+# Use flexible ranges instead of locked versions
+fastapi>=0.115.0
+boto3>=1.35.0
+pandas>=2.2.0
+```
+
+**Alternative Considered:** Using `pip-tools` with `--resolver=backtracking` and platform markers, but this added unnecessary complexity for a simple project.
+
+**Key Insight:** For cross-platform Python projects:
+- ❌ Don't commit lock files generated on a specific OS
+- ✅ Use version ranges (`>=`, `~=`) in requirements.txt
+- ✅ If locks are needed, generate them in CI on the target platform (Linux)
+- ✅ Use `pip-compile --generate-hashes` on a Linux runner for production locks
 
 ### Challenge: FLAML Multiclass Classification
 **Problem:** FLAML crashed with multiclass classification using default settings.
@@ -512,18 +565,31 @@ SSE requires the server to keep the connection open indefinitely, which is funda
 ImportError: attempted relative import with no known parent package
 ```
 
-**Root Cause:** Files used relative imports (`from .utils import ...`) but `train.py` was executed directly with `python train.py`, not as part of a package.
+**Root Cause:** Files used relative imports (`from .utils import ...`) but were executed directly, not as part of a package.
 
-**Solution:** Change relative imports to absolute imports:
+**Solution (v1.1.1):** Restructured training module into proper Python package with absolute imports:
 ```python
-# ❌ WRONG - Fails when run directly
-from .utils import detect_problem_type, is_id_column
+# Package structure:
+# training/
+# ├── __init__.py
+# ├── main.py
+# ├── core/preprocessor.py
+# ├── reports/eda.py
+# └── utils/detection.py
 
-# ✅ CORRECT - Works when run directly
-from utils import detect_problem_type, is_id_column
+# Absolute imports work with `python -m training.main`
+from training.utils.detection import detect_problem_type, is_id_column
+from training.core.preprocessor import AutoPreprocessor
 ```
 
-**Key Insight:** In Docker containers where scripts are executed directly (not as modules), always use absolute imports. Relative imports only work when the file is imported as part of a package (`python -m package.module`).
+Dockerfile updated:
+```dockerfile
+COPY . ./training/
+ENV PYTHONPATH=/app
+CMD ["python", "-m", "training.main"]
+```
+
+**Key Insight:** For modular Python packages in Docker, use `python -m package.module` syntax with proper `__init__.py` files and absolute imports.
 
 ### Challenge: CORS and API URL Configuration
 **Problem:** Frontend couldn't connect to local API due to wrong endpoint.
@@ -573,7 +639,7 @@ services:
       - ~/.aws:/root/.aws:ro  # Mount AWS credentials
 ```
 
-**Key Insight:** Docker Compose with mounted AWS credentials enables fast iteration. Changes to `train.py` can be tested in seconds instead of minutes.
+**Key Insight:** Docker Compose with mounted AWS credentials enables fast iteration. Changes to `main.py` can be tested in seconds instead of minutes.
 
 ### Challenge: PowerShell Script Parameter Validation
 **Problem:** Script didn't validate required parameters, leading to cryptic errors.
@@ -756,8 +822,8 @@ pytest tests/training --cov=training --cov-report=xml
 | Component | Tests | Coverage | CI Pipeline |
 |-----------|-------|----------|-------------|
 | API | 104 | 69% | `deploy-lambda-api.yml` |
-| Training | 93 | 85%+ | `deploy-training-container.yml` |
-| **Total** | **197** | - | - |
+| Training | 159 | 53%+ | `deploy-training-container.yml` |
+| **Total** | **263** | - | - |
 
 ---
 

@@ -1,3 +1,10 @@
+"""
+Training Results Report Generator.
+
+This module generates HTML reports after model training with metrics,
+feature importance, configuration details, and preprocessing information.
+"""
+
 from typing import Dict, Any
 from datetime import datetime, timezone
 

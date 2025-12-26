@@ -65,6 +65,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Missing values warning with affected columns list
   - Selected column details with unique ratio visualization
 
+### Dependencies
+- **Dependency Audit & Version Updates** - Production-stable versions with flexible ranges
+  - FastAPI upgraded from 0.109.0 to >=0.115.0 (fixes ReDoc CDN issue with `redoc@next`)
+  - scikit-learn pinned to <1.6.0 (skl2onnx compatibility, avoids breaking API changes)
+  - LightGBM updated to >=4.3.0,<5.0.0 (tested with 4.6.0) for improved memory efficiency and faster training
+  - Pydantic 2.x with better validation performance and error messages
+  - ONNX Runtime updated to >=1.18.0,<1.20.0 for training and >=1.16.0,<2.0.0 for API (tested with 1.19.x for training and 1.23.x for API, latest optimizations)
+  - All 263 tests passing with updated dependencies
+
 ### Fixed
 - **Problem Type Detection** - Regression datasets were incorrectly classified as classification
   - Fixed heuristic logic: now requires BOTH integer-like values AND low cardinality
@@ -86,8 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Testing
 - **Comprehensive Test Suite** - Unit and integration tests for backend (v1.1.0)
-  - 197 total tests (104 API + 93 Training)
-  - API coverage: 69%, Training coverage: 85%+
+  - 263 total tests (104 API + 159 Training)
+  - API coverage: 69%, Training coverage: 53%+
   - Tests run automatically in CI/CD before deployment
   - Coverage reports published to GitHub Actions
 

@@ -1,14 +1,21 @@
-flaml==2.1.0
-pandas==2.2.3
-numpy==1.26.3
-scikit-learn==1.4.0
-feature-engine==1.8.1
-joblib==1.3.2
-boto3==1.34.0
-lightgbm==4.3.0
+# AutoML Training
+flaml>=2.1.0,<3.0.0          # AutoML engine
 
-# ONNX export support
-skl2onnx==1.17.0
-onnx==1.16.1
-onnxruntime==1.18.0
-onnxmltools==1.12.0
+# Data Processing
+pandas>=2.2.0,<3.0.0         # DataFrame operations
+numpy>=1.26.0,<2.0.0         # Numerical operations
+
+# ML Stack (pinned for compatibility)
+scikit-learn>=1.4.0,<1.6.0   # ML algorithms (conservative update)
+feature-engine>=1.8.1,<2.0.0 # Feature engineering
+joblib>=1.3.2,<2.0.0         # Model serialization
+lightgbm>=4.3.0,<5.0.0       # Gradient boosting
+
+# AWS SDK
+boto3>=1.34.0,<2.0.0         # AWS services
+
+# ONNX Stack (versions must be compatible together)
+skl2onnx>=1.17.0,<1.20.0     # sklearn to ONNX converter
+onnx>=1.16.0,<1.18.0         # ONNX format (constrained range for runtime compat)
+onnxruntime>=1.18.0,<1.20.0  # ONNX inference
+onnxmltools>=1.12.0,<2.0.0   # Additional ONNX converters

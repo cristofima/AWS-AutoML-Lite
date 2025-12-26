@@ -82,12 +82,22 @@ backend/
 │   ├── services/           # AWS service integrations
 │   └── utils/              # Helper functions
 ├── training/               # Training container code
-│   ├── train.py            # Main training script
-│   ├── preprocessor.py     # Data preprocessing
-│   ├── model_trainer.py    # FLAML AutoML training
-│   ├── eda.py              # EDA report generation
+│   ├── __init__.py         # Package root
+│   ├── main.py             # Entry point (AWS Batch)
 │   ├── Dockerfile          # Training container image
-│   └── requirements.txt    # Training dependencies
+│   ├── requirements.txt    # Training dependencies
+│   ├── core/               # Core ML components
+│   │   ├── __init__.py
+│   │   ├── preprocessor.py # Data preprocessing
+│   │   ├── trainer.py      # FLAML AutoML training
+│   │   └── exporter.py     # ONNX model export
+│   ├── reports/            # Report generation
+│   │   ├── __init__.py
+│   │   ├── eda.py          # EDA report generation
+│   │   └── training.py     # Training results report
+│   └── utils/              # Shared utilities
+│       ├── __init__.py
+│       └── detection.py    # Problem type detection
 ├── Dockerfile.api          # API container image
 └── requirements.txt        # API dependencies
 ```
@@ -265,12 +275,14 @@ backend/tests/
 │   ├── test_dynamo_service.py   # DynamoDB service tests
 │   ├── test_s3_service.py       # S3 service tests
 │   └── test_services_integration.py  # moto-based integration tests (21 tests)
-└── training/               # Training tests (93 tests, 85%+ coverage)
+└── training/               # Training tests (159 tests, 53% coverage)
     ├── conftest.py         # Shared fixtures
     ├── unit/               # Pure unit tests
     │   ├── test_preprocessor.py
-    │   ├── test_utils.py
-    │   └── test_model_trainer.py
+    │   ├── test_column_detection.py
+    │   ├── test_detect_problem_type.py
+    │   ├── test_eda.py
+    │   └── test_training_report.py
     └── integration/        # Training integration tests
 ```
 
@@ -355,11 +367,11 @@ The API automatically detects whether a target column is for **Classification** 
 
 ### Shared Utility Module
 
-The training module uses a centralized `utils.py` for shared functions:
+The training module uses a centralized `utils/detection.py` for shared functions:
 
 ```python
-# backend/training/utils.py
-from .utils import (
+# backend/training/utils/detection.py
+from training.utils.detection import (
     detect_problem_type,      # Classification vs Regression
     is_id_column,             # Detect identifier columns
     is_constant_column,       # Detect constant features
@@ -368,6 +380,6 @@ from .utils import (
 )
 ```
 
-This follows the DRY principle - logic is defined once and reused across `preprocessor.py` and `eda.py`.
+This follows the DRY principle - logic is defined once and reused across `core/preprocessor.py` and `reports/eda.py`.
 
 This detection is performed both in the API (for UI display) and in the training container (for model training).
