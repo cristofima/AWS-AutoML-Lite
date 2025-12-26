@@ -69,9 +69,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dependency Audit & Version Updates** - Production-stable versions with flexible ranges
   - FastAPI upgraded from 0.109.0 to >=0.115.0 (fixes ReDoc CDN issue with `redoc@next`)
   - scikit-learn pinned to <1.6.0 (skl2onnx compatibility, avoids breaking API changes)
-  - LightGBM 4.6.0 with improved memory efficiency and faster training
+  - LightGBM updated to >=4.3.0,<5.0.0 (tested with 4.6.0) for improved memory efficiency and faster training
   - Pydantic 2.x with better validation performance and error messages
-  - ONNX Runtime 1.19+ for training, 1.23+ for API (latest optimizations)
+  - ONNX Runtime updated to >=1.18.0,<1.20.0 for training and >=1.16.0,<2.0.0 for API (tested with 1.19.x for training and 1.23.x for API, latest optimizations)
   - All 263 tests passing with updated dependencies
 
 ### Fixed

@@ -28,7 +28,7 @@ This document outlines the unit testing strategy for the AWS AutoML Lite project
 | **API Tests** | 104 |
 | **Training Tests** | 159 |
 | **API Coverage** | 69% |
-| **Training Coverage** | 53%+ |
+| **Training Coverage** | 53% |
 | **CI/CD Integration** | ✅ Both pipelines |
 
 All tests run automatically before deployment in the respective CI/CD pipelines.
@@ -669,6 +669,8 @@ Current test coverage as of December 2025:
 | `core/preprocessor.py` | 63% | Data preprocessing |
 | `core/trainer.py` | 28% | FLAML training (requires mocking) |
 | `core/exporter.py` | 0% | ONNX export (requires FLAML) |
+
+> ⚠️ **Note:** The 53% overall coverage is weighted across all training files. Critical core modules (`trainer.py` at 28%, `exporter.py` at 0%) have significant gaps due to FLAML dependency complexity. These modules require additional mocking infrastructure to improve coverage.
 
 ---
 
