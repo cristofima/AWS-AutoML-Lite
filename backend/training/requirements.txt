@@ -16,6 +16,6 @@ boto3>=1.34.0,<2.0.0         # AWS services
 
 # ONNX Stack (versions must be compatible together)
 skl2onnx>=1.17.0,<1.20.0     # sklearn to ONNX converter
-onnx>=1.16.0,<1.18.0         # ONNX format (pinned for runtime compat)
+onnx>=1.16.0,<1.18.0         # ONNX format (constrained range for runtime compat)
 onnxruntime>=1.18.0,<1.20.0  # ONNX inference
 onnxmltools>=1.12.0,<2.0.0   # Additional ONNX converters
