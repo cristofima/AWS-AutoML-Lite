@@ -55,7 +55,7 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 </details>
 
 <details>
-<summary><strong>Results - Feature Importance</strong> - Understand which features matter most</summary>
+<summary><strong>Training Report - Feature Importance</strong> - Downloadable HTML report with interactive charts</summary>
 
 ![Results - Feature Importance](screenshots/training-report-2-feature-importance.png)
 </details>

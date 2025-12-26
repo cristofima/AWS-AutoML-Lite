@@ -5,7 +5,7 @@ All notable changes to AWS AutoML Lite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2025-12-24
+## [1.1.0] - 2025-12-26
 
 ### Added
 - **Serverless Model Inference** - Deploy and make predictions without SageMaker
@@ -81,7 +81,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Regression correctly detected for continuous numerical targets
   - Fixes "The least populated class in y has only 1 member" FLAML error
 
+### Removed
+- **Unused Frontend Dependencies** - Cleaned up packages that were never used in codebase
+  - `aws-sdk` (~15 MB) - Frontend uses backend API endpoints, not direct AWS SDK calls
+  - `axios` (~13 KB) - Native `fetch` API used throughout the application
+  - `date-fns` (~12-67 KB) - `Intl.DateTimeFormat` and `Intl.RelativeTimeFormat` used instead
+  - `recharts` (~80 KB) - Feature importance charts only in downloadable HTML reports
+  - **Total bundle size reduction**: ~108-160 KB
+  - **Impact**: Faster page loads, smaller deployments on Amplify
+
+- **Feature Importance from DynamoDB** - Eliminated redundant data storage
+  - `feature_importance` field removed from job records in DynamoDB
+  - Data still available in:
+    - Training Report HTML (interactive charts with full details)
+    - PKL model file (programmatic access via `model.feature_importances_`)
+  - **Benefits**: Reduced DynamoDB item size (~1-5 KB per job), smaller API payloads, single source of truth
+  - Frontend results page shows info banner directing users to download Training Report
+  - Compare page feature importance section removed (data no longer in API)
+
 ### Changed
+- **Download Results Layout** - Reorganized for better scalability and UX
+  - Two-column layout: "🤖 Trained Models" (left) | "📄 Analysis Reports" (right)
+  - Each download button has inline description of contents
+  - EDA Report: Dataset overview, statistics, correlations, missing values, data quality warnings
+  - Training Report: Feature importance charts, metrics, hyperparameters, preprocessing steps
+  - Responsive design: stacks vertically on mobile
+  - Easily extensible for new model formats (TensorFlow, PyTorch) or reports (Data Drift, Model Comparison)
+
 - **Code Quality (DRY Refactoring)** - Centralized shared utilities in training module
   - Created `backend/training/utils.py` with shared detection functions
   - `detect_problem_type()`, `is_id_column()`, `is_constant_column()` now in single location
@@ -175,7 +201,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
-- **v1.1.0** (2025-12-24) - Serverless inference, dark mode, ONNX export, model comparison
+- **v1.1.0** (2025-12-26) - Serverless inference, dark mode, ONNX export, model comparison
 - **v1.0.0** (2025-12-03) - Initial release with full serverless architecture and comprehensive documentation
 
 ---

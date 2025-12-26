@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getJobDetails, JobDetails, downloadWithFilename, deployModel, makePrediction, PredictionResponse } from '@/lib/api';
 import { formatMetric, getProblemTypeIcon, formatDateTime } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Header from '@/components/Header';
 import JobMetadataEditor from '@/components/JobMetadataEditor';
 
@@ -219,14 +218,6 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
     );
   }
 
-  // Prepare feature importance data for chart
-  const featureImportanceData = job.metrics.feature_importance
-    ? Object.entries(job.metrics.feature_importance)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 10)
-        .map(([name, value]) => ({ name, importance: value }))
-    : [];
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 transition-colors">
       <Header title="Training Results" showViewAllJobs />
@@ -351,25 +342,6 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
             </div>
           )}
         </div>
-
-        {/* Feature Importance */}
-        {featureImportanceData.length > 0 && (
-          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-6 transition-colors">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Feature Importance (Top 10)</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={featureImportanceData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-gray-200 dark:text-zinc-700" />
-                  <XAxis type="number" stroke="currentColor" className="text-gray-600 dark:text-gray-400" />
-                  <YAxis dataKey="name" type="category" width={120} stroke="currentColor" className="text-gray-600 dark:text-gray-400" />
-                  <Tooltip contentStyle={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }} />
-                  <Legend />
-                  <Bar dataKey="importance" fill="#6366f1" name="Importance" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
 
         {/* Model Deployment & Prediction Playground */}
         {job.onnx_model_download_url && (
@@ -697,62 +669,106 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
 
         {/* Download Section */}
         <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-6 transition-colors">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Download Results</h3>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {job.model_download_url && (
-              <button
-                onClick={() => downloadWithFilename(job.model_download_url!, `model_${job.job_id.slice(0, 8)}.pkl`)}
-                className="flex items-center justify-center space-x-2 px-6 py-4 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors cursor-pointer"
-              >
-                <span className="text-2xl">📦</span>
-                <span className="font-medium">Download Model (.pkl)</span>
-              </button>
-            )}
-            {job.onnx_model_download_url && (
-              <button
-                onClick={() => downloadWithFilename(job.onnx_model_download_url!, `model_${job.job_id.slice(0, 8)}.onnx`)}
-                className="flex items-center justify-center space-x-2 px-6 py-4 bg-orange-600 dark:bg-orange-500 text-white rounded-lg hover:bg-orange-700 dark:hover:bg-orange-600 transition-colors cursor-pointer"
-                title="ONNX format for cross-platform inference (C#, JavaScript, Rust, etc.)"
-              >
-                <span className="text-2xl">⚡</span>
-                <span className="font-medium">Download Model (.onnx)</span>
-              </button>
-            )}
-            {(job.eda_report_download_url || job.report_download_url) && (
-              <button
-                onClick={() => downloadWithFilename(
-                  job.eda_report_download_url || job.report_download_url!, 
-                  `eda_report_${job.job_id.slice(0, 8)}.html`
-                )}
-                className="flex items-center justify-center space-x-2 px-6 py-4 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors cursor-pointer"
-              >
-                <span className="text-2xl">📊</span>
-                <span className="font-medium">EDA Report (.html)</span>
-              </button>
-            )}
-            {job.training_report_download_url && (
-              <button
-                onClick={() => downloadWithFilename(
-                  job.training_report_download_url!, 
-                  `training_report_${job.job_id.slice(0, 8)}.html`
-                )}
-                className="flex items-center justify-center space-x-2 px-6 py-4 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors cursor-pointer"
-              >
-                <span className="text-2xl">🏆</span>
-                <span className="font-medium">Training Report (.html)</span>
-              </button>
-            )}
-          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Download Results</h3>
           
-          {/* ONNX info tooltip */}
-          {job.onnx_model_download_url && (
-            <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
-              <p className="text-sm text-orange-800 dark:text-orange-300">
-                <strong>💡 ONNX Format:</strong> Use for cross-platform inference in C#, JavaScript, Rust, Java, and more. 
-                Run with <a href="https://onnxruntime.ai/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">ONNX Runtime</a>.
-              </p>
+          {/* Two-column layout: Models | Reports */}
+          <div className="grid md:grid-cols-2 gap-6">
+            
+            {/* Left Column: Models */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                <span className="text-lg mr-2">🤖</span>
+                Trained Models
+              </h4>
+              <div className="space-y-3">
+                {job.model_download_url && (
+                  <button
+                    onClick={() => downloadWithFilename(job.model_download_url!, `model_${job.job_id.slice(0, 8)}.pkl`)}
+                    className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors cursor-pointer"
+                  >
+                    <span className="text-2xl">📦</span>
+                    <span className="font-medium">Download Model (.pkl)</span>
+                  </button>
+                )}
+                {job.onnx_model_download_url && (
+                  <button
+                    onClick={() => downloadWithFilename(job.onnx_model_download_url!, `model_${job.job_id.slice(0, 8)}.onnx`)}
+                    className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-orange-600 dark:bg-orange-500 text-white rounded-lg hover:bg-orange-700 dark:hover:bg-orange-600 transition-colors cursor-pointer"
+                    title="ONNX format for cross-platform inference (C#, JavaScript, Rust, etc.)"
+                  >
+                    <span className="text-2xl">⚡</span>
+                    <span className="font-medium">Download Model (.onnx)</span>
+                  </button>
+                )}
+                
+                {/* ONNX Info - appears after ONNX button */}
+                {job.onnx_model_download_url && (
+                  <div className="p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    <p className="text-xs text-orange-800 dark:text-orange-300">
+                      <strong>💡 ONNX Format:</strong> Cross-platform inference in C#, JavaScript, Rust, Java. 
+                      Run with <a href="https://onnxruntime.ai/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">ONNX Runtime</a>.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+            
+            {/* Right Column: Reports */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                <span className="text-lg mr-2">📄</span>
+                Analysis Reports
+              </h4>
+              <div className="space-y-3">
+                {(job.eda_report_download_url || job.report_download_url) && (
+                  <>
+                    <button
+                      onClick={() => downloadWithFilename(
+                        job.eda_report_download_url || job.report_download_url!, 
+                        `eda_report_${job.job_id.slice(0, 8)}.html`
+                      )}
+                      className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors cursor-pointer"
+                    >
+                      <span className="text-2xl">📊</span>
+                      <span className="font-medium">EDA Report (.html)</span>
+                    </button>
+                    
+                    {/* EDA Report Info */}
+                    <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                      <p className="text-xs text-green-800 dark:text-green-300">
+                        <strong>📊 EDA Report:</strong> Dataset overview, column statistics, 
+                        correlation analysis, missing values, and data quality warnings.
+                      </p>
+                    </div>
+                  </>
+                )}
+                
+                {job.training_report_download_url && (
+                  <>
+                    <button
+                      onClick={() => downloadWithFilename(
+                        job.training_report_download_url!, 
+                        `training_report_${job.job_id.slice(0, 8)}.html`
+                      )}
+                      className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors cursor-pointer"
+                    >
+                      <span className="text-2xl">🏆</span>
+                      <span className="font-medium">Training Report (.html)</span>
+                    </button>
+                    
+                    {/* Training Report Info */}
+                    <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
+                      <p className="text-xs text-purple-800 dark:text-purple-300">
+                        <strong>🏆 Training Report:</strong> Feature importance charts, 
+                        model metrics, hyperparameters, preprocessing steps, and examples.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            
+          </div>
         </div>
 
         {/* How to Use Your Model Section */}

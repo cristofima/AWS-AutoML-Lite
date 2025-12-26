@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { listJobs, getJobDetails, JobDetails } from '@/lib/api';
@@ -145,17 +145,6 @@ function ComparePageContent() {
     
     router.push(`/compare${newIds.length > 0 ? '?' + params.toString() : ''}`);
   };
-
-  // Get all unique features across selected jobs
-  const allFeatures = useMemo(() => {
-    const featuresSet = new Set<string>();
-    selectedJobs.forEach(job => {
-      if (job.metrics?.feature_importance) {
-        Object.keys(job.metrics.feature_importance).forEach(f => featuresSet.add(f));
-      }
-    });
-    return Array.from(featuresSet).sort();
-  }, [selectedJobs]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 transition-colors">
@@ -303,76 +292,6 @@ function ComparePageContent() {
                 </div>
               )}
             </div>
-
-            {/* Feature Importance Comparison */}
-            {allFeatures.length > 0 && (
-              <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-6 transition-colors">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  📈 Feature Importance Comparison
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                  Top features ranked by importance across selected models
-                </p>
-                
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-zinc-700">
-                        <th className="py-3 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
-                          Feature
-                        </th>
-                        {selectedJobs.map((job, idx) => (
-                          <th key={job.job_id} className="py-3 px-4 text-center text-sm font-medium text-gray-900 dark:text-gray-100">
-                            Model {idx + 1}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allFeatures.slice(0, 15).map((feature) => (
-                        <tr key={feature} className="border-b border-gray-100 dark:border-zinc-800">
-                          <td className="py-2 px-4 text-sm font-medium text-gray-700 dark:text-gray-300 truncate max-w-[200px]" title={feature}>
-                            {feature}
-                          </td>
-                          {selectedJobs.map((job) => {
-                            const importance = job.metrics?.feature_importance?.[feature];
-                            const maxImportance = Math.max(
-                              ...selectedJobs
-                                .map(j => j.metrics?.feature_importance?.[feature] || 0)
-                            );
-                            const barWidth = importance && maxImportance > 0 
-                              ? (importance / maxImportance) * 100 
-                              : 0;
-                            
-                            return (
-                              <td key={job.job_id} className="py-2 px-4">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex-1 bg-gray-100 dark:bg-zinc-700 rounded-full h-2 overflow-hidden">
-                                    <div 
-                                      className="bg-indigo-500 h-2 rounded-full transition-all"
-                                      style={{ width: `${barWidth}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 w-12 text-right font-mono">
-                                    {importance !== undefined ? (importance * 100).toFixed(1) : '-'}
-                                  </span>
-                                </div>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {allFeatures.length > 15 && (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 text-center">
-                    Showing top 15 features of {allFeatures.length} total
-                  </p>
-                )}
-              </div>
-            )}
           </>
         )}
 

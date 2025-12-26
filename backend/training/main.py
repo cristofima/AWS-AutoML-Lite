@@ -190,8 +190,7 @@ def main() -> None:
             onnx_model_path=onnx_s3_path,
             eda_report_s3_path=report_s3_path,
             training_report_s3_path=training_report_s3_path,
-            metrics=metrics, 
-            feature_importance=feature_importance,
+            metrics=metrics,
             dropped_columns=dropped_columns,
             feature_columns=feature_columns,
             feature_metadata=feature_metadata
@@ -259,7 +258,6 @@ def update_job_completion(
     eda_report_s3_path: str,
     training_report_s3_path: str,
     metrics: Dict[str, Any],
-    feature_importance: Dict[str, float],
     dropped_columns: Optional[List[str]],
     feature_columns: Optional[List[str]],
     feature_metadata: Optional[Dict[str, Any]]
@@ -276,9 +274,6 @@ def update_job_completion(
             metrics_decimal[k] = Decimal(str(v))
         else:
             metrics_decimal[k] = str(v)  # Keep strings as-is
-    
-    feature_importance_decimal = {k: Decimal(str(v)) 
-                                  for k, v in feature_importance.items()}
     
     # Build preprocessing info with feature metadata for inference
     preprocessing_info = {}
@@ -301,6 +296,7 @@ def update_job_completion(
             preprocessing_info['target_mapping'] = feature_metadata['target_mapping']
     
     # Build update expression dynamically to handle optional ONNX path
+    # Note: feature_importance is NOT stored in DynamoDB (redundant with training report and PKL model)
     update_expr = """
         SET #status = :status,
             updated_at = :updated_at,
@@ -311,7 +307,6 @@ def update_job_completion(
             eda_report_path = :eda_report_path,
             training_report_path = :training_report_path,
             #metrics = :metrics,
-            feature_importance = :feature_importance,
             completed_at = :completed_at,
             preprocessing_info = :preprocessing_info
     """
@@ -327,7 +322,6 @@ def update_job_completion(
         ':eda_report_path': eda_report_s3_path,
         ':training_report_path': training_report_s3_path,
         ':metrics': metrics_decimal,
-        ':feature_importance': feature_importance_decimal,
         ':preprocessing_info': preprocessing_info if preprocessing_info else None
     }
     
