@@ -9,7 +9,6 @@ on:
     paths:
       - 'backend/api/**'
       - 'backend/requirements.txt'
-      - 'backend/requirements-dev.txt'
       - '!backend/api/**/*.md'
       - '.github/workflows/deploy-lambda-api.yml'
   workflow_dispatch:
