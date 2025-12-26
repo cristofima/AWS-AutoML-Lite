@@ -311,8 +311,8 @@ Batch job starts → Downloads CSV from S3
 Frontend polls status endpoint → Lambda queries DynamoDB
 Job completed → Frontend fetches results
              → Displays metrics (accuracy, F1, confusion matrix)
-             → Shows feature importance
-             → Provides download links (model, report)
+             → Provides download links (model, report, EDA report)
+             → Feature importance available in downloadable Training Report HTML
 ```
 
 ---
@@ -342,8 +342,13 @@ Job completed → Frontend fetches results
     "f1_score": 0.94,
     "training_time": 120.5
   },
-  "feature_importance": {...},
-  "error_message": "string|null"
+  "tags": ["tag1", "tag2"],
+  "notes": "string",
+  "deployed": true,
+  "error_message": "string|null",
+  "onnx_model_download_url": "string",
+  "training_report_download_url": "string",
+  "eda_report_download_url": "string"
 }
 ```
 
