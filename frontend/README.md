@@ -84,9 +84,9 @@ frontend/
 
 4. **Results (`/results/[jobId]`)**
    - Model metrics (accuracy, F1, R², RMSE, etc.)
-   - Feature importance chart
    - Download model (.pkl and .onnx)
    - Download EDA report (.html)
+   - Download Training report (.html) - includes feature importance charts
    - 🚀 **One-click Model Deploy** (v1.1.0) - serverless inference
    - 🎮 **Prediction Playground** (v1.1.0) - test predictions in-browser
      - Classification: shows predicted class with confidence percentage
@@ -95,7 +95,6 @@ frontend/
 5. **Compare Models (`/compare`)** (v1.1.0)
    - Side-by-side comparison of up to 4 training runs
    - Metrics table with best values highlighted (🏆)
-   - Feature importance visual comparison
    - URL sharing: `/compare?jobs=id1,id2,id3`
 
 6. **History (`/history`)**

@@ -50,7 +50,6 @@ export interface TrainingMetrics {
   r2_score?: number;
   rmse?: number;
   mae?: number;
-  feature_importance?: Record<string, number>;
 }
 
 export interface JobDetails {
