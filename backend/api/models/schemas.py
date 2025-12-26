@@ -111,7 +111,6 @@ class JobDetails(BaseModel):
     eda_report_path: Optional[str] = None
     training_report_path: Optional[str] = None
     metrics: Optional[TrainingMetrics] = None
-    feature_importance: Optional[Dict[str, float]] = None
     error_message: Optional[str] = None
     tags: Optional[List[str]] = None  # Custom labels for filtering
     notes: Optional[str] = None  # User notes for experiment tracking
