@@ -225,6 +225,10 @@ class DynamoDBService:
                 'updated_at': datetime.now(timezone.utc).isoformat()
             }
             
+            # Add deployed_at timestamp when deploying
+            if deployed:
+                update_data['deployed_at'] = datetime.now(timezone.utc).isoformat()
+            
             update_expr = "SET " + ", ".join([f"#{k} = :{k}" for k in update_data.keys()])
             expr_attr_names = {f"#{k}": k for k in update_data.keys()}
             expr_attr_values = {f":{k}": v for k, v in update_data.items()}

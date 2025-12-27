@@ -94,6 +94,7 @@ class TrainingMetrics(BaseModel):
     rmse: Optional[float] = None
     mae: Optional[float] = None
     training_time: float
+    best_estimator: str  # 'lgbm', 'rf', 'xgb', 'extra_tree'
 
 
 class JobDetails(BaseModel):
@@ -114,6 +115,8 @@ class JobDetails(BaseModel):
     error_message: Optional[str] = None
     tags: Optional[List[str]] = None  # Custom labels for filtering
     notes: Optional[str] = None  # User notes for experiment tracking
+    deployed: bool = False  # Whether the model is deployed for inference
+    deployed_at: Optional[datetime] = None  # When the model was deployed
     
     model_config = {"protected_namespaces": ()}
 
@@ -137,6 +140,28 @@ class PreprocessingInfo(BaseModel):
     target_mapping: Optional[Dict[str, str]] = None  # encoded_value -> original_label
 
 
+class JobSummary(BaseModel):
+    """Lightweight job summary for list view - optimized for performance"""
+    job_id: str
+    dataset_id: str
+    status: JobStatus
+    target_column: str
+    problem_type: Optional[ProblemType] = None
+    dataset_name: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    tags: Optional[List[str]] = None
+    
+    # Only primary metric for sorting/filtering in list view
+    primary_metric: Optional[float] = None  # accuracy (classification) or r2_score (regression)
+    training_time: Optional[float] = None  # seconds
+    best_estimator: Optional[str] = None  # 'lgbm', 'rf', 'xgb', 'extra_tree'
+    
+    model_config = {"protected_namespaces": ()}
+
+
 class JobResponse(BaseModel):
     job_id: str
     dataset_id: str
@@ -158,6 +183,7 @@ class JobResponse(BaseModel):
     tags: Optional[List[str]] = None  # Custom labels for filtering
     notes: Optional[str] = None  # User notes for experiment tracking
     deployed: bool = False  # Whether the model is deployed for inference
+    deployed_at: Optional[str] = None  # When the model was deployed
     preprocessing_info: Optional[PreprocessingInfo] = None  # Feature info for inference
     
     model_config = {"protected_namespaces": ()}
@@ -199,5 +225,5 @@ class PredictionResponse(BaseModel):
 
 
 class JobListResponse(BaseModel):
-    jobs: List[JobDetails]
+    jobs: List[JobSummary]  # Changed to JobSummary for performance
     next_token: Optional[str] = None
