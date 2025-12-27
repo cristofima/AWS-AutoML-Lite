@@ -19,13 +19,6 @@ from datetime import datetime, timezone
 import traceback
 from typing import Any, Dict, List, Optional
 
-# Import from new package structure
-from training.core.preprocessor import AutoPreprocessor
-from training.core.trainer import train_automl_model
-from training.core.exporter import export_model_to_onnx
-from training.reports.eda import generate_eda_report
-from training.reports.training import generate_training_report
-
 
 def main() -> None:
     """Main training script executed by AWS Batch"""
@@ -52,6 +45,14 @@ def main() -> None:
     jobs_table = dynamodb.Table(dynamodb_jobs_table)
     
     try:
+        # Import training modules INSIDE try/except to catch import errors
+        print("Loading training modules...")
+        from training.core.preprocessor import AutoPreprocessor
+        from training.core.trainer import train_automl_model
+        from training.core.exporter import export_model_to_onnx
+        from training.reports.eda import generate_eda_report
+        from training.reports.training import generate_training_report
+        print("Training modules loaded successfully")
         # Update job status to RUNNING
         update_job_status(jobs_table, job_id, 'running')
         
