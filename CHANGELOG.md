@@ -5,7 +5,7 @@ All notable changes to AWS AutoML Lite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2025-12-26
+## [Unreleased]
 
 ### Added
 - **Serverless Model Inference** - Deploy and make predictions without SageMaker
@@ -65,6 +65,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Missing values warning with affected columns list
   - Selected column details with unique ratio visualization
 
+### Improved
+- **Performance: Early Stopping for Convergence** - Optimize training time for large datasets
+  - Added `early_stop=True` to FLAML configuration in `trainer.py`
+  - Stops hyperparameter search early if convergence is detected
+  - Prevents wasted compute time when accuracy plateaus (e.g., 20-minute training with same 93.1% accuracy as shorter runs)
+  - Added `retrain_full=True` to ensure best model is retrained on full training data after search
+  - Reduces training costs on AWS Batch while maintaining model quality
+
+- **Algorithm Restoration: XGBoost Re-enabled** - Now includes 4 ML algorithms
+  - Re-enabled XGBoost in estimator_list: `['lgbm', 'xgb', 'rf', 'extra_tree']`
+  - Historical `best_iteration` bug fixed in FLAML v2.1.1 (Oct 2023, see issue #1217)
+  - XGBoost 2.0 breaking change handled by FLAML >=2.1.0
+  - `best_estimator` field now stored in DynamoDB metrics to track which algorithm was selected
+  - Updated `LESSONS_LEARNED.md` with bug timeline and resolution details
+
 ### Dependencies
 - **Dependency Audit & Version Updates** - Production-stable versions with flexible ranges
   - FastAPI upgraded from 0.109.0 to >=0.115.0 (fixes ReDoc CDN issue with `redoc@next`)
@@ -72,9 +87,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - LightGBM updated to >=4.3.0,<5.0.0 (tested with 4.6.0) for improved memory efficiency and faster training
   - Pydantic 2.x with better validation performance and error messages
   - ONNX Runtime updated to >=1.18.0,<1.20.0 for training and >=1.16.0,<2.0.0 for API (tested with 1.19.x for training and 1.23.x for API, latest optimizations)
+  - **FLAML now requires `[automl]` extra**: Updated to `flaml[automl]>=2.1.0,<3.0.0` (FLAML changed package structure, AutoML functionality now in separate install extra)
   - All 263 tests passing with updated dependencies
 
 ### Fixed
+- **Critical: Import Errors Not Reported** - Training jobs stuck in "pending" when dependencies fail
+  - Moved module imports inside try/except block in `backend/training/main.py`
+  - Import errors now properly caught and reported to DynamoDB with "failed" status
+  - Users now see immediate failure feedback instead of indefinite "pending" state
+  - Added module loading status messages to CloudWatch logs for debugging
+
 - **Problem Type Detection** - Regression datasets were incorrectly classified as classification
   - Fixed heuristic logic: now requires BOTH integer-like values AND low cardinality
   - Previously used `OR` condition which misclassified float targets (e.g., 35.5, 40.2) as classification
