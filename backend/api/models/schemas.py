@@ -94,7 +94,7 @@ class TrainingMetrics(BaseModel):
     rmse: Optional[float] = None
     mae: Optional[float] = None
     training_time: float
-    best_estimator: str  # 'lgbm', 'rf', 'xgb', 'extra_tree'
+    best_estimator: str  # 'lgbm', 'rf', 'xgboost', 'extra_tree'
 
 
 class JobDetails(BaseModel):
@@ -157,7 +157,7 @@ class JobSummary(BaseModel):
     # Only primary metric for sorting/filtering in list view
     primary_metric: Optional[float] = None  # accuracy (classification) or r2_score (regression)
     training_time: Optional[float] = None  # seconds
-    best_estimator: Optional[str] = None  # 'lgbm', 'rf', 'xgb', 'extra_tree'
+    best_estimator: Optional[str] = None  # 'lgbm', 'rf', 'xgboost', 'extra_tree'
     
     model_config = {"protected_namespaces": ()}
 
