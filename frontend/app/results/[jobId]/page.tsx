@@ -66,8 +66,8 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
     
     try {
       await deployModel(jobId, deploy);
-      // Refresh job data
-      const updatedJob = await getJobDetails(jobId);
+      // Refresh job data with cache bypass (deployed/deployed_at changed)
+      const updatedJob = await getJobDetails(jobId, true);
       setJob(updatedJob);
       
       // Initialize feature inputs if deploying
@@ -252,19 +252,19 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                     job.metrics.best_estimator === 'lgbm' ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300' :
                     job.metrics.best_estimator === 'rf' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
                     job.metrics.best_estimator === 'extra_tree' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' :
-                    job.metrics.best_estimator === 'xgb' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' :
+                    job.metrics.best_estimator === 'xgboost' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' :
                     'bg-gray-100 dark:bg-gray-900/50 text-gray-700 dark:text-gray-300'
                   }`}>
                     <span className="mr-1">
                       {job.metrics.best_estimator === 'lgbm' ? '🚀' :
                        job.metrics.best_estimator === 'rf' ? '🌲' :
                        job.metrics.best_estimator === 'extra_tree' ? '🌳' :
-                       job.metrics.best_estimator === 'xgb' ? '⚡' : '🤖'}
+                       job.metrics.best_estimator === 'xgboost' ? '⚡' : '🤖'}
                     </span>
                     {job.metrics.best_estimator === 'lgbm' ? 'LightGBM' :
                      job.metrics.best_estimator === 'rf' ? 'Random Forest' :
                      job.metrics.best_estimator === 'extra_tree' ? 'Extra Trees' :
-                     job.metrics.best_estimator === 'xgb' ? 'XGBoost' :
+                     job.metrics.best_estimator === 'xgboost' ? 'XGBoost' :
                      job.metrics.best_estimator}
                   </span>
                 ) : 'N/A'}

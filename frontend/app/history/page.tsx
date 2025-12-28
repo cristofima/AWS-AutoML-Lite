@@ -14,7 +14,7 @@ const getBestEstimatorBadge = (estimator?: string) => {
     'lgbm': { icon: '🚀', label: 'LightGBM', color: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300' },
     'rf': { icon: '🌲', label: 'Random Forest', color: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' },
     'extra_tree': { icon: '🌳', label: 'Extra Trees', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' },
-    'xgb': { icon: '⚡', label: 'XGBoost', color: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' },
+    'xgboost': { icon: '⚡', label: 'XGBoost', color: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' },
   };
   
   const badge = badges[estimator] || { icon: '🤖', label: estimator, color: 'bg-gray-100 dark:bg-gray-900/50 text-gray-700 dark:text-gray-300' };
