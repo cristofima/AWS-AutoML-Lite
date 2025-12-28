@@ -581,8 +581,8 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                                     return String(originalValue);
                                   }
                                 }
-                                // No mapping or missing label - show encoded class index directly (0-indexed)
-                                return `Class ${encodedClass}`;
+                                // No mapping - show Class N (user-friendly 1-indexed)
+                                return `Class ${encodedClass + 1}`;
                               }
                               
                               // Regression - smart number formatting with error margin
@@ -613,6 +613,12 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                           <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {job.problem_type === 'classification' ? 'Predicted Class' : 'Predicted Value'}
                           </div>
+                          {/* Show encoded value when no custom labels */}
+                          {job.problem_type === 'classification' && typeof predictionResult.prediction === 'number' && !job.preprocessing_info?.target_mapping && (
+                            <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
+                              (encoded value: {Math.round(predictionResult.prediction)})
+                            </div>
+                          )}
                           {job.problem_type === 'regression' && job.metrics?.rmse !== undefined && (
                             <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
                               (± RMSE expected error)
@@ -656,12 +662,13 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                                     const originalValue = targetMapping[cls];
                                     const isNumericLabel = !isNaN(Number(originalValue));
                                     if (isNumericLabel) {
-                                      label = `Class ${classNum} (${originalValue})`;
+                                      label = `Class ${classNum} (value: ${originalValue})`;
                                     } else {
                                       label = originalValue;
                                     }
                                   } else {
-                                    label = `Class ${classNum}`;
+                                    // No mapping - show Class N with encoded value for clarity
+                                    label = `Class ${classNum} (value: ${encodedClass})`;
                                   }
                                   
                                   return (
