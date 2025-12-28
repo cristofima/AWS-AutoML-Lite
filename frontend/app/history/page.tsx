@@ -28,7 +28,14 @@ const getBestEstimatorBadge = (estimator?: string) => {
 };
 
 const formatDuration = (seconds: number) => { 
-  return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+
+  if (minutes > 0) {
+    return `${minutes}m ${remainingSeconds}s`;
+  }
+
+  return `${remainingSeconds}s`;
 };
 
 const formatMetricValue = (value?: number) => {
