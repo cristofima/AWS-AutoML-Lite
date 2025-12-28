@@ -72,7 +72,7 @@ def train_automl_model(
         time_budget=time_budget,
         # XGBoost re-enabled: bug fixed in FLAML v2.1.1+ (Oct 2023)
         # Previous issue: AttributeError 'best_iteration' without early stopping
-        estimator_list=['lgbm', 'xgb', 'rf', 'extra_tree'],
+        estimator_list=['lgbm', 'xgboost', 'rf', 'extra_tree'],
         verbose=1,
         log_file_name='flaml_training.log',
         early_stop=True,  # Stop early if search converges (saves time/compute)

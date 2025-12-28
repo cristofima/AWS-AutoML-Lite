@@ -95,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reduces training costs on AWS Batch while maintaining model quality
 
 - **Algorithm Restoration: XGBoost Re-enabled** - Now includes 4 ML algorithms
-  - Re-enabled XGBoost in estimator_list: `['lgbm', 'xgb', 'rf', 'extra_tree']`
+  - Re-enabled XGBoost in estimator_list: `['lgbm', 'xgboost', 'rf', 'extra_tree']`
   - Historical `best_iteration` bug fixed in FLAML v2.1.1 (Oct 2023, see issue #1217)
   - XGBoost 2.0 breaking change handled by FLAML >=2.1.0
   - `best_estimator` field now stored in DynamoDB metrics to track which algorithm was selected
