@@ -3,13 +3,58 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { listJobs, deleteJob, JobDetails } from '@/lib/api';
-import { getStatusColor, getStatusIcon, formatDate } from '@/lib/utils';
+import { listJobs, deleteJob, JobSummary } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
+
+// Helper functions for new UI features
+const getBestEstimatorBadge = (estimator?: string) => {
+  if (!estimator) return <span className="text-xs text-gray-400 dark:text-gray-500">—</span>;
+  
+  const badges: Record<string, { icon: string; label: string; color: string }> = {
+    'lgbm': { icon: '🚀', label: 'LightGBM', color: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300' },
+    'rf': { icon: '🌲', label: 'Random Forest', color: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' },
+    'extra_tree': { icon: '🌳', label: 'Extra Trees', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' },
+    'xgboost': { icon: '⚡', label: 'XGBoost', color: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' },
+  };
+  
+  const badge = badges[estimator] || { icon: '🤖', label: estimator, color: 'bg-gray-100 dark:bg-gray-900/50 text-gray-700 dark:text-gray-300' };
+  
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`} title={badge.label}>
+      <span className="mr-1">{badge.icon}</span>
+      {badge.label}
+    </span>
+  );
+};
+
+const formatDuration = (seconds: number) => { 
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+
+  if (minutes > 0) {
+    return `${minutes}m ${remainingSeconds}s`;
+  }
+
+  return `${remainingSeconds}s`;
+};
+
+const formatMetricValue = (value?: number) => {
+  if (value === undefined || value === null) return <span className="text-xs text-gray-400 dark:text-gray-500">—</span>;
+  
+  const percentage = (value * 100).toFixed(2);
+  const color = value >= 0.9 ? 'text-green-600 dark:text-green-400' : value >= 0.7 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400';
+  
+  return (
+    <span className={`text-sm font-semibold ${color}`} title={`Raw value: ${value.toFixed(4)}`}>
+      {percentage}%
+    </span>
+  );
+};
 import Header from '@/components/Header';
 
 export default function HistoryPage() {
   const router = useRouter();
-  const [jobs, setJobs] = useState<JobDetails[]>([]);
+  const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [nextToken, setNextToken] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +126,7 @@ export default function HistoryPage() {
     return result;
   }, [jobs, filter, tagFilter]);
 
-  const handleJobClick = (job: JobDetails) => {
+  const handleJobClick = (job: JobSummary) => {
     if (job.status === 'completed') {
       router.push(`/results/${job.job_id}`);
     } else if (job.status === 'running' || job.status === 'pending') {
@@ -95,6 +140,32 @@ export default function HistoryPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats */}
+        <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-4 text-center transition-colors">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{jobs.length}</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Total Jobs</div>
+          </div>
+          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-4 text-center transition-colors">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {jobs.filter(j => j.status === 'completed').length}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Completed</div>
+          </div>
+          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-4 text-center transition-colors">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {jobs.filter(j => j.status === 'running').length}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Running</div>
+          </div>
+          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-4 text-center transition-colors">
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+              {jobs.filter(j => j.status === 'failed').length}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Failed</div>
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-4 mb-6 transition-colors">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -194,15 +265,18 @@ export default function HistoryPage() {
                     Problem Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Best Model
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Metric
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Tags
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
+                    Completed At
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Created At
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -215,7 +289,10 @@ export default function HistoryPage() {
                     onClick={() => handleJobClick(job)}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-mono text-gray-900 dark:text-gray-100">
+                      <div 
+                        className="text-sm font-mono text-gray-900 dark:text-gray-100" 
+                        title={job.training_time ? `Training time: ${formatDuration(job.training_time)}` : 'Training time: N/A'}
+                      >
                         {job.job_id.substring(0, 8)}...
                       </div>
                     </td>
@@ -228,6 +305,12 @@ export default function HistoryPage() {
                       <div className="text-sm text-gray-900 dark:text-gray-100">
                         {job.problem_type ? job.problem_type.charAt(0).toUpperCase() + job.problem_type.slice(1) : 'N/A'}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getBestEstimatorBadge(job.best_estimator)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {formatMetricValue(job.primary_metric)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1 max-w-[150px]">
@@ -248,46 +331,37 @@ export default function HistoryPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(job.status)}`}>
-                        {getStatusIcon(job.status)} {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                      </span>
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {job.created_at ? formatDate(job.created_at) : 'N/A'}
+                      {job.completed_at && job.status === 'completed' ? formatDate(job.completed_at) : '—'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center space-x-2">
-                        {job.status === 'completed' ? (
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center space-x-3">
+                        {(job.status === 'completed' || job.status === 'running' || job.status === 'pending') && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              router.push(`/results/${job.job_id}`);
+                              if (job.status === 'completed') {
+                                router.push(`/results/${job.job_id}`);
+                              } else {
+                                router.push(`/training/${job.job_id}`);
+                              }
                             }}
-                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 font-medium cursor-pointer"
+                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 text-lg cursor-pointer transition-colors"
+                            title={job.status === 'completed' ? 'View Results' : 'View Status'}
                           >
-                            View Results
+                            👁️
                           </button>
-                        ) : job.status === 'running' || job.status === 'pending' ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/training/${job.job_id}`);
-                            }}
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 font-medium cursor-pointer"
-                          >
-                            View Status
-                          </button>
-                        ) : null}
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowDeleteModal(job.job_id);
                           }}
                           disabled={deletingJobId === job.job_id}
-                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 font-medium disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 text-lg disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                          title="Delete Job"
                         >
-                          {deletingJobId === job.job_id ? 'Deleting...' : '🗑️'}
+                          {deletingJobId === job.job_id ? '⏳' : '🗑️'}
                         </button>
                       </div>
                     </td>
@@ -372,32 +446,6 @@ export default function HistoryPage() {
             </button>
           </div>
         )}
-
-        {/* Stats */}
-        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-4 text-center transition-colors">
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{jobs.length}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Total Jobs</div>
-          </div>
-          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-4 text-center transition-colors">
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {jobs.filter(j => j.status === 'completed').length}
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Completed</div>
-          </div>
-          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-4 text-center transition-colors">
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {jobs.filter(j => j.status === 'running').length}
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Running</div>
-          </div>
-          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-4 text-center transition-colors">
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {jobs.filter(j => j.status === 'failed').length}
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Failed</div>
-          </div>
-        </div>
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
 # AutoML Training
-flaml>=2.1.0,<3.0.0          # AutoML engine
+flaml[automl]>=2.1.0,<3.0.0  # AutoML engine with AutoML extras
 
 # Data Processing
 pandas>=2.2.0,<3.0.0         # DataFrame operations

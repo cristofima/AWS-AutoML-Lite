@@ -50,6 +50,25 @@ export interface TrainingMetrics {
   r2_score?: number;
   rmse?: number;
   mae?: number;
+  training_time?: number;  // seconds
+  best_estimator?: string;  // 'lgbm' | 'rf' | 'xgboost' | 'extra_tree'
+}
+
+export interface JobSummary {
+  job_id: string;
+  dataset_id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  target_column: string;
+  problem_type?: 'classification' | 'regression';
+  dataset_name?: string;
+  created_at?: string;
+  updated_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  tags?: string[];
+  primary_metric?: number;  // accuracy (classification) or r2_score (regression)
+  training_time?: number;  // seconds
+  best_estimator?: string;  // 'lgbm' | 'rf' | 'xgboost' | 'extra_tree'
 }
 
 export interface JobDetails {
@@ -73,6 +92,7 @@ export interface JobDetails {
   tags?: string[];  // Custom labels for filtering
   notes?: string;   // User notes for experiment tracking
   deployed?: boolean;  // Whether the model is deployed for inference
+  deployed_at?: string;  // When the model was deployed
   preprocessing_info?: PreprocessingInfo;  // Feature info for inference
 }
 
@@ -101,7 +121,7 @@ export interface PreprocessingInfo {
 }
 
 export interface JobListResponse {
-  jobs: JobDetails[];
+  jobs: JobSummary[];  // Changed to JobSummary for performance
   next_token?: string;
 }
 
@@ -172,8 +192,16 @@ export async function startTraining(request: TrainRequest): Promise<TrainRespons
 }
 
 // Get job status and results
-export async function getJobDetails(jobId: string): Promise<JobDetails> {
-  const response = await fetch(`${API_URL}/jobs/${jobId}`);
+export async function getJobDetails(jobId: string, bypassCache = false): Promise<JobDetails> {
+  // Add timestamp to bypass HTTP cache when needed (e.g., after deploy/undeploy)
+  const url = bypassCache 
+    ? `${API_URL}/jobs/${jobId}?_t=${Date.now()}`
+    : `${API_URL}/jobs/${jobId}`;
+  
+  const response = await fetch(url, {
+    // Force revalidation if bypassCache is true
+    cache: bypassCache ? 'no-cache' : 'default'
+  });
   
   if (!response.ok) {
     const error = await response.json();

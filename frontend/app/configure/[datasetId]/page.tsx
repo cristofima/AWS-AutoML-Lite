@@ -140,7 +140,15 @@ export default function ConfigurePage() {
         <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-lg dark:shadow-zinc-900/50 p-8 space-y-8 transition-colors">
           {/* Dataset Info */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Dataset Overview</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Dataset Overview</h2>
+              {metadata?.filename && (
+                <div className="text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Dataset: </span>
+                  <span className="font-mono text-gray-700 dark:text-gray-300">{metadata.filename}</span>
+                </div>
+              )}
+            </div>
             {metadata && (
               <ColumnStatsDisplay 
                 metadata={metadata} 

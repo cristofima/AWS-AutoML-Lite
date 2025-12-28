@@ -141,14 +141,15 @@ export default function JobMetadataEditor({ job, onUpdate, compact = false }: Jo
     <div className="space-y-4">
       {/* Tags Section */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 mb-2">
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Tags</h4>
           {!isEditingTags && (
             <button
               onClick={() => setIsEditingTags(true)}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer"
+              className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer"
             >
-              ✏️ Edit
+              <span>✏️</span>
+              <span>Edit</span>
             </button>
           )}
         </div>
@@ -233,14 +234,15 @@ export default function JobMetadataEditor({ job, onUpdate, compact = false }: Jo
 
       {/* Notes Section */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 mb-2">
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Notes</h4>
           {!isEditingNotes && (
             <button
               onClick={() => setIsEditingNotes(true)}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer"
+              className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer"
             >
-              ✏️ Edit
+              <span>✏️</span>
+              <span>Edit</span>
             </button>
           )}
         </div>

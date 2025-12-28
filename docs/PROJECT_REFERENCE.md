@@ -343,7 +343,7 @@ Job completed → Frontend fetches results
     "training_time": 120.5
   },
   "tags": ["tag1", "tag2"],
-  "notes": "string",
+  "notes": "string",  // Available in GET /jobs/{id}, not in LIST /jobs
   "deployed": true,
   "error_message": "string|null",
   "onnx_model_download_url": "string",
@@ -466,6 +466,100 @@ List all training jobs (with pagination)
 {
   "jobs": [...],
   "next_token": "string|null"
+}
+```
+
+### PATCH /jobs/{job_id}
+Update job metadata (tags and notes)
+
+**Request:**
+```json
+{
+  "tags": ["experiment-1", "baseline"],
+  "notes": "Initial model with default hyperparameters"
+}
+```
+
+### DELETE /jobs/{job_id}
+Delete training job and associated artifacts
+
+**Query Params:** `delete_data=true|false`
+
+### POST /jobs/{job_id}/deploy
+Deploy or undeploy a trained model for inference
+
+**Request:**
+```json
+{
+  "deploy": true
+}
+```
+
+**Response:**
+```json
+{
+  "job_id": "uuid",
+  "deployed": true,
+  "message": "Model successfully deployed"
+}
+```
+
+### POST /predict/{job_id}
+Make predictions with a deployed model
+
+**Request:**
+```json
+{
+  "features": {
+    "feature1": 10.5,
+    "feature2": "category_a",
+    "feature3": 100
+  }
+}
+```
+
+**Response (Classification):**
+```json
+{
+  "job_id": "uuid",
+  "prediction": "class_a",
+  "probability": 0.85,
+  "probabilities": {
+    "class_a": 0.85,
+    "class_b": 0.15
+  },
+  "inference_time_ms": 45.2,
+  "model_type": "classification"
+}
+```
+
+**Response (Regression):**
+```json
+{
+  "job_id": "uuid",
+  "prediction": 42.5,
+  "probability": null,
+  "inference_time_ms": 38.1,
+  "model_type": "regression"
+}
+```
+
+### GET /predict/{job_id}/info
+Get model metadata for predictions (feature names, types, problem type)
+
+**Response:**
+```json
+{
+  "job_id": "uuid",
+  "problem_type": "classification",
+  "target_column": "Customer_Rating",
+  "feature_columns": ["feature1", "feature2"],
+  "feature_types": {
+    "feature1": "numeric",
+    "feature2": "categorical"
+  },
+  "categorical_mappings": {...},
+  "deployed": true
 }
 ```
 

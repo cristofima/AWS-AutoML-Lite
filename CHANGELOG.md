@@ -5,9 +5,15 @@ All notable changes to AWS AutoML Lite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2025-12-26
+## [Unreleased]
 
 ### Added
+- **Model Deployment Timestamp** - Track when models are deployed
+  - New `deployed_at` field in `JobDetails` and `JobResponse` schemas
+  - Automatically saved to DynamoDB when deploying a model
+  - Displayed in Results page Timeline section as "Deployed" date
+  - Shows "Not deployed" for models that haven't been deployed
+
 - **Serverless Model Inference** - Deploy and make predictions without SageMaker
   - One-click model deploy button on results page
   - `POST /jobs/{job_id}/deploy` endpoint to deploy/undeploy models
@@ -62,8 +68,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dataset Preview Enhancements** - Rich dataset visualization on configure page
   - `ColumnStatsDisplay` component with dataset overview stats
   - Visual column type distribution (numeric vs categorical)
-  - Missing values warning with affected columns list
-  - Selected column details with unique ratio visualization
+
+### Changed
+- **Performance Optimization - History Page** - Reduced API response size and load time
+  - Removed `notes` field from `JobSummary` schema used by `/jobs` LIST endpoint
+  - Notes can contain up to 1000 characters and are only used in Results page (GET /jobs/{id})
+  - Eliminates large text field from list responses, improving pagination performance
+  - Notes still fully functional via `JobResponse` and `JobDetails` schemas
+  - Estimated improvement: 10-50% reduction in LIST endpoint response size
+
+### Improved
+- **UI/UX Enhancements** - Streamlined interface for better usability
+  - History table optimized for 7 columns
+  - Training time accessible via tooltip on Job ID hover
+  - Results page Timeline expanded to 5 fields: Created, Started, Completed, Last Modified, Deployed
+  - Removed redundant "Training Completed Successfully" banner
+  - Dataset name shown alongside Job ID in Results page
+
+- **Performance: Early Stopping for Convergence** - Optimize training time for large datasets
+  - Added `early_stop=True` to FLAML configuration in `trainer.py`
+  - Stops hyperparameter search early if convergence is detected
+  - Prevents wasted compute time when accuracy plateaus (e.g., 20-minute training with same 93.1% accuracy as shorter runs)
+  - Added `retrain_full=True` to ensure best model is retrained on full training data after search
+  - Reduces training costs on AWS Batch while maintaining model quality
+
+- **Algorithm Restoration: XGBoost Re-enabled** - Now includes 4 ML algorithms
+  - Re-enabled XGBoost in estimator_list: `['lgbm', 'xgboost', 'rf', 'extra_tree']`
+  - Historical `best_iteration` bug fixed in FLAML v2.1.1 (Oct 2023, see issue #1217)
+  - XGBoost 2.0 breaking change handled by FLAML >=2.1.0
+  - `best_estimator` field now stored in DynamoDB metrics to track which algorithm was selected
+  - Updated `LESSONS_LEARNED.md` with bug timeline and resolution details
 
 ### Dependencies
 - **Dependency Audit & Version Updates** - Production-stable versions with flexible ranges
@@ -72,9 +106,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - LightGBM updated to >=4.3.0,<5.0.0 (tested with 4.6.0) for improved memory efficiency and faster training
   - Pydantic 2.x with better validation performance and error messages
   - ONNX Runtime updated to >=1.18.0,<1.20.0 for training and >=1.16.0,<2.0.0 for API (tested with 1.19.x for training and 1.23.x for API, latest optimizations)
+  - **FLAML now requires `[automl]` extra**: Updated to `flaml[automl]>=2.1.0,<3.0.0` (FLAML changed package structure, AutoML functionality now in separate install extra)
   - All 263 tests passing with updated dependencies
 
 ### Fixed
+- **Critical: Import Errors Not Reported** - Training jobs stuck in "pending" when dependencies fail
+  - Moved module imports inside try/except block in `backend/training/main.py`
+  - Import errors now properly caught and reported to DynamoDB with "failed" status
+  - Users now see immediate failure feedback instead of indefinite "pending" state
+  - Added module loading status messages to CloudWatch logs for debugging
+
 - **Problem Type Detection** - Regression datasets were incorrectly classified as classification
   - Fixed heuristic logic: now requires BOTH integer-like values AND low cardinality
   - Previously used `OR` condition which misclassified float targets (e.g., 35.5, 40.2) as classification

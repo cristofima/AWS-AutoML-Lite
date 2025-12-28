@@ -179,9 +179,13 @@ The API will be available at:
 | `GET` | `/datasets/{id}` | Get dataset details |
 | `DELETE` | `/datasets/{id}` | Delete a dataset |
 | `POST` | `/train` | Start training job |
-| `GET` | `/jobs/{id}` | Get job status |
-| `GET` | `/models` | List trained models |
-| `GET` | `/models/{id}` | Get model details |
+| `GET` | `/jobs` | List all training jobs (with pagination) |
+| `GET` | `/jobs/{id}` | Get job status and details |
+| `PATCH` | `/jobs/{id}` | Update job metadata (tags, notes) |
+| `DELETE` | `/jobs/{id}` | Delete training job and artifacts |
+| `POST` | `/jobs/{id}/deploy` | Deploy/undeploy model for inference |
+| `POST` | `/predict/{job_id}` | Make predictions with deployed model |
+| `GET` | `/predict/{job_id}/info` | Get model metadata for predictions |
 
 ## Testing the API
 

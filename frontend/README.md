@@ -98,8 +98,10 @@ frontend/
    - URL sharing: `/compare?jobs=id1,id2,id3`
 
 6. **History (`/history`)**
-   - List all training jobs
-   - Filter by status
+   - Optimized 7-column table: Job ID, Target Column, Problem Type, Best Model, Metric, Tags, Completed At, Actions
+   - Training time shown in tooltip on Job ID hover
+   - Icon-based actions (👁️ view, 🗑️ delete) for space efficiency
+   - Filter by status and tags
    - Quick access to results and compare
 
 ### UI Features (v1.1.0)

@@ -66,8 +66,8 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
     
     try {
       await deployModel(jobId, deploy);
-      // Refresh job data
-      const updatedJob = await getJobDetails(jobId);
+      // Refresh job data with cache bypass (deployed/deployed_at changed)
+      const updatedJob = await getJobDetails(jobId, true);
       setJob(updatedJob);
       
       // Initialize feature inputs if deploying
@@ -224,23 +224,18 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Success Banner */}
-        <div className="bg-green-50 dark:bg-green-950/30 border-2 border-green-200 dark:border-green-800 rounded-lg p-6 transition-colors">
-          <div className="flex items-center">
-            <div className="text-5xl mr-4">✅</div>
-            <div>
-              <h2 className="text-xl font-bold text-green-900 dark:text-green-300 mb-1">Training Completed Successfully!</h2>
-              <p className="text-green-700 dark:text-green-400">
-                Your model has been trained and is ready to download
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Job Info */}
         <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-6 transition-colors">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Job Information</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">Dataset:</span>
+              <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">{job.dataset_name || 'N/A'}</p>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">Target Column:</span>
+              <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">{job.target_column || 'N/A'}</p>
+            </div>
             <div>
               <span className="text-gray-600 dark:text-gray-400">Problem Type:</span>
               <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">
@@ -250,18 +245,85 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
               </p>
             </div>
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Target Column:</span>
-              <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">{job.target_column || 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Completed At:</span>
-              <p className="text-gray-900 dark:text-gray-100 mt-1">
-                {job.completed_at ? formatDateTime(job.completed_at) : 'N/A'}
+              <span className="text-gray-600 dark:text-gray-400">Best Model:</span>
+              <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">
+                {job.metrics?.best_estimator ? (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    job.metrics.best_estimator === 'lgbm' ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300' :
+                    job.metrics.best_estimator === 'rf' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
+                    job.metrics.best_estimator === 'extra_tree' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' :
+                    job.metrics.best_estimator === 'xgboost' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' :
+                    'bg-gray-100 dark:bg-gray-900/50 text-gray-700 dark:text-gray-300'
+                  }`}>
+                    <span className="mr-1">
+                      {job.metrics.best_estimator === 'lgbm' ? '🚀' :
+                       job.metrics.best_estimator === 'rf' ? '🌲' :
+                       job.metrics.best_estimator === 'extra_tree' ? '🌳' :
+                       job.metrics.best_estimator === 'xgboost' ? '⚡' : '🤖'}
+                    </span>
+                    {job.metrics.best_estimator === 'lgbm' ? 'LightGBM' :
+                     job.metrics.best_estimator === 'rf' ? 'Random Forest' :
+                     job.metrics.best_estimator === 'extra_tree' ? 'Extra Trees' :
+                     job.metrics.best_estimator === 'xgboost' ? 'XGBoost' :
+                     job.metrics.best_estimator}
+                  </span>
+                ) : 'N/A'}
               </p>
             </div>
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Job ID:</span>
-              <p className="font-mono text-xs text-gray-900 dark:text-gray-100 mt-1">{job.job_id}</p>
+              <span className="text-gray-600 dark:text-gray-400">Training Time:</span>
+              <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">
+                {job.metrics?.training_time ? (
+                  <>
+                    {Math.floor(job.metrics.training_time / 60) > 0 
+                      ? `${Math.floor(job.metrics.training_time / 60)}m ${Math.floor(job.metrics.training_time % 60)}s`
+                      : `${Math.floor(job.metrics.training_time)}s`}
+                  </>
+                ) : 'N/A'}
+              </p>
+            </div>
+          </div>
+
+          {/* Timeline Section */}
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-700">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">📅 Timeline</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Created:</span>
+                <p className="text-gray-900 dark:text-gray-100 mt-1">
+                  {job.created_at ? formatDateTime(job.created_at) : 'N/A'}
+                </p>
+              </div>
+              {job.started_at && (
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Started:</span>
+                  <p className="text-gray-900 dark:text-gray-100 mt-1">
+                    {formatDateTime(job.started_at)}
+                  </p>
+                </div>
+              )}
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Completed:</span>
+                <p className="text-gray-900 dark:text-gray-100 mt-1">
+                  {job.completed_at ? formatDateTime(job.completed_at) : 'N/A'}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Last Modified:</span>
+                <p className="text-gray-900 dark:text-gray-100 mt-1" title="Last modification (tags, notes, deploy)">
+                  {job.updated_at ? formatDateTime(job.updated_at) : 'N/A'}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Deployed:</span>
+                <p className="text-gray-900 dark:text-gray-100 mt-1">
+                  {job.deployed && job.deployed_at ? (
+                    formatDateTime(job.deployed_at)
+                  ) : (
+                    <span className="text-gray-400 dark:text-gray-500">Not deployed</span>
+                  )}
+                </p>
+              </div>
             </div>
           </div>
           
@@ -519,8 +581,8 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                                     return String(originalValue);
                                   }
                                 }
-                                // No mapping or missing label - show encoded class index directly (0-indexed)
-                                return `Class ${encodedClass}`;
+                                // No mapping - show Class N (user-friendly 1-indexed)
+                                return `Class ${encodedClass + 1}`;
                               }
                               
                               // Regression - smart number formatting with error margin
@@ -551,6 +613,12 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                           <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {job.problem_type === 'classification' ? 'Predicted Class' : 'Predicted Value'}
                           </div>
+                          {/* Show encoded value when no custom labels */}
+                          {job.problem_type === 'classification' && typeof predictionResult.prediction === 'number' && !job.preprocessing_info?.target_mapping && (
+                            <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
+                              (encoded value: {Math.round(predictionResult.prediction)})
+                            </div>
+                          )}
                           {job.problem_type === 'regression' && job.metrics?.rmse !== undefined && (
                             <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
                               (± RMSE expected error)
@@ -594,12 +662,13 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                                     const originalValue = targetMapping[cls];
                                     const isNumericLabel = !isNaN(Number(originalValue));
                                     if (isNumericLabel) {
-                                      label = `Class ${classNum} (${originalValue})`;
+                                      label = `Class ${classNum} (value: ${originalValue})`;
                                     } else {
                                       label = originalValue;
                                     }
                                   } else {
-                                    label = `Class ${classNum}`;
+                                    // No mapping - show Class N with encoded value for clarity
+                                    label = `Class ${classNum} (value: ${encodedClass})`;
                                   }
                                   
                                   return (

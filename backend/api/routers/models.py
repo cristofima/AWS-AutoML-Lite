@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Query
 from typing import Dict, Optional, Any
 from ..models.schemas import (
     JobListResponse, JobResponse, JobStatus, ProblemType, JobUpdateRequest,
-    DeployRequest, DeployResponse, PreprocessingInfo
+    DeployRequest, DeployResponse, PreprocessingInfo, JobSummary
 )
 from ..services.dynamo_service import dynamodb_service
 from ..services.s3_service import s3_service
@@ -67,6 +67,7 @@ async def get_job_status(job_id: str) -> JobResponse:
             tags=job.get('tags'),
             notes=job.get('notes'),
             deployed=job.get('deployed', False),
+            deployed_at=job.get('deployed_at'),
             preprocessing_info=preprocessing_info
         )
         
@@ -320,7 +321,8 @@ async def list_jobs(
     user_id: str = "default"
 ) -> JobListResponse:
     """
-    List all training jobs with pagination
+    List all training jobs with pagination (lightweight response)
+    Returns JobSummary objects optimized for list view - no URLs, no preprocessing_info
     """
     try:
         last_key = None
@@ -329,11 +331,46 @@ async def list_jobs(
             import json
             last_key = json.loads(next_token)
         
-        jobs, last_evaluated_key = dynamodb_service.list_jobs(
+        raw_jobs, last_evaluated_key = dynamodb_service.list_jobs(
             user_id=user_id,
             limit=limit,
             last_evaluated_key=last_key
         )
+        
+        # Convert to JobSummary (lightweight) instead of full JobResponse
+        jobs = []
+        for job in raw_jobs:
+            metrics = job.get('metrics', {})
+            
+            # Extract primary metric (accuracy for classification, r2_score for regression)
+            problem_type = job.get('problem_type')
+            primary_metric = None
+            if problem_type == 'classification' and metrics.get('accuracy'):
+                primary_metric = float(metrics['accuracy'])
+            elif problem_type == 'regression' and metrics.get('r2_score'):
+                primary_metric = float(metrics['r2_score'])
+            
+            # Extract training time and best estimator
+            training_time = float(metrics['training_time']) if metrics.get('training_time') else None
+            best_estimator = str(metrics['best_estimator']) if metrics.get('best_estimator') else None
+            
+            summary = JobSummary(
+                job_id=job['job_id'],
+                dataset_id=job.get('dataset_id', ''),
+                status=JobStatus(job['status']),
+                target_column=job.get('target_column', ''),
+                problem_type=ProblemType(problem_type) if problem_type else None,
+                dataset_name=job.get('dataset_name'),
+                created_at=job.get('created_at'),
+                updated_at=job.get('updated_at'),
+                started_at=job.get('started_at'),
+                completed_at=job.get('completed_at'),
+                tags=job.get('tags'),
+                primary_metric=primary_metric,
+                training_time=training_time,
+                best_estimator=best_estimator
+            )
+            jobs.append(summary)
         
         next_token_response = None
         if last_evaluated_key:
