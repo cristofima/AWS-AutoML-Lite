@@ -366,7 +366,6 @@ async def list_jobs(
                 started_at=job.get('started_at'),
                 completed_at=job.get('completed_at'),
                 tags=job.get('tags'),
-                notes=job.get('notes'),
                 primary_metric=primary_metric,
                 training_time=training_time,
                 best_estimator=best_estimator
