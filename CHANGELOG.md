@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Model Deployment Timestamp** - Track when models are deployed
+  - New `deployed_at` field in `JobDetails` and `JobResponse` schemas
+  - Automatically saved to DynamoDB when deploying a model
+  - Displayed in Results page Timeline section as "Deployed" date
+  - Shows "Not deployed" for models that haven't been deployed
+
 - **Serverless Model Inference** - Deploy and make predictions without SageMaker
   - One-click model deploy button on results page
   - `POST /jobs/{job_id}/deploy` endpoint to deploy/undeploy models
@@ -62,10 +68,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dataset Preview Enhancements** - Rich dataset visualization on configure page
   - `ColumnStatsDisplay` component with dataset overview stats
   - Visual column type distribution (numeric vs categorical)
+
+### Changed
+- **Performance Optimization - History Page** - Reduced API response size and load time
+  - Removed `notes` field from `JobSummary` schema used by `/jobs` LIST endpoint
+  - Notes can contain up to 1000 characters and are only used in Results page (GET /jobs/{id})
+  - Eliminates large text field from list responses, improving pagination performance
+  - Notes still fully functional via `JobResponse` and `JobDetails` schemas
+  - Estimated improvement: 10-50% reduction in LIST endpoint response size
   - Missing values warning with affected columns list
   - Selected column details with unique ratio visualization
 
 ### Improved
+- **UI/UX Enhancements** - Streamlined interface for better usability
+  - History table optimized for 7 columns
+  - Training time accessible via tooltip on Job ID hover
+  - Results page Timeline expanded to 5 fields: Created, Started, Completed, Last Modified, Deployed
+  - Removed redundant "Training Completed Successfully" banner
+  - Dataset name shown alongside Job ID in Results page
+
 - **Performance: Early Stopping for Convergence** - Optimize training time for large datasets
   - Added `early_stop=True` to FLAML configuration in `trainer.py`
   - Stops hyperparameter search early if convergence is detected
