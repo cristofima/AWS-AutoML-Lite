@@ -227,7 +227,15 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
         {/* Job Info */}
         <div className="bg-white dark:bg-zinc-800 rounded-lg shadow dark:shadow-zinc-900/50 p-6 transition-colors">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Job Information</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">Dataset:</span>
+              <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">{job.dataset_name || 'N/A'}</p>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">Target Column:</span>
+              <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">{job.target_column || 'N/A'}</p>
+            </div>
             <div>
               <span className="text-gray-600 dark:text-gray-400">Problem Type:</span>
               <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">
@@ -235,10 +243,6 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                   <>{getProblemTypeIcon(job.problem_type)} {job.problem_type.charAt(0).toUpperCase() + job.problem_type.slice(1)}</>
                 ) : 'N/A'}
               </p>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Target Column:</span>
-              <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">{job.target_column || 'N/A'}</p>
             </div>
             <div>
               <span className="text-gray-600 dark:text-gray-400">Best Model:</span>
@@ -323,20 +327,6 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
             </div>
           </div>
           
-          {/* Job ID & Dataset Section */}
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-700">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Job ID:</span>
-                <p className="font-mono text-xs text-gray-900 dark:text-gray-100 mt-1">{job.job_id}</p>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Dataset:</span>
-                <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">{job.dataset_name || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-          
           {/* Tags & Notes Section */}
           <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-700">
             <JobMetadataEditor 
@@ -351,7 +341,7 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Model Performance</h3>
           
           {job.problem_type === 'classification' ? (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {job.metrics.accuracy !== undefined && (
                 <div className="text-center">
                   <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
@@ -386,7 +376,7 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {job.metrics.r2_score !== undefined && (
                 <div className="text-center">
                   <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
