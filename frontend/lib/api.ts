@@ -51,7 +51,7 @@ export interface TrainingMetrics {
   rmse?: number;
   mae?: number;
   training_time?: number;  // seconds
-  best_estimator?: string;  // 'lgbm' | 'rf' | 'xgb' | 'extra_tree'
+  best_estimator?: string;  // 'lgbm' | 'rf' | 'xgboost' | 'extra_tree'
 }
 
 export interface JobSummary {
@@ -68,7 +68,7 @@ export interface JobSummary {
   tags?: string[];
   primary_metric?: number;  // accuracy (classification) or r2_score (regression)
   training_time?: number;  // seconds
-  best_estimator?: string;  // 'lgbm' | 'rf' | 'xgb' | 'extra_tree'
+  best_estimator?: string;  // 'lgbm' | 'rf' | 'xgboost' | 'extra_tree'
 }
 
 export interface JobDetails {
@@ -192,8 +192,16 @@ export async function startTraining(request: TrainRequest): Promise<TrainRespons
 }
 
 // Get job status and results
-export async function getJobDetails(jobId: string): Promise<JobDetails> {
-  const response = await fetch(`${API_URL}/jobs/${jobId}`);
+export async function getJobDetails(jobId: string, bypassCache = false): Promise<JobDetails> {
+  // Add timestamp to bypass HTTP cache when needed (e.g., after deploy/undeploy)
+  const url = bypassCache 
+    ? `${API_URL}/jobs/${jobId}?_t=${Date.now()}`
+    : `${API_URL}/jobs/${jobId}`;
+  
+  const response = await fetch(url, {
+    // Force revalidation if bypassCache is true
+    cache: bypassCache ? 'no-cache' : 'default'
+  });
   
   if (!response.ok) {
     const error = await response.json();
