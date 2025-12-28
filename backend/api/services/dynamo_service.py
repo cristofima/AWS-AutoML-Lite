@@ -86,10 +86,13 @@ class DynamoDBService:
         except ClientError as e:
             raise Exception(f"Error creating job: {str(e)}")
     
-    def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+    def get_job(self, job_id: str, consistent_read: bool = False) -> Optional[Dict[str, Any]]:
         """Get a training job by ID"""
         try:
-            response = self.jobs_table.get_item(Key={'job_id': job_id})
+            response = self.jobs_table.get_item(
+                Key={'job_id': job_id},
+                ConsistentRead=consistent_read
+            )
             return self._convert_decimals(response.get('Item'))
         except ClientError as e:
             raise Exception(f"Error getting job: {str(e)}")
@@ -189,21 +192,45 @@ class DynamoDBService:
                 'updated_at': datetime.now(timezone.utc).isoformat()
             }
             
-            # Only update fields that are provided
+            # Prepare SET and REMOVE expressions
+            set_parts = ["#updated_at = :updated_at"]
+            remove_parts = []
+            expr_attr_names = {"#updated_at": "updated_at"}
+            expr_attr_values = {":updated_at": update_data['updated_at']}
+
             if tags is not None:
-                update_data['tags'] = tags
-            if notes is not None and notes.strip() != "":
-                update_data['notes'] = notes
+                set_parts.append("#tags = :tags")
+                expr_attr_names["#tags"] = "tags"
+                expr_attr_values[":tags"] = tags
             
-            update_expr = "SET " + ", ".join([f"#{k} = :{k}" for k in update_data.keys()])
-            expr_attr_names = {f"#{k}": k for k in update_data.keys()}
-            expr_attr_values = {f":{k}": v for k, v in update_data.items()}
+            if notes is not None:
+                if notes.strip() == "":
+                    # Empty string -> Remove the attribute (DynamoDB doesn't allow empty strings)
+                    remove_parts.append("#notes")
+                    expr_attr_names["#notes"] = "notes"
+                else:
+                    # Non-empty -> Set the attribute
+                    set_parts.append("#notes = :notes")
+                    expr_attr_names["#notes"] = "notes"
+                    expr_attr_values[":notes"] = notes
+            
+            # Construct UpdateExpression
+            update_expr_parts = []
+            if set_parts:
+                update_expr_parts.append("SET " + ", ".join(set_parts))
+            if remove_parts:
+                update_expr_parts.append("REMOVE " + ", ".join(remove_parts))
+            
+            update_expr = " ".join(update_expr_parts)
+            
+            if not update_expr:
+                return True # Nothing to update
             
             self.jobs_table.update_item(
                 Key={'job_id': job_id},
                 UpdateExpression=update_expr,
                 ExpressionAttributeNames=expr_attr_names,
-                ExpressionAttributeValues=expr_attr_values
+                ExpressionAttributeValues=expr_attr_values if expr_attr_values else None
             )
             return True
         except ClientError as e:

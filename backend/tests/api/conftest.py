@@ -97,5 +97,7 @@ def mock_s3_service():
     """Mock S3 service for API tests."""
     mock_service = MagicMock()
     mock_service.generate_presigned_url.return_value = 'https://s3.amazonaws.com/presigned-url'
+    mock_service.generate_presigned_download_url.return_value = 'https://s3.amazonaws.com/presigned-download-url'
+    mock_service.generate_presigned_download_url_cached.return_value = 'https://s3.amazonaws.com/presigned-download-url'
     mock_service.get_object.return_value = b'id,feature,target\n1,a,0\n2,b,1'
     return mock_service

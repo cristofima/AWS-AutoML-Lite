@@ -122,6 +122,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Regression correctly detected for continuous numerical targets
   - Fixes "The least populated class in y has only 1 member" FLAML error
 
+- **Job Caching & Deletion** - Resolved stale data issues
+  - `DELETE /jobs/{id}` now returns aggressive `no-store` cache headers to prevent access to deleted jobs
+  - `GET /jobs/{id}` forces revalidation (`max-age=0`) to immediately reflect deployment status changes
+  - Frontend `getJobDetails` skips browser cache to ensure 404s are respected
+  - Fixed issue where clearing notes/tags didn't save due to DynamoDB empty string constraints (now uses `REMOVE` operation)
+  - Implemented `mergeJobPreservingUrls` to prevent presigned URL expiration during polling updates
+
 ### Removed
 - **Unused Frontend Dependencies** - Cleaned up packages that were never used in codebase
   - `aws-sdk` (~15 MB) - Frontend uses backend API endpoints, not direct AWS SDK calls

@@ -263,6 +263,14 @@ Or mount `~/.aws` when using Docker (already configured in docker-compose.yml).
 
 4. **CORS Errors**: The API includes CORS middleware. Check `api/main.py` if issues persist.
 
+### Caching Strategy
+
+The API implements strict caching controls to ensure UI consistency:
+
+- **GET /jobs/{id}**: `Cache-Control: private, max-age=0, must-revalidate`. Forces browsers to validate ETag on every request, ensuring deployment status changes are seen immediately.
+- **DELETE /jobs/{id}**: Returns `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` to immediately invalidate client caches.
+- **Consistency**: Critical endpoints (`update_job_metadata`, `deploy_model`) use DynamoDB Strong Consistency (`ConsistentRead=True`) to guarantee read-after-write accuracy.
+
 ## 🧪 Testing
 
 The backend includes comprehensive unit and integration tests for both API and Training modules. Tests run automatically in CI/CD pipelines before deployment.
