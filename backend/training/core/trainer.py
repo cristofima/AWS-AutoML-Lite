@@ -70,7 +70,8 @@ def train_automl_model(
         task=task,
         metric=metric,
         time_budget=time_budget,
-        # XGBoost re-enabled: bug fixed in FLAML v2.1.1+ (Oct 2023)
+        # XGBoost re-enabled: bug fixed in FLAML (Oct 2023 release)
+        # Ensure the deployed FLAML version includes the XGBoost best_iteration fix
         # Previous issue: AttributeError 'best_iteration' without early stopping
         estimator_list=['lgbm', 'xgboost', 'rf', 'extra_tree'],
         verbose=1,
