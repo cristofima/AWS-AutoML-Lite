@@ -245,7 +245,7 @@ if self.num_classes > 2:
 
 **Solution:** XGBoost re-enabled in estimator list:
 ```python
-estimator_list = ['lgbm', 'xgb', 'rf', 'extra_tree']  # XGBoost restored
+estimator_list = ['lgbm', 'xgboost', 'rf', 'extra_tree']  # XGBoost restored
 ```
 
 **Key Insight:** Stay updated with library changelogs. Breaking changes in major version bumps (2.0) may affect wrapper libraries like FLAML. Verify compatibility before upgrading dependencies.
@@ -295,7 +295,7 @@ automl.fit(
 **Expected Behavior:**
 - FLAML will automatically detect when hyperparameter search has converged
 - Stops early if: (1) all local searches converged + (2) time > 10x time to find best model
-- Example: If best model found at 5 minutes, stops after ~50 minutes (not full 20 min budget)
+- Example: If best model found at 1 minute, stops after ~10 minutes (not full 20 min budget)
 - Reduces wasted compute time on datasets that plateau early
 
 **Limitations:**

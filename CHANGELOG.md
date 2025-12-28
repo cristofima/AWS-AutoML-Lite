@@ -76,8 +76,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Eliminates large text field from list responses, improving pagination performance
   - Notes still fully functional via `JobResponse` and `JobDetails` schemas
   - Estimated improvement: 10-50% reduction in LIST endpoint response size
-  - Missing values warning with affected columns list
-  - Selected column details with unique ratio visualization
 
 ### Improved
 - **UI/UX Enhancements** - Streamlined interface for better usability
