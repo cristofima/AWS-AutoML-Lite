@@ -2,15 +2,18 @@
 
 Auto-generated AWS architecture diagrams for AWS AutoML Lite.
 
+> **Last updated:** v1.1.0 (December 2025)
+
 ## Available Diagrams
 
 | Diagram | Description | Used In |
 |---------|-------------|---------|
 | `architecture-main.png` | Main architecture overview | README, docs |
-| `architecture-dataflow.png` | Data flow: Upload → Train → Download | PROJECT_REFERENCE |
+| `architecture-dataflow.png` | Data flow: Upload → Train → Predict | PROJECT_REFERENCE |
+| `architecture-inference.png` | Serverless inference with ONNX (v1.1.0) | ROADMAP, TECHNICAL_ANALYSIS |
 | `architecture-cost.png` | Cost comparison with SageMaker | Documentation |
 | `architecture-cicd.png` | CI/CD pipeline with GitHub Actions | SETUP_CICD.md |
-| `architecture-training.png` | Training container internal flow | PROJECT_REFERENCE |
+| `architecture-training.png` | Training container with ONNX export | PROJECT_REFERENCE |
 
 ## Regenerating Diagrams
 
@@ -41,6 +44,9 @@ python scripts/generate_architecture_diagram.py
 
 ### Training Container
 ![Training](./architecture-training.png)
+
+### Serverless Inference (v1.1.0)
+![Inference](./architecture-inference.png)
 
 ## Customization
 
