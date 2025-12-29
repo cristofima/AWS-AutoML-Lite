@@ -32,29 +32,10 @@ export function mergeJobPreservingUrls(current: JobDetails | null, incoming: Job
     const currentUrl = current[field] as string | undefined;
     const incomingUrl = incoming[field] as string | undefined;
 
-    // SCENARIO 1: Incoming missing, Current has it -> Preserve Current
+    // Preserve current URL only if incoming is missing (e.g. partial updates)
+    // If incoming has a URL, we trust it's newer/valid and let it overwrite.
     if (!incomingUrl && currentUrl) {
       (merged as any)[field] = currentUrl;
-    }
-    
-    // SCENARIO 2: Both have it, but we want to avoid unnecessary refresh
-    // If exact same job/deployment state, we could prefer current.
-    // However, if the backend regenerated it, it's safer to use the new one UNLESS
-    // we strictly want to avoid iframe reloads. 
-    // Given the user requirement: "conserving the presigned urls... sin aun estan dentro del tiempo de vida"
-    // We ideally check expiry. For now, if we have a valid current URL, we can stick with it.
-    // simpler heuristic: if incoming has a URL, we trust the backend provided a fresh one.
-    // BUT common issue: partial update (patch) might return object MINUS expensive computed fields?
-    // Backend `update_job_metadata` calls `get_job_status` which DOES return URLs.
-    // So incoming WILL have URLs. 
-    
-    // OPTIMIZATION: If incoming URL differs only by signature/token but underlying resource is same,
-    // and current URL is not expired, keep current.
-    if (incomingUrl && currentUrl && incomingUrl !== currentUrl) {
-       // Check if current is still valid (parsing X-Amz-Expires/Expires is complex here without helpers).
-       // Strict preservation: If we just updated tags, why change the URL?
-       // Let's preserve current URL if it exists.
-       (merged as any)[field] = currentUrl;
     }
   });
 

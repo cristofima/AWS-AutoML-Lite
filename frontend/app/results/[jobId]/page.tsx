@@ -68,7 +68,7 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
     try {
       await deployModel(jobId, deploy);
       // Refresh job data with cache bypass (deployed/deployed_at changed)
-      const updatedJob = await getJobDetails(jobId, true);
+      const updatedJob = await getJobDetails(jobId);
       // Preserve existing valid URLs to prevent flicker
       setJob(prev => mergeJobPreservingUrls(prev, updatedJob));
       
@@ -721,15 +721,15 @@ docker run --rm -v \${PWD}:/data automl-predict /data/${modelFile} -i /data/test
                   <p className="font-medium text-blue-700 dark:text-blue-400">Lambda Inference (this)</p>
                   <ul className="text-blue-600 dark:text-blue-400 mt-1 space-y-1">
                     <li>• $0 idle cost</li>
-                    <li>• ~$0.0001 per prediction</li>
+                    <li>• ~$0.000004 per prediction</li>
                     <li>• 1-3s cold start</li>
                   </ul>
                 </div>
                 <div>
                   <p className="font-medium text-blue-700 dark:text-blue-400">SageMaker Endpoint</p>
                   <ul className="text-blue-600 dark:text-blue-400 mt-1 space-y-1">
-                    <li>• ~$50-100/month idle</li>
-                    <li>• ~$0.0001 per prediction</li>
+                    <li>• ~$36-171/month idle</li>
+                    <li>• ~$0.000004 per prediction</li>
                     <li>• No cold start</li>
                   </ul>
                 </div>
