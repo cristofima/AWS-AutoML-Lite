@@ -152,7 +152,7 @@ Add to GitHub Actions deploy role:
 | Backend (Lambda) | $1-2 |
 | Training (Batch) | $2-5 |
 | Storage (S3/DynamoDB) | $1-2 |
-| **Total** | **~$10-25** |
+| **Total** | **~$2-15** |
 
 ---
 

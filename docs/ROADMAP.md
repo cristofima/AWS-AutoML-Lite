@@ -258,8 +258,68 @@ Training completion → FLAML model extracted → skl2onnx/onnxmltools conversio
 1. Enable batch predictions on new datasets
 2. Store prediction history for analysis
 3. Compare predictions vs actuals for model validation
+4. Improve UX for numeric classification labels
 
 ### 📋 Features Planned
+
+#### Label Mapping for Classification (Priority: High)
+- [ ] **Manual label mapping in configuration UI**
+  - Detect numeric values in target column (e.g., 0, 1, 2)
+  - Show optional input fields to assign meaningful names
+  - Example: 0 → "Denied", 1 → "Approved", 2 → "Pending"
+  - Send `label_mapping` with training request
+
+- [ ] **Backend label mapping support**
+  - Accept optional `label_mapping: Dict[int, str]` in `TrainRequest`
+  - Apply mapping before preprocessing: `y.map(label_mapping)`
+  - LabelEncoder then encodes the text labels
+  - Predictions return meaningful labels instead of numeric codes
+
+- [ ] **Enhanced prediction responses**
+  - Classification predictions show original labels (e.g., "Approved")
+  - Probabilities mapped to label names
+  - Training reports display label names in confusion matrix
+
+**Why it matters:**
+- Current: Numeric target columns (0, 1) stay numeric → predictions return 0 or 1
+- v1.2.0: User defines "0=Denied, 1=Approved" → predictions return "Approved"
+- Improves interpretability for business users
+
+#### Enhanced Training Reports (Priority: Medium)
+- [ ] **Confusion matrix for classification**
+  - Store test predictions (`y_test`, `y_pred`) during training
+  - Generate confusion matrix heatmap in training report
+  - Show per-class precision, recall, F1 scores
+  - Highlight most confused classes
+
+- [ ] **Classification model performance visualization**
+  - ROC curve for binary classification
+  - ROC-AUC score calculation
+  - Sample predictions table (10-20 test examples with actual vs predicted)
+  - Class-wise metrics breakdown (for multiclass)
+
+- [ ] **Regression model diagnostics**
+  - Residual plot (predicted vs actual scatter)
+  - Residuals distribution histogram (to check normality)
+  - Error analysis by value ranges
+  - Sample predictions table with error margins
+
+- [ ] **EDA report enhancements (optional)**
+  - Outlier detection with boxplot statistics
+  - Skewness/kurtosis indicators for numeric features
+  - Top N value counts for categorical features
+  - Feature correlation heatmap (numeric features)
+
+**Technical changes required:**
+- Modify `train_automl_model()` to return `y_test` and `y_pred`
+- Store predictions in S3 (too large for DynamoDB)
+- Update training report generator to load predictions from S3
+- Generate matplotlib-free visualizations (CSS/HTML only)
+
+**Why important:**
+- Confusion matrix is essential for understanding classification errors
+- Residual plots are critical for regression model validation
+- Current reports lack actionable insights beyond aggregate metrics
 
 #### Batch Predictions (Priority: High)
 - [ ] **Upload validation dataset**
@@ -504,11 +564,12 @@ We welcome contributions! See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelin
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-12-27 | v1.2.0 | Added to roadmap: Label mapping for classification, enhanced training reports (confusion matrix, residual plots), batch predictions |
 | 2025-12-24 | v1.1.0 | Released: Serverless inference, dark mode, ONNX export, model comparison. Fixed SSE (not viable on Amplify → using polling). |
 | 2025-12-09 | - | Initial roadmap created |
 | 2025-12-03 | v1.0.0 | MVP released |
 
 ---
 
-**Last Updated:** 2025-12-24  
+**Last Updated:** 2025-12-27  
 **Maintained By:** [@cristofima](https://github.com/cristofima)

@@ -14,9 +14,10 @@ Usage:
     python scripts/generate_architecture_diagram.py
 
 Output:
-    Creates 5 PNG files in the docs/diagrams/ directory:
+    Creates 6 PNG files in the docs/diagrams/ directory:
     - architecture-main.png
     - architecture-dataflow.png
+    - architecture-inference.png (NEW in v1.1.0)
     - architecture-cost.png
     - architecture-cicd.png
     - architecture-training.png
@@ -98,7 +99,7 @@ def create_main_architecture():
         # API Layer
         with Cluster("API Layer", graph_attr=CLUSTER_ATTR):
             api_gw = APIGateway("API Gateway")
-            lambda_fn = Lambda("FastAPI\n(5MB)")
+            lambda_fn = Lambda("FastAPI\n+ ONNX Inference")
         
         # Storage
         with Cluster("Storage", graph_attr=CLUSTER_ATTR):
@@ -124,10 +125,10 @@ def create_main_architecture():
 
 
 def create_data_flow_diagram():
-    """Create the data flow diagram - 4 phases horizontal."""
+    """Create the data flow diagram - 5 phases horizontal (updated v1.1.0)."""
     
     with Diagram(
-        "Data Flow: Upload → Train → Download",
+        "Data Flow: Upload → Train → Predict",
         show=False,
         filename=os.path.join(OUTPUT_DIR, "architecture-dataflow"),
         outformat="png",
@@ -153,8 +154,12 @@ def create_data_flow_diagram():
         
         # Phase 4: Results
         with Cluster("4. Results", graph_attr=CLUSTER_ATTR):
-            s3_model = S3("Model .pkl")
+            s3_model = S3(".pkl + .onnx")
             dynamo_metrics = Dynamodb("Metrics")
+        
+        # Phase 5: Predict (NEW in v1.1.0)
+        with Cluster("5. Predict", graph_attr=CLUSTER_ATTR):
+            lambda_inference = Lambda("ONNX\nRuntime")
         
         # Linear flow
         user >> Edge(label="CSV", fontsize="13", fontname="Arial Bold") >> s3_upload
@@ -162,7 +167,8 @@ def create_data_flow_diagram():
         dynamo_meta >> fargate
         fargate >> s3_model
         fargate >> dynamo_metrics
-        s3_model >> Edge(label="Download", fontsize="13", fontname="Arial Bold") >> user
+        s3_model >> lambda_inference
+        lambda_inference >> Edge(label="Prediction", fontsize="13", fontname="Arial Bold") >> user
 
 
 def create_cost_comparison_diagram():
@@ -206,15 +212,15 @@ def create_cost_comparison_diagram():
         edge_attr=EDGE_ATTR,
         direction="LR"  # Horizontal side by side
     ):
-        with Cluster("SageMaker + Endpoint\n$150-300/mo (endpoint 24/7)", graph_attr=sagemaker_cluster):
-            sm_studio = Sagemaker("Training\n$0.68-3.20")
-            sm_endpoint = Sagemaker("Endpoint\n$150+/mo")
+        with Cluster("SageMaker AI\n$36-171/mo (idle)", graph_attr=sagemaker_cluster):
+            sm_studio = Sagemaker("Training\n($0.03-0.16/job)")
+            sm_endpoint = Sagemaker("Endpoint\n$36-171/mo\n(idle)")
             sm_studio - sm_endpoint
         
-        with Cluster("AutoML Lite (batch only)\n$10-25/mo total", graph_attr=automl_cluster):
-            lite_amplify = Amplify("Amplify\n$5-15")
-            lite_lambda = Lambda("Lambda\n$1-2")
-            lite_fargate = Fargate("Fargate Spot\n$2-5")
+        with Cluster("AutoML Lite (Scale-to-zero)\n~$2-15/mo ($0 idle)", graph_attr=automl_cluster):
+            lite_amplify = Amplify("Amplify\n(Next.js SSR)")
+            lite_lambda = Lambda("API + Inference\n$0 idle\n(~$0.000004/req)")
+            lite_fargate = Fargate("Batch (Spot)\n$0.02/job")
             lite_amplify - lite_lambda - lite_fargate
 
 
@@ -257,7 +263,7 @@ def create_cicd_diagram():
 
 
 def create_training_detail_diagram():
-    """Create detailed training container diagram."""
+    """Create detailed training container diagram (updated v1.1.0 with ONNX)."""
     from diagrams.programming.language import Python
     from diagrams.onprem.container import Docker
     
@@ -272,7 +278,7 @@ def create_training_detail_diagram():
     }
     
     with Diagram(
-        "Training Container Flow",
+        "Training Container Flow (v1.1.0)",
         show=False,
         filename=os.path.join(OUTPUT_DIR, "architecture-training"),
         outformat="png",
@@ -287,16 +293,73 @@ def create_training_detail_diagram():
             download = S3("Download\nCSV")
             eda = Dynamodb("Generate\nEDA")
             train = Fargate("FLAML\nTraining")
+            onnx_export = Fargate("ONNX\nExport")
             
         with Cluster("Outputs", graph_attr=CLUSTER_ATTR):
-            model = S3("Model .pkl")
+            model_pkl = S3("Model .pkl")
+            model_onnx = S3("Model .onnx")
             report = S3("Reports")
             metrics = Dynamodb("Metrics")
         
-        batch >> download >> eda >> train
-        train >> model
+        batch >> download >> eda >> train >> onnx_export
+        onnx_export >> model_pkl
+        onnx_export >> model_onnx
         train >> report
         train >> metrics
+
+
+def create_inference_diagram():
+    """Create serverless inference architecture diagram (NEW in v1.1.0)."""
+    
+    inference_graph_attr = {
+        "fontsize": "16",
+        "fontname": "Arial Bold",
+        "bgcolor": "white",
+        "pad": "0.4",
+        "splines": "ortho",
+        "nodesep": "0.8",
+        "ranksep": "1.0",
+    }
+    
+    inference_cluster = {
+        "fontsize": "14",
+        "fontname": "Arial Bold",
+        "fontcolor": "#1a1a1a",
+        "style": "rounded",
+        "bgcolor": "#e8fce8",  # Light green for serverless
+        "penwidth": "2",
+    }
+    
+    with Diagram(
+        "Serverless Inference (v1.1.0)",
+        show=False,
+        filename=os.path.join(OUTPUT_DIR, "architecture-inference"),
+        outformat="png",
+        graph_attr=inference_graph_attr,
+        node_attr=NODE_ATTR,
+        edge_attr=EDGE_ATTR,
+        direction="LR"
+    ):
+        user = User("User")
+        
+        # Frontend
+        amplify = Amplify("Playground UI")
+        
+        # API Layer
+        with Cluster("Serverless Inference", graph_attr=inference_cluster):
+            api_gw = APIGateway("API Gateway\n/predict/{job_id}")
+            lambda_fn = Lambda("Lambda\nONNX Runtime")
+        
+        # Storage
+        with Cluster("Model Storage", graph_attr=CLUSTER_ATTR):
+            s3_onnx = S3("model.onnx")
+            dynamo = Dynamodb("Job Metadata\n(deployed=true)")
+        
+        # Flow
+        user >> amplify >> api_gw >> lambda_fn
+        lambda_fn >> Edge(label="Load", fontsize="11", fontname="Arial Bold") >> s3_onnx
+        lambda_fn >> dynamo
+        lambda_fn >> Edge(label="Prediction", fontsize="11", fontname="Arial Bold") >> user
 
 
 if __name__ == "__main__":
@@ -324,13 +387,18 @@ if __name__ == "__main__":
         create_training_detail_diagram()
         print("   ✅ architecture-training.png")
         
+        print("\n6. Creating inference architecture diagram...")
+        create_inference_diagram()
+        print("   ✅ architecture-inference.png")
+        
         print(f"\n✅ All diagrams generated in: {OUTPUT_DIR}")
         print("\nAvailable diagrams:")
-        print("  - architecture-main.png      (Main architecture overview)")
-        print("  - architecture-dataflow.png  (Data flow: Upload → Train → Download)")
-        print("  - architecture-cost.png      (Cost comparison with SageMaker)")
-        print("  - architecture-cicd.png      (CI/CD pipeline)")
-        print("  - architecture-training.png  (Training container detail)")
+        print("  - architecture-main.png       (Main architecture overview)")
+        print("  - architecture-dataflow.png   (Data flow: Upload → Train → Predict)")
+        print("  - architecture-cost.png       (Cost comparison with SageMaker)")
+        print("  - architecture-cicd.png       (CI/CD pipeline)")
+        print("  - architecture-training.png   (Training container detail)")
+        print("  - architecture-inference.png  (Serverless inference - v1.1.0)")
         
     except Exception as e:
         print(f"\n❌ Error: {e}")
