@@ -7,7 +7,7 @@
 [![AWS](https://img.shields.io/badge/AWS-Serverless-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A lightweight, cost-effective AutoML platform built on AWS serverless architecture. Upload CSV files, automatically detect problem types, and train machine learning models with just a few clicks.
+A lightweight, cost-effective AutoML platform built on AWS serverless architecture. Upload CSV files, automatically detect problem types, and train/predict machine learning models with just a few clicks.
 
 ## 🔄 CI/CD Status
 
@@ -25,7 +25,7 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 - **Automated EDA**: Generates comprehensive exploratory data analysis reports
 - **Model Training**: Uses FLAML for efficient AutoML with auto-calculated time budgets
 - **Training History**: Track all your experiments with DynamoDB
-- **Cost-Effective**: ~$10-25/month (vs ~$150+/month for SageMaker real-time endpoints)
+- **Cost-Effective**: ~$2-15/month ($0 when idle) vs ~$36-171/month for SageMaker endpoints.
 - **Portable Models**: Download trained models (.pkl and .onnx) for local use with Docker
 
 ### ✨ New in v1.1.0
@@ -36,37 +36,56 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 
 ## 📸 Screenshots
 
+> **Note:** Screenshots are organized by problem type. The examples below show a **classification** workflow. Regression screenshots with metrics like R², RMSE, and MAE are available in the `screenshots/regression/` folder.
+
 <details>
 <summary><strong>Configure Training</strong> - Select target column with auto problem detection</summary>
 
-![Configure - Target Selection](screenshots/configure-page-2-target-selection.png)
+![Configure - Target Selection](screenshots/classification/configure-page-2-target-selection.png)
+*Shows unique value counts per column and automatic classification/regression detection*
 </details>
 
 <details>
 <summary><strong>Training Progress</strong> - Real-time training status monitoring</summary>
 
-![Training - Running](screenshots/training-page-2-running.png)
+![Training - Running](screenshots/classification/training-page-2-running.png)
+*Live updates showing current training phase and elapsed time*
 </details>
 
 <details>
-<summary><strong>Results - Model Metrics</strong> - View accuracy, F1 score, precision & recall</summary>
+<summary><strong>Results - Model Metrics</strong> - Classification metrics dashboard</summary>
 
-![Results - Metrics](screenshots/results-page-1-metrics.png)
+![Results - Metrics](screenshots/classification/results-page-2-model-performance.png)
+*Displays Accuracy, F1 Score, Precision, and Recall (or R², RMSE, MAE for regression)*
+</details>
+
+<details>
+<summary><strong>Model Deployment - Prediction Playground</strong> - Test your model interactively</summary>
+
+![Results - Predictions](screenshots/classification/results-page-3-prediction.png)
+*Serverless Lambda inference with real-time predictions and probability scores*
 </details>
 
 <details>
 <summary><strong>Training Report - Feature Importance</strong> - Downloadable HTML report with interactive charts</summary>
 
-![Results - Feature Importance](screenshots/training-report-2-feature-importance.png)
+![Training Report - Feature Importance](screenshots/classification/training-report-2-feature-importance.png)
+*Bar chart showing which features contributed most to the model's predictions*
 </details>
 
 <details>
 <summary><strong>EDA Report</strong> - Comprehensive exploratory data analysis</summary>
 
-![EDA Report - Overview](screenshots/eda-report-1-overview.png)
+![EDA Report - Overview](screenshots/classification/eda-report-1-overview.png)
+*Automated data quality analysis with warnings, correlations, and distributions*
 </details>
 
-> 📁 More screenshots available in the [screenshots](./screenshots/) folder including full page captures of Configure (3), Training (3), Results (3), EDA Report (6), and Training Report (4)
+> 📁 **41 total screenshots** available in the [screenshots](./screenshots/) folder:
+> - **Common** (7): Compare models, time budget, jobs history, download/usage guides
+> - **Classification** (20): Complete classification workflow with EDA & training reports
+> - **Regression** (14): Complete regression workflow with EDA & training reports
+>
+> Screenshots are organized by problem type. See [screenshots/README.md](./screenshots/README.md) for the complete catalog.
 
 ## 🏗️ Architecture
 
@@ -155,7 +174,7 @@ Based on moderate usage (20 training jobs/month):
 | Lambda + API Gateway | $1-2 |
 | AWS Batch (Fargate Spot) | $2-5 |
 | S3 + DynamoDB | $1-2 |
-| **Total** | **~$10-25/month** |
+| **Total** | **~$2-15/month** |
 
 ## 🧪 Local Development
 
