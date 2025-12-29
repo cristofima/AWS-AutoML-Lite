@@ -118,9 +118,6 @@ class S3Service:
             logger.info(f"Cached presigned URL for s3://{bucket}/{key} (TTL: {cache_ttl}s)")
             return url
     
-            logger.info(f"Cached presigned URL for s3://{bucket}/{key} (TTL: {cache_ttl}s)")
-            return url
-    
     def check_object_exists(self, bucket: str, key: str) -> bool:
         """Check if an object exists in S3"""
         try:

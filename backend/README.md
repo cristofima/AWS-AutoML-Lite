@@ -267,9 +267,9 @@ Or mount `~/.aws` when using Docker (already configured in docker-compose.yml).
 
 The API implements strict caching controls to ensure UI consistency:
 
-- **GET /jobs/{id}**: `Cache-Control: private, max-age=0, must-revalidate`. Forces browsers to validate ETag on every request, ensuring deployment status changes are seen immediately.
+- **GET /jobs/{id}**: `Cache-Control: private, max-age=0, must-revalidate`. Forces browsers to validate ETag on every request, ensuring deployment status changes are seen immediately. Uses DynamoDB Strong Consistency (`ConsistentRead=True`) to generate accurate ETags.
 - **DELETE /jobs/{id}**: Returns `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` to immediately invalidate client caches.
-- **Consistency**: Critical endpoints (`update_job_metadata`, `deploy_model`) use DynamoDB Strong Consistency (`ConsistentRead=True`) to guarantee read-after-write accuracy.
+- **Consistency**: Critical operations (`update_job_metadata`, `deploy_model`) use DynamoDB Strong Consistency (`ConsistentRead=True`) to guarantee read-after-write accuracy.
 
 ## 🧪 Testing
 
@@ -280,14 +280,14 @@ The backend includes comprehensive unit and integration tests for both API and T
 ```
 backend/tests/
 ├── pytest.ini              # Pytest configuration
-├── api/                    # API tests (104 tests, 69% coverage)
+├── api/                    # API tests (109 tests, 71% coverage)
 │   ├── conftest.py         # Shared fixtures
 │   ├── test_endpoints.py   # Endpoint tests (39 tests)
 │   ├── test_schemas.py     # Pydantic validation tests (23 tests)
 │   ├── test_dynamo_service.py   # DynamoDB service tests
 │   ├── test_s3_service.py       # S3 service tests
 │   └── test_services_integration.py  # moto-based integration tests (21 tests)
-└── training/               # Training tests (159 tests, 53% coverage)
+└── training/               # Training tests (159 tests, 63% coverage)
     ├── conftest.py         # Shared fixtures
     ├── unit/               # Pure unit tests
     │   ├── test_preprocessor.py

@@ -220,9 +220,6 @@ async def delete_job(job_id: str, response: Response, delete_data: bool = True) 
         # Ensure client caches are invalidated immediately
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         
-        # Ensure client caches are invalidated immediately
-        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        
         return {
             "message": "Job deleted successfully",
             "job_id": job_id,
@@ -247,7 +244,8 @@ async def update_job_metadata(job_id: str, update_request: JobUpdateRequest, res
     """
     try:
         # Verify job exists
-        job = dynamodb_service.get_job(job_id)
+        # Use consistent read to ensure we have the absolute latest state before validating and updating
+        job = dynamodb_service.get_job(job_id, consistent_read=True)
         if not job:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
