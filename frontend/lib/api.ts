@@ -199,8 +199,10 @@ export async function getJobDetails(jobId: string, bypassCache = false): Promise
     : `${API_URL}/jobs/${jobId}`;
   
   const response = await fetch(url, {
-    // Force revalidation if bypassCache is true
-    cache: bypassCache ? 'no-cache' : 'default'
+    // Force revalidation (ETag check) by default.
+    // This solves issues where a previously deleted job returns 200 from browser cache
+    // because of old max-age headers.
+    cache: bypassCache ? 'no-cache' : 'no-cache' // Always validate with server
   });
   
   if (!response.ok) {
