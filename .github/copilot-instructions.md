@@ -7,7 +7,7 @@ applyTo: "**"
 
 ## Important Note
 
-**DO NOT create `.md` documentation files with every prompt unless explicitly requested.**
+**Only create new `.md` documentation files when explicitly requested or when adding new features that require user-facing documentation.**
 
 ## Architecture Overview
 
@@ -66,13 +66,14 @@ Required env vars in training container: `DATASET_ID`, `TARGET_COLUMN`, `JOB_ID`
 
 Located in `backend/training/`, runs as Docker container in AWS Batch:
 
-- **Entry point** (`train.py`): Orchestrates 7-step pipeline (download → EDA → preprocess → train → ONNX export → reports → save → update status)
-- **Shared utilities** (`utils.py`): Centralized `detect_problem_type()`, `is_id_column()`, `is_constant_column()` - imported by both `preprocessor.py` and `eda.py`
-- **Preprocessing** (`preprocessor.py`): Auto-detects ID columns using regex patterns in `utils.py`, uses `feature-engine` for constant/duplicate detection
+- **Entry point** (`main.py`): Orchestrates 7-step pipeline (download → EDA → preprocess → train → ONNX export → reports → save → update status)
+- **Shared utilities** (`utils/detection.py`): Centralized `detect_problem_type()`, `is_id_column()`, `is_constant_column()` - imported by both `preprocessor.py` and EDA
+- **Preprocessing** (`core/preprocessor.py`): Auto-detects ID columns using regex patterns, uses `feature-engine` for constant/duplicate detection
 - **Problem type detection**: Uses BOTH conditions: integer-like values AND (<20 unique values OR <5% unique ratio) = classification. Floats with decimal values = regression.
-- **Model training** (`model_trainer.py`): FLAML with `['lgbm', 'rf', 'extra_tree']` - xgboost excluded due to `best_iteration` bugs
+- **Model training** (`core/trainer.py`): FLAML with `['lgbm', 'xgboost', 'rf', 'extra_tree']` - all 4 algorithms enabled
+- **Early stopping**: `early_stop=True` + `retrain_full=True` - stops search when converged, retrains best model on full data
 - **Multiclass**: Explicitly set `metric='accuracy'` (FLAML's auto-detection unreliable)
-- **ONNX export** (`onnx_exporter.py`): Exports `.onnx` alongside `.pkl` for cross-platform deployment
+- **ONNX export** (`core/exporter.py`): Exports `.onnx` alongside `.pkl` for cross-platform deployment
 - **Reports**: Generates both EDA (`sweetviz`) and training reports with feature importance charts
 
 ### Frontend (TypeScript)
@@ -170,19 +171,21 @@ docker run --rm -v ${PWD}:/data automl-predict /data/model.pkl --info
 |---------|-------|-----|
 | Batch job instant FAILED | Container not in ECR | `docker push` + verify with `aws ecr describe-images` |
 | Job stuck RUNNING | Missing DynamoDB perms | Add `dynamodb:UpdateItem` to Batch task role in `iam.tf` |
-| New train.py param ignored | Not in containerOverrides | Add to `batch_service.py` environment list |
+| New main.py param ignored | Not in containerOverrides | Add to `batch_service.py` environment list |
 | Frontend CORS errors | Wrong API URL | Get from `terraform output api_gateway_url` |
 | Low model accuracy | ID columns in training | Check `preprocessor.py` ID detection patterns |
 | DynamoDB Decimal errors | Floats in metrics dict | Convert to `Decimal(str(v))` before saving |
-| "least populated class has 1 member" | Regression misdetected as classification | Problem type detection in `utils.py` - check if float values have decimals |
+| "least populated class has 1 member" | Regression misdetected as classification | Problem type detection in `utils/detection.py` - check if float values have decimals |
+| ReDoc blank page | FastAPI CDN issue | Ensure FastAPI >= 0.115.0 in `requirements.txt` |
+| CI fails on Linux | Windows lock file | Don't commit platform-specific packages in lock files |
 
 ## File Reference by Task
 
 **Adding an API endpoint:** `routers/*.py` → `schemas.py` → `services/*.py` → `frontend/lib/api.ts`
 
-**Modifying training:** `train.py` → `preprocessor.py` → `model_trainer.py` → **ALSO update** `batch_service.py` containerOverrides
+**Modifying training:** `main.py` → `core/preprocessor.py` → `core/trainer.py` → **ALSO update** `batch_service.py` containerOverrides
 
-**Modifying detection logic:** `backend/training/utils.py` is single source of truth for `detect_problem_type()`, `is_id_column()`, etc.
+**Modifying detection logic:** `backend/training/utils/detection.py` is single source of truth for `detect_problem_type()`, `is_id_column()`, etc.
 
 **Adding AWS resources:** `<service>.tf` → `variables.tf` → `outputs.tf` → `iam.tf` for permissions
 
@@ -198,7 +201,7 @@ Backend Pydantic and Frontend TypeScript schemas must match. When adding fields:
 - Lambda logs: `/aws/lambda/automl-lite-{env}-api`
 - Batch logs: `/aws/batch/automl-lite-{env}-training`
 - Local API: `http://localhost:8000/docs` (Swagger UI)
-- Env var mismatch: Compare `batch_service.py` containerOverrides with `train.py` os.getenv()
+- Env var mismatch: Compare `batch_service.py` containerOverrides with `main.py` os.getenv()
 - Training issues: Check `dropped_columns` in preprocessing_info for filtered features
 
 ## Utility Scripts
@@ -264,7 +267,7 @@ terraform plan  # Preview changes
 
 ## Testing (v1.1.0)
 
-**197 total tests** (104 API + 93 Training) with coverage reports in CI.
+**263 total tests** (104 API + 159 Training) with coverage reports in CI.
 
 ### Test Commands
 
