@@ -11,11 +11,12 @@
 - [4. AWS Services Integration](#4-aws-services-integration)
 - [5. Frontend Deployment Architecture](#5-frontend-deployment-architecture)
 - [6. Frontend & API Integration](#6-frontend--api-integration)
-- [7. Local Development & Testing](#7-local-development--testing)
-- [8. Unit & Integration Testing](#8-unit--integration-testing)
-- [9. Architecture Decisions](#9-architecture-decisions)
-- [10. Best Practices Summary](#10-best-practices-summary)
-- [11. Common Pitfalls](#11-common-pitfalls)
+- [7. Caching & State Persistence](#7-caching--state-persistence)
+- [8. Local Development & Testing](#8-local-development--testing)
+- [9. Unit & Integration Testing](#9-unit--integration-testing)
+- [10. Architecture Decisions](#10-architecture-decisions)
+- [11. Best Practices Summary](#11-best-practices-summary)
+- [12. Common Pitfalls](#12-common-pitfalls)
 - [Key Takeaways](#key-takeaways)
 
 ---
@@ -759,7 +760,31 @@ const datasetId = params.datasetId as string;
 
 ---
 
-## 7. Local Development & Testing
+---
+
+## 7. Caching & State Persistence (v1.1.1)
+
+### Challenge: Stale Data After Deletion
+**Problem:** Users could still view job details after deleting a job because the browser served the previous `200 OK` response from its disk cache.
+
+**Solution:**
+1. **Backend:** `DELETE` endpoint must return `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` headers.
+2. **Frontend:** `fetch` requests for details must use `cache: 'no-cache'` to force ETag validation.
+
+**Key Insight:** Deleting a resource on the server doesn't automatically clear the browser's cache of that resource's *URL*. You must explicitly tell the browser to stop using the cached version using headers AND client-side fetch options.
+
+### Challenge: DynamoDB Empty Strings
+**Problem:** Clearing "notes" field failed because DynamoDB does not allow empty strings `""`. attempting to set `notes = ""` resulted in a validation error.
+
+**Solution:**
+1. **Frontend:** Send explicit `""` (empty string) instead of `null` or `undefined` to signal clearing.
+2. **Backend:** Check for empty string and use DynamoDB `REMOVE` operation instead of `SET`.
+
+**Key Insight:** DynamoDB treats `""` as invalid. Always map empty text inputs to attribute removal or a sentinel value (like "EMPTY") if the attribute must exist.
+
+---
+
+## 8. Local Development & Testing
 
 ### Challenge: Testing Without Full AWS Deployment
 **Problem:** Needed to test training logic without deploying to AWS Batch (slow feedback loop).
