@@ -126,8 +126,8 @@ async def get_job_status(job_id: str, response: Response, request: Request) -> J
         if_none_match = request.headers.get("If-None-Match")
         if if_none_match == etag:
             # Resource hasn't changed - return 304 (browser will use cached version)
-            response.status_code = 304
-            return job_response
+            # IMPORTANT: 304 responses MUST NOT have a body
+            return Response(status_code=304, headers={"ETag": etag, "Cache-Control": "private, max-age=0, must-revalidate"})
         
         # 3. Always force revalidation
         #    We used to have adaptive TTLs, but deployment status changes need to be reflected immediately.
@@ -308,7 +308,8 @@ async def deploy_model(job_id: str, request: DeployRequest) -> DeployResponse:
     """
     try:
         # Verify job exists
-        job = dynamodb_service.get_job(job_id)
+        # Use consistent read to ensure we have the absolute latest state before deploying
+        job = dynamodb_service.get_job(job_id, consistent_read=True)
         if not job:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

@@ -226,12 +226,15 @@ class DynamoDBService:
             if not update_expr:
                 return True # Nothing to update
             
-            self.jobs_table.update_item(
-                Key={'job_id': job_id},
-                UpdateExpression=update_expr,
-                ExpressionAttributeNames=expr_attr_names,
-                ExpressionAttributeValues=expr_attr_values if expr_attr_values else None
-            )
+            update_params = {
+                'Key': {'job_id': job_id},
+                'UpdateExpression': update_expr,
+                'ExpressionAttributeNames': expr_attr_names
+            }
+            if expr_attr_values:
+                update_params['ExpressionAttributeValues'] = expr_attr_values
+            
+            self.jobs_table.update_item(**update_params)
             return True
         except ClientError as e:
             raise Exception(f"Error updating job metadata: {str(e)}")

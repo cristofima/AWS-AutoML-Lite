@@ -760,6 +760,13 @@ const datasetId = params.datasetId as string;
 
 ---
 
+
+### Challenge: Background Threads in Lambda
+**Problem:** The `S3Service` initially used a background daemon thread to clean up expired presigned URLs from the in-memory cache.
+**Root Cause:** In AWS Lambda, the execution environment (and all threads) is frozen immediately after the handler returns. Background threads do not run typically, and when the environment unfreezes, behavior can be unpredictable.
+**Solution:** Switched to **lazy cleanup**. The service now scans for and removes expired items during cache access (read/write operations) instead of relying on a background process.
+**Key Insight:** Avoid background threads in Serverless functions. Use lazy evaluation, TTLs (like DynamoDB TTL), or scheduled events (EventBridge) for cleanup tasks.
+
 ---
 
 ## 7. Caching & State Persistence (v1.1.1)

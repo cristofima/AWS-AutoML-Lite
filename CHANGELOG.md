@@ -99,6 +99,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `best_estimator` field now stored in DynamoDB metrics to track which algorithm was selected
   - Updated `LESSONS_LEARNED.md` with bug timeline and resolution details
 
+- **S3 Cache Reliability** - Use lazy cleanup in `S3Service` to fix Lambda freezing issues
+  - Lazy cleanup prevents execution environment freezing in Lambda
+  - Ensures reliable cache eviction without background threads
+
+- **Deployment Consistency** - Enforced `ConsistentRead=True` for model deployment status checks
+  - Prevents race conditions during deployment status polling
+  - Ensures strong consistency for critical state changes
+
 ### Dependencies
 - **Dependency Audit & Version Updates** - Production-stable versions with flexible ranges
   - FastAPI upgraded from 0.109.0 to >=0.115.0 (fixes ReDoc CDN issue with `redoc@next`)
@@ -128,6 +136,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Frontend `getJobDetails` skips browser cache to ensure 404s are respected
   - Fixed issue where clearing notes/tags didn't save due to DynamoDB empty string constraints (now uses `REMOVE` operation)
   - Implemented `mergeJobPreservingUrls` to prevent presigned URL expiration during polling updates
+
+- **API 304 Compliance** - Fixed `get_job_status` to return empty body for 304 Not Modified responses
+  - Complies with HTTP RFC 7232 standard
+  - Prevents client-side parsing errors
 
 ### Removed
 - **Unused Frontend Dependencies** - Cleaned up packages that were never used in codebase

@@ -20,8 +20,8 @@ class S3Service:
         self._url_cache: Dict[Tuple[str, str], Tuple[str, datetime]] = {}
         self._cache_lock = threading.Lock()
         
-        # Start background cleanup thread
-        self._start_cache_cleanup()
+        # NOTE: Background cleanup thread removed for Lambda compatibility.
+        # We now use lazy cleanup on access.
     
     def generate_presigned_upload_url(
         self, 
@@ -87,6 +87,17 @@ class S3Service:
         now = datetime.utcnow()
         
         with self._cache_lock:
+            # Lazy cleanup: Remove expired entries whenever we access the cache
+            # This avoids the need for a background thread which survives Lambda invocations poorly
+            expired_keys = [
+                k for k, (_, expiry) in self._url_cache.items()
+                if now >= expiry
+            ]
+            if expired_keys:
+                for k in expired_keys:
+                    del self._url_cache[k]
+                logger.debug(f"Lazy cleanup: removed {len(expired_keys)} expired URLs")
+
             # Check cache for existing valid URL
             if cache_key in self._url_cache:
                 cached_url, expiry = self._url_cache[cache_key]
@@ -107,33 +118,8 @@ class S3Service:
             logger.info(f"Cached presigned URL for s3://{bucket}/{key} (TTL: {cache_ttl}s)")
             return url
     
-    def _start_cache_cleanup(self):
-        """Start background thread to periodically remove expired cache entries."""
-        def cleanup_loop():
-            while True:
-                time.sleep(600)  # Run cleanup every 10 minutes
-                now = datetime.utcnow()
-                
-                with self._cache_lock:
-                    # Find expired entries
-                    expired_keys = [
-                        k for k, (_, expiry) in self._url_cache.items()
-                        if now >= expiry
-                    ]
-                    
-                    # Remove expired entries
-                    for k in expired_keys:
-                        del self._url_cache[k]
-                    
-                    if expired_keys:
-                        logger.info(
-                            f"Cache cleanup: removed {len(expired_keys)} expired URLs. "
-                            f"Active cache entries: {len(self._url_cache)}"
-                        )
-        
-        cleanup_thread = threading.Thread(target=cleanup_loop, daemon=True)
-        cleanup_thread.start()
-        logger.info("Presigned URL cache cleanup thread started")
+            logger.info(f"Cached presigned URL for s3://{bucket}/{key} (TTL: {cache_ttl}s)")
+            return url
     
     def check_object_exists(self, bucket: str, key: str) -> bool:
         """Check if an object exists in S3"""
