@@ -395,3 +395,24 @@ from training.utils.detection import (
 This follows the DRY principle - logic is defined once and reused across `core/preprocessor.py` and `reports/eda.py`.
 
 This detection is performed both in the API (for UI display) and in the training container (for model training).
+
+## 💰 Cost Analysis (Inference)
+
+Based on official [AWS SageMaker Pricing](https://aws.amazon.com/sagemaker/ai/pricing/) and [Lambda Pricing](https://aws.amazon.com/lambda/pricing/) for `us-east-1`:
+
+| Component | Serverless (Lambda + ONNX) | SageMaker ml.t3.medium | SageMaker ml.c5.xlarge |
+| :--- | :--- | :--- | :--- |
+| **Idle Cost** | **$0.00 / month** | ~$36.00 / month | ~$171.36 / month |
+| **Hourly Rate** | N/A (Pay-per-req) | $0.05 / hour | $0.238 / hour |
+| **Per Prediction** | ~$0.000004 | Included | Included |
+| **Break-even** | **Best for < 9M reqs** | Better for 9M-40M reqs | Better for > 42M reqs |
+
+### Real-world Scenario (100k predictions/mo)
+- **Serverless**: **$0.40** (Virtually free)
+- **SageMaker (t3.medium)**: $36.00 (Fixed cost)
+- **Savings**: **98.8%** cost reduction for low-to-moderate workloads.
+
+> [!TIP]
+> This project is designed to be **"Side Project Friendly"**. By using Serverless Inference, you avoid the $432-$2,056 yearly cost of keeping a SageMaker endpoint running 24/7.
+
+

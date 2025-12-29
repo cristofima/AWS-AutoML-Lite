@@ -157,7 +157,7 @@ terraform output
 | **CloudWatch Logs** | Monitoring | $0.50/month |
 | **IAM Roles** | Permissions | Free |
 
-**💰 Total Estimated Cost:** ~$10-25/month for moderate usage
+**💰 Total Estimated**: ~$2-15/month ($0 when idle) vs ~$36-171/month for SageMaker endpoints.
 
 ---
 

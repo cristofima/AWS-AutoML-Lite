@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Regression predictions show value with ± RMSE error margin (e.g., 0.0991 ± 0.002)
   - R² displayed as coefficient (0-1) per ML standards, not percentage
   - Target column name shown in prediction results panel
-  - Cost comparison panel: Lambda ($0 idle) vs SageMaker (~$50-100/month)
+  - Cost comparison panel: Lambda ($0 idle) vs SageMaker (~$36-171/month)
   - ONNX Runtime >=1.16.3 for serverless inference (uses 1.16.3 on Lambda, 1.20.x locally)
 
 - **Dark Mode Support** - Full dark/light/system theme support across all pages
@@ -252,7 +252,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version badges in README
 
 ### Cost Optimization
-- ~$10-25/month total cost for moderate usage
+- ~$2-15/month total cost for moderate usage ($0 when idle)
 - Fargate Spot pricing (70% discount)
 - No always-on infrastructure
 - Training cost: ~$0.02/job

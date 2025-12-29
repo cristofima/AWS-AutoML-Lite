@@ -68,7 +68,7 @@ export default function Home() {
       <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-12">
         <div className="text-center text-gray-600 dark:text-gray-400 text-sm">
           <p>Built with FastAPI, FLAML, and AWS Batch</p>
-          <p className="mt-1">~$10-25/month operational cost</p>
+          <p className="mt-1">~$2-15/month operational cost ($0 when idle)</p>
         </div>
       </footer>
     </div>
