@@ -293,5 +293,80 @@ class TestS3MetadataOperations:
         assert not_exists == False
 
 
+
+class TestS3CacheOperations:
+    """Test S3 Service in-memory caching"""
+
+    def test_presigned_url_caching(self, s3_bucket):
+        """Repeated calls for same key return cached URL within TTL."""
+        from datetime import datetime, timedelta
+        from api.services.s3_service import s3_service
+        
+        bucket = "test-bucket"
+        key = "cache-test.csv"
+        
+        # 1. First call - generates new URL
+        url1 = s3_service.generate_presigned_download_url_cached(bucket, key, expiration=3600)
+        
+        # 2. Second call - should match first URL (cache hit)
+        url2 = s3_service.generate_presigned_download_url_cached(bucket, key, expiration=3600)
+        assert url1 == url2
+        
+        # Verify it's in cache
+        assert (bucket, key) in s3_service._url_cache
+
+    def test_presigned_url_expiry(self, s3_bucket):
+        """Expired entries trigger new URL generation."""
+        from datetime import datetime, timedelta
+        from api.services.s3_service import s3_service
+        import time
+        
+        bucket = "test-bucket"
+        key = "expiry-test.csv"
+        
+        # 1. Generate URL with short internal TTL (mocking logic)
+        # We can't easily mock inner datetime of the service without patching,
+        # but we can manually manipulate the cache for testing.
+        
+        url1 = s3_service.generate_presigned_download_url_cached(bucket, key)
+        
+        # Manually set expiry to the past
+        past_time = datetime.utcnow() - timedelta(seconds=1)
+        s3_service._url_cache[(bucket, key)] = (url1, past_time)
+        
+        # 2. Call again - should generate NEW URL because cache entry is expired
+        url2 = s3_service.generate_presigned_download_url_cached(bucket, key)
+        
+        # Ideally url2 != url1, but AWS presigned URLs are deterministic if params are same.
+        # However, generate_presigned_download_url_cached implementation logs "Cache MISS"
+        # and re-inserts. We can verify the expiry updated.
+        
+        new_cached_url, new_expiry = s3_service._url_cache[(bucket, key)]
+        assert new_expiry > datetime.utcnow()
+
+    def test_lazy_cleanup(self, s3_bucket):
+        """Expired entries are removed from cache on access."""
+        from datetime import datetime, timedelta
+        from api.services.s3_service import s3_service
+        
+        bucket = "test-bucket"
+        key_expired = "expired.csv"
+        key_active = "active.csv"
+        
+        # 1. Populate cache
+        now = datetime.utcnow()
+        s3_service._url_cache[(bucket, key_expired)] = ("http://old", now - timedelta(seconds=10))
+        s3_service._url_cache[(bucket, key_active)] = ("http://new", now + timedelta(seconds=3600))
+        
+        # 2. Access cache (trigger cleanup)
+        # We access a different key to trigger the global scan
+        s3_service.generate_presigned_download_url_cached(bucket, "trigger.csv")
+        
+        # 3. Verify expired key is gone
+        assert (bucket, key_expired) not in s3_service._url_cache
+        # 4. Verify active key remains
+        assert (bucket, key_active) in s3_service._url_cache
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

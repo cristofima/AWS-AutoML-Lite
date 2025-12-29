@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Response, Request
 from typing import Dict, Optional, Any
+import hashlib
 from ..models.schemas import (
     JobListResponse, JobResponse, JobStatus, ProblemType, JobUpdateRequest,
     DeployRequest, DeployResponse, PreprocessingInfo, JobSummary
@@ -13,12 +14,14 @@ settings = get_settings()
 
 
 @router.get("/{job_id}", response_model=JobResponse)
-async def get_job_status(job_id: str) -> JobResponse:
+async def get_job_status(job_id: str, response: Response, request: Request) -> JobResponse:
     """
-    Get the status and results of a training job
+    Get the status and results of a training job.
+    Implements ETag-based caching with must-revalidate for accurate state after deploy/undeploy.
     """
     try:
-        job = dynamodb_service.get_job(job_id)
+        # Use consistent read to ensure we generate ETag from the absolute latest state
+        job = dynamodb_service.get_job(job_id, consistent_read=True)
         if not job:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -51,7 +54,7 @@ async def get_job_status(job_id: str) -> JobResponse:
                 target_mapping=job['preprocessing_info'].get('target_mapping')
             )
         
-        response = JobResponse(
+        job_response = JobResponse(
             job_id=job['job_id'],
             dataset_id=job.get('dataset_id', ''),
             status=JobStatus(job['status']),
@@ -77,7 +80,7 @@ async def get_job_status(job_id: str) -> JobResponse:
                 # Extract bucket and key from s3:// path
                 model_path = job['model_path'].replace('s3://', '')
                 bucket, key = model_path.split('/', 1)
-                response.model_download_url = s3_service.generate_presigned_download_url(
+                job_response.model_download_url = s3_service.generate_presigned_download_url_cached(
                     bucket=bucket,
                     key=key
                 )
@@ -86,7 +89,7 @@ async def get_job_status(job_id: str) -> JobResponse:
             if job.get('onnx_model_path'):
                 onnx_path = job['onnx_model_path'].replace('s3://', '')
                 bucket, key = onnx_path.split('/', 1)
-                response.onnx_model_download_url = s3_service.generate_presigned_download_url(
+                job_response.onnx_model_download_url = s3_service.generate_presigned_download_url_cached(
                     bucket=bucket,
                     key=key
                 )
@@ -96,20 +99,45 @@ async def get_job_status(job_id: str) -> JobResponse:
             if eda_path:
                 report_path = eda_path.replace('s3://', '')
                 bucket, key = report_path.split('/', 1)
-                url = s3_service.generate_presigned_download_url(bucket=bucket, key=key)
-                response.report_download_url = url  # Backward compatibility
-                response.eda_report_download_url = url
+                url = s3_service.generate_presigned_download_url_cached(bucket=bucket, key=key)
+                job_response.report_download_url = url  # Backward compatibility
+                job_response.eda_report_download_url = url
             
             # Training Report
             if job.get('training_report_path'):
                 training_path = job['training_report_path'].replace('s3://', '')
                 bucket, key = training_path.split('/', 1)
-                response.training_report_download_url = s3_service.generate_presigned_download_url(
+                job_response.training_report_download_url = s3_service.generate_presigned_download_url_cached(
                     bucket=bucket,
                     key=key
                 )
         
-        return response
+        # ============================================================================
+        # HTTP Cache Strategy with ETag for accurate state after deploy/undeploy
+        # ============================================================================
+        
+        # 1. Generate ETag based on mutable fields (updated_at, deployed, deployed_at)
+        #    This changes whenever the job state changes (including deploy/undeploy)
+        etag_source = f"{job.get('updated_at', '')}-{job.get('deployed', False)}-{job.get('deployed_at', '')}"
+        etag = f'"{hashlib.md5(etag_source.encode()).hexdigest()}"'
+        response.headers["ETag"] = etag
+        
+        # 2. Check If-None-Match header for conditional requests (304 Not Modified)
+        if_none_match = request.headers.get("If-None-Match")
+        if if_none_match == etag:
+            # Resource hasn't changed - return 304 (browser will use cached version)
+            # IMPORTANT: 304 responses MUST NOT have a body
+            return Response(status_code=304, headers={"ETag": etag, "Cache-Control": "private, max-age=0, must-revalidate"})
+        
+        # 3. Always force revalidation
+        #    We used to have adaptive TTLs, but deployment status changes need to be reflected immediately.
+        #    max-age=0 + must-revalidate ensures the browser ALWAYS validates the ETag with the server.
+        #    Server (consistent read) -> Calculates ETag -> 304 if same, 200 if changed.
+        #    This is the most robust way to handle state changes like 'Deployed' vs 'Undeployed'.
+        response.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+        response.headers["Vary"] = "Authorization"  # Vary by auth header if auth is added later
+        
+        return job_response
     
     except HTTPException:
         raise
@@ -121,7 +149,7 @@ async def get_job_status(job_id: str) -> JobResponse:
 
 
 @router.delete("/{job_id}")
-async def delete_job(job_id: str, delete_data: bool = True) -> Dict[str, Any]:
+async def delete_job(job_id: str, response: Response, delete_data: bool = True) -> Dict[str, Any]:
     """
     Delete a training job and optionally all associated data (model, report, dataset)
     """
@@ -189,6 +217,9 @@ async def delete_job(job_id: str, delete_data: bool = True) -> Dict[str, Any]:
         # Delete job record from DynamoDB
         dynamodb_service.delete_job(job_id)
         
+        # Ensure client caches are invalidated immediately
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        
         return {
             "message": "Job deleted successfully",
             "job_id": job_id,
@@ -205,7 +236,7 @@ async def delete_job(job_id: str, delete_data: bool = True) -> Dict[str, Any]:
 
 
 @router.patch("/{job_id}", response_model=JobResponse)
-async def update_job_metadata(job_id: str, request: JobUpdateRequest) -> JobResponse:
+async def update_job_metadata(job_id: str, update_request: JobUpdateRequest, response: Response, request: Request) -> JobResponse:
     """
     Update job metadata (tags and notes) for experiment tracking.
     Tags can be used to categorize jobs (e.g., "experiment-1", "baseline", "production").
@@ -213,7 +244,8 @@ async def update_job_metadata(job_id: str, request: JobUpdateRequest) -> JobResp
     """
     try:
         # Verify job exists
-        job = dynamodb_service.get_job(job_id)
+        # Use consistent read to ensure we have the absolute latest state before validating and updating
+        job = dynamodb_service.get_job(job_id, consistent_read=True)
         if not job:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -221,14 +253,14 @@ async def update_job_metadata(job_id: str, request: JobUpdateRequest) -> JobResp
             )
         
         # Validate tags if provided
-        if request.tags is not None:
-            if len(request.tags) > 10:
+        if update_request.tags is not None:
+            if len(update_request.tags) > 10:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Maximum 10 tags allowed per job"
                 )
             # Validate individual tag length
-            for tag in request.tags:
+            for tag in update_request.tags:
                 if not tag.strip():
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -241,7 +273,7 @@ async def update_job_metadata(job_id: str, request: JobUpdateRequest) -> JobResp
                     )
         
         # Validate notes length if provided (defense-in-depth, Pydantic also validates)
-        if request.notes is not None and len(request.notes) > 1000:
+        if update_request.notes is not None and len(update_request.notes) > 1000:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Notes must be 1000 characters or less"
@@ -250,12 +282,12 @@ async def update_job_metadata(job_id: str, request: JobUpdateRequest) -> JobResp
         # Update job metadata in DynamoDB
         dynamodb_service.update_job_metadata(
             job_id=job_id,
-            tags=request.tags,
-            notes=request.notes
+            tags=update_request.tags,
+            notes=update_request.notes
         )
         
-        # Return updated job
-        return await get_job_status(job_id)
+        # Return updated job (pass response and request for HTTP headers + ETag)
+        return await get_job_status(job_id, response, request)
     
     except HTTPException:
         raise
@@ -274,7 +306,8 @@ async def deploy_model(job_id: str, request: DeployRequest) -> DeployResponse:
     """
     try:
         # Verify job exists
-        job = dynamodb_service.get_job(job_id)
+        # Use consistent read to ensure we have the absolute latest state before deploying
+        job = dynamodb_service.get_job(job_id, consistent_read=True)
         if not job:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -297,6 +330,14 @@ async def deploy_model(job_id: str, request: DeployRequest) -> DeployResponse:
         
         # Update deployed status
         dynamodb_service.update_job_deployed(job_id, request.deploy)
+        
+        # IMPORTANT: Invalidate HTTP cache for this job
+        # Force clients to fetch fresh data with updated deployed/deployed_at fields
+        # Note: This does NOT invalidate S3 presigned URL cache (those remain valid)
+        from fastapi import Response
+        response = Response()
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["X-Cache-Invalidated"] = "deploy-status-changed"
         
         action = "deployed" if request.deploy else "undeployed"
         return DeployResponse(
@@ -340,7 +381,8 @@ async def list_jobs(
         # Convert to JobSummary (lightweight) instead of full JobResponse
         jobs = []
         for job in raw_jobs:
-            metrics = job.get('metrics', {})
+            # Safely handle None/null metrics (happens when jobs fail before completion)
+            metrics = job.get('metrics') or {}
             
             # Extract primary metric (accuracy for classification, r2_score for regression)
             problem_type = job.get('problem_type')
@@ -350,7 +392,7 @@ async def list_jobs(
             elif problem_type == 'regression' and metrics.get('r2_score'):
                 primary_metric = float(metrics['r2_score'])
             
-            # Extract training time and best estimator
+            # Extract training time and best estimator (safely handle None)
             training_time = float(metrics['training_time']) if metrics.get('training_time') else None
             best_estimator = str(metrics['best_estimator']) if metrics.get('best_estimator') else None
             

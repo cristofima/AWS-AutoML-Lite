@@ -797,5 +797,64 @@ class TestTrainingEdgeCases:
         assert data["estimated_time"] == 1200  # Auto-calculated for very large dataset
 
 
+
+class TestJobCaching:
+    """Test ETag caching behavior for jobs"""
+    
+    def test_get_job_etag_headers(self, api_client):
+        """GET /jobs/{id} returns ETag and Cache-Control headers."""
+        from api.routers import models
+        
+        # Mock job with explicit updated_at for ETag generation
+        mock_job = {
+            'job_id': 'job-cache-001',
+            'dataset_id': 'ds-123',
+            'status': 'completed',
+            'target_column': 'target',
+            'created_at': '2024-01-15T10:00:00Z',
+            'updated_at': '2024-01-15T12:00:00Z', # Used for ETag
+            'deployed': False
+        }
+        
+        with patch.object(models.dynamodb_service, 'get_job', return_value=mock_job):
+            # 2. Get job status
+            response = api_client.get("/jobs/job-cache-001")
+            
+        assert response.status_code == 200
+        
+        # 3. Verify headers
+        assert "ETag" in response.headers
+        assert response.headers["Cache-Control"] == "private, max-age=0, must-revalidate"
+        assert response.headers["Vary"] == "Authorization"
+
+    def test_get_job_304_not_modified(self, api_client):
+        """GET /jobs/{id} with matching If-None-Match returns 304."""
+        from api.routers import models
+        
+        mock_job = {
+            'job_id': 'job-cache-002',
+            'dataset_id': 'ds-123',
+            'status': 'completed',
+            'target_column': 'target',
+            'created_at': '2024-01-15T10:00:00Z',
+            'updated_at': '2024-01-15T12:00:00Z',
+            'deployed': False
+        }
+        
+        with patch.object(models.dynamodb_service, 'get_job', return_value=mock_job):
+            # 2. Get initial response to get ETag
+            response1 = api_client.get("/jobs/job-cache-002")
+            etag = response1.headers["ETag"]
+            
+            # 3. Request again with If-None-Match
+            headers = {"If-None-Match": etag}
+            response2 = api_client.get("/jobs/job-cache-002", headers=headers)
+        
+        # 4. Verify 304 Not Modified
+        assert response2.status_code == 304
+        assert not response2.content  # Body should be empty
+        assert response2.headers["ETag"] == etag
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

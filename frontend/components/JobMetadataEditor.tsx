@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { updateJobMetadata, JobDetails } from '@/lib/api';
+import { mergeJobPreservingUrls } from '@/lib/job-utils';
 
 interface JobMetadataEditorProps {
   job: JobDetails;
@@ -81,7 +82,9 @@ export default function JobMetadataEditor({ job, onUpdate, compact = false }: Jo
     setError(null);
     try {
       const updatedJob = await updateJobMetadata(job.job_id, { tags });
-      onUpdate(updatedJob);
+      // Use merge utility to preserve URLs covering partial updates
+      const mergedJob = mergeJobPreservingUrls(job, updatedJob);
+      onUpdate(mergedJob);
       setIsEditingTags(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save tags');
@@ -94,8 +97,11 @@ export default function JobMetadataEditor({ job, onUpdate, compact = false }: Jo
     setIsSaving(true);
     setError(null);
     try {
-      const updatedJob = await updateJobMetadata(job.job_id, { notes: notes || undefined });
-      onUpdate(updatedJob);
+      // Allow sending empty string to clear notes
+      const updatedJob = await updateJobMetadata(job.job_id, { notes: notes });
+      // Use merge utility to preserve URLs (prevent flicker)
+      const mergedJob = mergeJobPreservingUrls(job, updatedJob);
+      onUpdate(mergedJob);
       setIsEditingNotes(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save notes');

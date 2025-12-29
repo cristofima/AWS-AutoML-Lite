@@ -263,6 +263,14 @@ Or mount `~/.aws` when using Docker (already configured in docker-compose.yml).
 
 4. **CORS Errors**: The API includes CORS middleware. Check `api/main.py` if issues persist.
 
+### Caching Strategy
+
+The API implements strict caching controls to ensure UI consistency:
+
+- **GET /jobs/{id}**: `Cache-Control: private, max-age=0, must-revalidate`. Forces browsers to validate ETag on every request, ensuring deployment status changes are seen immediately. Uses DynamoDB Strong Consistency (`ConsistentRead=True`) to generate accurate ETags.
+- **DELETE /jobs/{id}**: Returns `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` to immediately invalidate client caches.
+- **Consistency**: Critical operations (`update_job_metadata`, `deploy_model`) use DynamoDB Strong Consistency (`ConsistentRead=True`) to guarantee read-after-write accuracy.
+
 ## 🧪 Testing
 
 The backend includes comprehensive unit and integration tests for both API and Training modules. Tests run automatically in CI/CD pipelines before deployment.
@@ -272,14 +280,14 @@ The backend includes comprehensive unit and integration tests for both API and T
 ```
 backend/tests/
 ├── pytest.ini              # Pytest configuration
-├── api/                    # API tests (104 tests, 69% coverage)
+├── api/                    # API tests (109 tests, 71% coverage)
 │   ├── conftest.py         # Shared fixtures
 │   ├── test_endpoints.py   # Endpoint tests (39 tests)
 │   ├── test_schemas.py     # Pydantic validation tests (23 tests)
 │   ├── test_dynamo_service.py   # DynamoDB service tests
 │   ├── test_s3_service.py       # S3 service tests
 │   └── test_services_integration.py  # moto-based integration tests (21 tests)
-└── training/               # Training tests (159 tests, 53% coverage)
+└── training/               # Training tests (159 tests, 63% coverage)
     ├── conftest.py         # Shared fixtures
     ├── unit/               # Pure unit tests
     │   ├── test_preprocessor.py
@@ -387,3 +395,24 @@ from training.utils.detection import (
 This follows the DRY principle - logic is defined once and reused across `core/preprocessor.py` and `reports/eda.py`.
 
 This detection is performed both in the API (for UI display) and in the training container (for model training).
+
+## 💰 Cost Analysis (Inference)
+
+Based on official [AWS SageMaker Pricing](https://aws.amazon.com/sagemaker/ai/pricing/) and [Lambda Pricing](https://aws.amazon.com/lambda/pricing/) for `us-east-1`:
+
+| Component | Serverless (Lambda + ONNX) | SageMaker ml.t3.medium | SageMaker ml.c5.xlarge |
+| :--- | :--- | :--- | :--- |
+| **Idle Cost** | **$0.00 / month** | ~$36.00 / month | ~$171.36 / month |
+| **Hourly Rate** | N/A (Pay-per-req) | $0.05 / hour | $0.238 / hour |
+| **Per Prediction** | ~$0.000004 | Included | Included |
+| **Break-even** | **Best for < 9M reqs** | Better for 9M-40M reqs | Better for > 42M reqs |
+
+### Real-world Scenario (100k predictions/mo)
+- **Serverless**: **$0.40** (Virtually free)
+- **SageMaker (t3.medium)**: $36.00 (Fixed cost)
+- **Savings**: **98.8%** cost reduction for low-to-moderate workloads.
+
+> [!TIP]
+> This project is designed to be **"Side Project Friendly"**. By using Serverless Inference, you avoid the $432-$2,056 yearly cost of keeping a SageMaker endpoint running 24/7.
+
+

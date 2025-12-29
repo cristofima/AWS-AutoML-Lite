@@ -158,6 +158,16 @@ Each column shows the number of unique values to help users make informed decisi
 - If left empty, backend auto-calculates based on dataset size
 - Real-time validation with error messages
 
+### State Management
+
+#### Preserving Presigned URLs
+- **Problem**: Polling for job updates could overwrite valid presigned URLs with expired ones, breaking download links.
+- **Solution**: The `mergeJobPreservingUrls` utility intelligently performs a "lazy merge" of new API data with existing state. It preserves existing presigned URLs if the new response doesn't provide them, avoiding the risk of using expired links during background polling.
+
+#### Strict Cache Revalidation
+- **Problem**: Browsers would serve cached "200 OK" responses for job details even after the job was deleted.
+- **Solution**: `getJobDetails` uses `cache: 'no-cache'` to force ETag validation on every request. If the job is deleted, the server returns 404, and the browser correctly shows the "Not Found" page.
+
 ### Run Development Server
 ```bash
 pnpm dev

@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Regression predictions show value with ± RMSE error margin (e.g., 0.0991 ± 0.002)
   - R² displayed as coefficient (0-1) per ML standards, not percentage
   - Target column name shown in prediction results panel
-  - Cost comparison panel: Lambda ($0 idle) vs SageMaker (~$50-100/month)
+  - Cost comparison panel: Lambda ($0 idle) vs SageMaker (~$36-171/month)
   - ONNX Runtime >=1.16.3 for serverless inference (uses 1.16.3 on Lambda, 1.20.x locally)
 
 - **Dark Mode Support** - Full dark/light/system theme support across all pages
@@ -99,6 +99,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `best_estimator` field now stored in DynamoDB metrics to track which algorithm was selected
   - Updated `LESSONS_LEARNED.md` with bug timeline and resolution details
 
+- **S3 Cache Reliability** - Use lazy cleanup in `S3Service` to fix Lambda freezing issues
+  - Lazy cleanup prevents execution environment freezing in Lambda
+  - Ensures reliable cache eviction without background threads
+
+- **Deployment Consistency** - Enforced `ConsistentRead=True` for model deployment status checks
+  - Prevents race conditions during deployment status polling
+  - Ensures strong consistency for critical state changes
+
 ### Dependencies
 - **Dependency Audit & Version Updates** - Production-stable versions with flexible ranges
   - FastAPI upgraded from 0.109.0 to >=0.115.0 (fixes ReDoc CDN issue with `redoc@next`)
@@ -121,6 +129,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Previously used `OR` condition which misclassified float targets (e.g., 35.5, 40.2) as classification
   - Regression correctly detected for continuous numerical targets
   - Fixes "The least populated class in y has only 1 member" FLAML error
+
+- **Job Caching & Deletion** - Resolved stale data issues
+  - `DELETE /jobs/{id}` now returns aggressive `no-store` cache headers to prevent access to deleted jobs
+  - `GET /jobs/{id}` forces revalidation (`max-age=0`) to immediately reflect deployment status changes
+  - Frontend `getJobDetails` skips browser cache to ensure 404s are respected
+  - Fixed issue where clearing notes/tags didn't save due to DynamoDB empty string constraints (now uses `REMOVE` operation)
+  - Implemented `mergeJobPreservingUrls` to prevent presigned URL expiration during polling updates
+
+- **API 304 Compliance** - Fixed `get_job_status` to return empty body for 304 Not Modified responses
+  - Complies with HTTP RFC 7232 standard
+  - Prevents client-side parsing errors
 
 ### Removed
 - **Unused Frontend Dependencies** - Cleaned up packages that were never used in codebase
@@ -233,7 +252,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version badges in README
 
 ### Cost Optimization
-- ~$10-25/month total cost for moderate usage
+- ~$2-15/month total cost for moderate usage ($0 when idle)
 - Fargate Spot pricing (70% discount)
 - No always-on infrastructure
 - Training cost: ~$0.02/job

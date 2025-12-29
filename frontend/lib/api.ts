@@ -192,15 +192,14 @@ export async function startTraining(request: TrainRequest): Promise<TrainRespons
 }
 
 // Get job status and results
-export async function getJobDetails(jobId: string, bypassCache = false): Promise<JobDetails> {
-  // Add timestamp to bypass HTTP cache when needed (e.g., after deploy/undeploy)
-  const url = bypassCache 
-    ? `${API_URL}/jobs/${jobId}?_t=${Date.now()}`
-    : `${API_URL}/jobs/${jobId}`;
+export async function getJobDetails(jobId: string): Promise<JobDetails> {
+  const url = `${API_URL}/jobs/${jobId}`;
   
   const response = await fetch(url, {
-    // Force revalidation if bypassCache is true
-    cache: bypassCache ? 'no-cache' : 'default'
+    // Force revalidation (ETag check) by default.
+    // This solves issues where a previously deleted job returns 200 from browser cache
+    // because of old max-age headers.
+    cache: 'no-cache'
   });
   
   if (!response.ok) {
