@@ -583,15 +583,15 @@ DynamoDB (on-demand):           $1.00
 Lambda (API - 100K invokes):    $0.80
 API Gateway (100K requests):    $1.00
 Batch + Fargate Spot:           $2-5 (depends on jobs)
-Amplify (Frontend SSR):         $5-15 (depends on traffic)
+Amplify (Frontend SSR):         $0-15 (depends on traffic)
 CloudWatch Logs:                $0.50
 
-Total: ~$2-15/month for moderate usage ($0 when idle).
+Total: ~$3-25/month for moderate usage ($0 when idle).
 ```
 
 **Comparison:**
 - SageMaker with real-time endpoint: ~$36-171/month (t3.medium to c5.xlarge 24/7)
-- Cost-Efficient: ~$2-15/month ($0 when idle) vs ~$36-171/month for SageMaker endpoints.
+- Cost-Efficient: ~$3-25/month ($0 when idle) vs ~$36-171/month for SageMaker endpoints.
 - **Savings: ~90-99%** (vs SageMaker with endpoints)
 
 > Note: SageMaker training alone costs ~$0.68-3.20/month for 20 jobs—comparable to this solution. The significant savings come from avoiding always-on inference endpoints.
@@ -782,7 +782,7 @@ joblib==1.3.2
 
 **Technical:**
 - Backend infrastructure deployed ✅
-- Cost under $25/month ✅ (Total: ~$2-15/month for moderate usage ($0 when idle).)
+- Cost under $25/month ✅ (Total: ~$3-25/month for moderate usage ($0 when idle).)
 - CI/CD with GitHub Actions ✅
 - Lambda cold start < 2s ✅
 - Component-specific deployments ✅

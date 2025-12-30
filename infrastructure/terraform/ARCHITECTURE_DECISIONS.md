@@ -130,7 +130,7 @@ For datasets >10K rows, Lambda timeout is insufficient.
 - ✅ No cold starts
 
 **Cons:**
-- ❌ Allows the entire system to run for ~$2-15/month ($0 when idle).
+- ❌ Allows the entire system to run for ~$3-25/month ($0 when idle).
 - ❌ Not ideal for batch jobs
 - ❌ Overkill for intermittent training
 

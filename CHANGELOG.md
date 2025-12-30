@@ -252,7 +252,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version badges in README
 
 ### Cost Optimization
-- ~$2-15/month total cost for moderate usage ($0 when idle)
+- ~$3-25/month total cost for moderate usage ($0 when idle)
 - Fargate Spot pricing (70% discount)
 - No always-on infrastructure
 - Training cost: ~$0.02/job
