@@ -217,7 +217,7 @@ def create_cost_comparison_diagram():
             sm_endpoint = Sagemaker("Endpoint\n$36-171/mo\n(idle)")
             sm_studio - sm_endpoint
         
-        with Cluster("AutoML Lite (Scale-to-zero)\n~$2-15/mo ($0 idle)", graph_attr=automl_cluster):
+        with Cluster("AutoML Lite (Scale-to-zero)\n~$3-25/mo ($0 idle)", graph_attr=automl_cluster):
             lite_amplify = Amplify("Amplify\n(Next.js SSR)")
             lite_lambda = Lambda("API + Inference\n$0 idle\n(~$0.000004/req)")
             lite_fargate = Fargate("Batch (Spot)\n$0.02/job")
@@ -369,39 +369,39 @@ if __name__ == "__main__":
     try:
         print("\n1. Creating main architecture diagram...")
         create_main_architecture()
-        print("   ✅ architecture-main.png")
+        print("   [OK] architecture-main.png")
         
         print("\n2. Creating data flow diagram...")
         create_data_flow_diagram()
-        print("   ✅ architecture-dataflow.png")
+        print("   [OK] architecture-dataflow.png")
         
         print("\n3. Creating cost comparison diagram...")
         create_cost_comparison_diagram()
-        print("   ✅ architecture-cost.png")
+        print("   [OK] architecture-cost.png")
         
         print("\n4. Creating CI/CD pipeline diagram...")
         create_cicd_diagram()
-        print("   ✅ architecture-cicd.png")
+        print("   [OK] architecture-cicd.png")
         
         print("\n5. Creating training container diagram...")
         create_training_detail_diagram()
-        print("   ✅ architecture-training.png")
+        print("   [OK] architecture-training.png")
         
         print("\n6. Creating inference architecture diagram...")
         create_inference_diagram()
-        print("   ✅ architecture-inference.png")
+        print("   [OK] architecture-inference.png")
         
-        print(f"\n✅ All diagrams generated in: {OUTPUT_DIR}")
+        print(f"\n[OK] All diagrams generated in: {OUTPUT_DIR}")
         print("\nAvailable diagrams:")
         print("  - architecture-main.png       (Main architecture overview)")
-        print("  - architecture-dataflow.png   (Data flow: Upload → Train → Predict)")
+        print("  - architecture-dataflow.png   (Data flow: Upload -> Train -> Predict)")
         print("  - architecture-cost.png       (Cost comparison with SageMaker)")
         print("  - architecture-cicd.png       (CI/CD pipeline)")
         print("  - architecture-training.png   (Training container detail)")
         print("  - architecture-inference.png  (Serverless inference - v1.1.0)")
         
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n[ERROR] Error: {e}")
         import traceback
         traceback.print_exc()
         print("\nMake sure you have installed:")

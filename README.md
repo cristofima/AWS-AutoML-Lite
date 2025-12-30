@@ -25,7 +25,7 @@ A lightweight, cost-effective AutoML platform built on AWS serverless architectu
 - **Automated EDA**: Generates comprehensive exploratory data analysis reports
 - **Model Training**: Uses FLAML for efficient AutoML with auto-calculated time budgets
 - **Training History**: Track all your experiments with DynamoDB
-- **Cost-Effective**: ~$2-15/month ($0 when idle) vs ~$36-171/month for SageMaker endpoints.
+- **Cost-Effective**: ~$3-25/month ($0 when idle) vs ~$36-171/month for SageMaker endpoints.
 - **Portable Models**: Download trained models (.pkl and .onnx) for local use with Docker
 
 ### ✨ New in v1.1.0
@@ -170,11 +170,14 @@ Based on moderate usage (20 training jobs/month):
 
 | Service | Monthly Cost |
 |---------|-------------|
-| AWS Amplify (Frontend) | $5-15 |
+| AWS Amplify (Frontend) | $0-15 (Free Tier eligible) |
 | Lambda + API Gateway | $1-2 |
-| AWS Batch (Fargate Spot) | $2-5 |
-| S3 + DynamoDB | $1-2 |
-| **Total** | **~$2-15/month** |
+| AWS Batch (Fargate Spot) | $1-5 |
+| S3 + DynamoDB | $1-3 |
+| **Total** | **~$3-25/month** |
+
+> [!NOTE]
+> **Why $0-15 for Amplify?** Most side projects will stay within the **AWS Free Tier** ($0). The $15 estimate covers conservative usage for projects that exceed Free Tier limits (1,000 build minutes/month) or have higher traffic requiring more SSR compute (Lambda) resources.
 
 ## 🧪 Local Development
 
